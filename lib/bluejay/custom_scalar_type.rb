@@ -26,14 +26,14 @@ module Bluejay
 
       sig(:final) { override.void }
       def finalize
-        @definition = T.let(CustomScalarTypeDefinition.new(name: graphql_name, description:), T.nilable(CustomScalarTypeDefinition))
+        definition
       end
 
       private
 
       sig(:final) { returns(CustomScalarTypeDefinition) }
       def definition
-        T.must(@definition)
+        @definition ||= T.let(CustomScalarTypeDefinition.new(name: graphql_name, description:), T.nilable(CustomScalarTypeDefinition))
       end
     end
   end

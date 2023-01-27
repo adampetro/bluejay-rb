@@ -1,0 +1,31 @@
+- id: maple_leafs
+  name: Maple Leafs
+  location: Toronto
+
+- id: canadiens
+  name: Canadiens
+  location: Montréal
+
+- id: bruins
+  name: Bruins
+  location: Boston
+
+- id: senators
+  name: Senators
+  location: Ottawa
+
+- id: red_wings
+  name: Red Wings
+  location: Detroit
+
+- id: sabres
+  name: Sabres
+  location: Buffalo
+
+- id: lightning
+  name: Lightning
+  location: Tampa Bay
+
+- id: panthers
+  name: Panthers
+  location: Florida

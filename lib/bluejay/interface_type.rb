@@ -36,14 +36,14 @@ module Bluejay
 
       sig(:final) { override.void }
       def finalize
-        @definition = T.let(InterfaceTypeDefinition.new(name: graphql_name, description:, field_definitions:, interface_implementations:), T.nilable(InterfaceTypeDefinition))
+        definition
       end
 
       private
 
       sig { returns(InterfaceTypeDefinition) }
       def definition
-        T.must(@definition)
+        @definition ||= T.let(InterfaceTypeDefinition.new(name: graphql_name, description:, field_definitions:, interface_implementations:), T.nilable(InterfaceTypeDefinition))
       end
     end
   end

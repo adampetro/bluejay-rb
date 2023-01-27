@@ -2,4 +2,5 @@
 .
 --ignore=vendor/
 --ignore=tmp/
+--ignore=example/
 --enable-experimental-requires-ancestor

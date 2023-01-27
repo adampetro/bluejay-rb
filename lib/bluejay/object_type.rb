@@ -36,19 +36,22 @@ module Bluejay
 
       sig(:final) { override.void }
       def finalize
-        @definition = T.let(ObjectTypeDefinition.new(name: graphql_name, description:, field_definitions:, interface_implementations:), T.nilable(ObjectTypeDefinition))
-        definition = self.definition
-        interface = Module.new do |mod|
-          mod.define_method(:graphql___typename) { definition.name }
-        end
-        const_set(:Interface, interface)
+        definition
       end
 
       private
 
       sig { returns(ObjectTypeDefinition) }
       def definition
-        T.must(@definition)
+        @definition ||= T.let(nil, T.nilable(ObjectTypeDefinition))
+        @definition ||= begin
+          graphql_name = self.graphql_name
+          interface = Module.new do |mod|
+            mod.define_method(:graphql___typename) { graphql_name }
+          end
+          const_set(:Interface, interface)
+          ObjectTypeDefinition.new(name: graphql_name, description:, field_definitions:, interface_implementations:)
+        end
       end
     end
   end

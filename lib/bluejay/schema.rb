@@ -38,14 +38,14 @@ module Bluejay
 
       sig(:final) { override.void }
       def finalize
-        @definition = T.let(SchemaDefinition.new(description:, query:, mutation:), T.nilable(SchemaDefinition))
+        definition
       end
 
       private
 
       sig { returns(SchemaDefinition) }
       def definition
-        T.must(@definition)
+        @definition ||= T.let(SchemaDefinition.new(description:, query:, mutation:), T.nilable(SchemaDefinition))
       end
     end
   end

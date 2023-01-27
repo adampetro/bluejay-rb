@@ -29,14 +29,14 @@ module Bluejay
 
       sig(:final) { override.void }
       def finalize
-        @definition = T.let(UnionTypeDefinition.new(name: graphql_name, description:, member_types:), T.nilable(UnionTypeDefinition))
+        definition
       end
 
       private
 
       sig { returns(UnionTypeDefinition) }
       def definition
-        T.must(@definition)
+        @definition ||= T.let(UnionTypeDefinition.new(name: graphql_name, description:, member_types:), T.nilable(UnionTypeDefinition))
       end
     end
   end
