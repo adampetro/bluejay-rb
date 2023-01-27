@@ -1,0 +1,5 @@
+--dir
+.
+--ignore=vendor/
+--ignore=tmp/
+--enable-experimental-requires-ancestor
