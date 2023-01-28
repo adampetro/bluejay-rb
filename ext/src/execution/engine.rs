@@ -8,6 +8,7 @@ use bluejay_core::{
     FloatValue,
     ObjectValue,
     Variable as CoreVariable,
+    OperationType,
 };
 use bluejay_parser::ast::executable::{
     ExecutableDocument,
@@ -41,7 +42,7 @@ use crate::execution::{
     CoerceResult,
 };
 use crate::helpers::WrappedStruct;
-use magnus::{RHash, Value, QNIL, RArray, RString, value::BoxValue};
+use magnus::{RHash, Value, QNIL, RArray, RString, value::BoxValue, Error};
 
 pub struct Engine<'a> {
     schema: &'a SchemaDefinition,
@@ -51,26 +52,33 @@ pub struct Engine<'a> {
 }
 
 impl<'a> Engine<'a> {
-    pub fn execute_request(schema: &SchemaDefinition, query: &str, operation_name: Option<&str>, variable_values: RHash, initial_value: Value) -> ExecutionResult {
+    pub fn execute_request(schema: &SchemaDefinition, query: &str, operation_name: Option<&str>, variable_values: RHash, initial_value: Value) -> Result<ExecutionResult, Error> {
         let (document, parse_errors) = bluejay_parser::ast::parse(query);
 
         if !parse_errors.is_empty() {
-            return Self::execution_result(Default::default(), parse_errors.into_iter().map(ExecutionError::ParseError).collect());
+            return Ok(Self::execution_result(Default::default(), parse_errors.into_iter().map(ExecutionError::ParseError).collect()));
         }
 
         let operation_definition = match Self::get_operation(&document, operation_name) {
             Ok(od) => od,
-            Err(error) => { return Self::execution_result(Default::default(), vec![error]); },
+            Err(error) => { return Ok(Self::execution_result(Default::default(), vec![error])); },
         };
 
         let coerced_variable_values = match Self::get_variable_values(&schema, &operation_definition, variable_values) {
             Ok(cvv) => cvv,
-            Err(errors) => { return Self::execution_result(Default::default(), errors); },
+            Err(errors) => { return Ok(Self::execution_result(Default::default(), errors)); },
         };
 
         let instance = Engine { schema: &schema, document: &document, variable_values: &coerced_variable_values, key_store: RefCell::new(HashMap::new()) };
 
-        instance.execute_query(operation_definition, initial_value)
+        match operation_definition.operation_type() {
+            OperationType::Query => {
+                let query_root = initial_value.funcall("query", ())?;
+                Ok(instance.execute_query(operation_definition, query_root))
+            },
+            OperationType::Mutation => unimplemented!("executing mutations has not been implemented yet"),
+            OperationType::Subscription => unreachable!(),
+        }
     }
 
     fn get_operation<'b>(document: &'b ExecutableDocument, operation_name: Option<&'b str>) -> Result<&'b OperationDefinition<'b>, ExecutionError<'b>> {

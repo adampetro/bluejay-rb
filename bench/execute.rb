@@ -293,7 +293,7 @@ module Domain
               ),
             ],
           ),
-        ] * 167
+        ]
       end
     end
 
@@ -307,7 +307,7 @@ module Domain
     def graphql_players = players
   end
 
-  class Root < T::Struct
+  class QueryRoot < T::Struct
     extend(T::Sig)
     include(New::QueryRoot::Interface)
 
@@ -318,10 +318,17 @@ module Domain
       teams
     end
   end
+
+  class SchemaRoot < T::Struct
+    extend(T::Sig)
+
+    const(:query, QueryRoot)
+  end
 end
 
 Bench.all do |x|
-  root_value = Domain::Root.new(teams: Domain::Team.all)
+  root_value = Domain::QueryRoot.new(teams: Domain::Team.all)
+  schema_root_value = Domain::SchemaRoot.new(query: root_value)
   query = <<~GQL
     {
       teams {
@@ -357,7 +364,7 @@ Bench.all do |x|
   end
 
   x.report(:bluejay) do
-    result = New::Schema.execute(query:, operation_name: nil, initial_value: root_value)
+    result = New::Schema.execute(query:, operation_name: nil, initial_value: schema_root_value)
     # raise "error" unless result.value == { "teams" => [{ "name" => "Maple Leafs", "city" => "Toronto" }]}
   end
 

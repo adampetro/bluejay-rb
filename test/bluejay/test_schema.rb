@@ -61,6 +61,17 @@ module Bluejay
           end
         end
       end
+
+      class SchemaRoot
+        class << self
+          extend(T::Sig)
+
+          sig { returns(T.class_of(QueryRoot)) }
+          def query
+            QueryRoot
+          end
+        end
+      end
     end
 
     def test_foo
@@ -75,7 +86,8 @@ module Bluejay
           otherHello: hello(name: { first: "John" last: "Smith" })
         }
       GQL
-      root = Domain::QueryRoot
+      root = Domain::SchemaRoot
+
       result = MySchema.execute(query:, operation_name: nil, variables: { "name" => { "first" => "Adam", "last" => "Petro" } }, initial_value: root)
 
       assert_equal({ "__typename" => "QueryRoot", "hello" => "Hello, Adam Petro!", "otherHello" => "Hello, John Smith!" }, result.value)

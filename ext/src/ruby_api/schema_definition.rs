@@ -49,7 +49,7 @@ impl SchemaDefinition {
         self.contained_types.get(name)
     }
 
-    fn execute(&self, query: String, operation_name: Option<String>, variable_values: RHash, initial_value: Value) -> ExecutionResult {
+    fn execute(&self, query: String, operation_name: Option<String>, variable_values: RHash, initial_value: Value) -> Result<ExecutionResult, Error> {
         ExecutionEngine::execute_request(self, query.as_str(), operation_name.as_ref().map(String::as_str), variable_values, initial_value)
     }
 
