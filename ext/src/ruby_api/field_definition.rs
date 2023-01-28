@@ -2,7 +2,7 @@ use super::root;
 use super::{output_type_reference::{OutputTypeReference, BaseOutputTypeReference}, arguments_definition::ArgumentsDefinition};
 use crate::helpers::{WrappedStruct};
 use magnus::{function, Error, Module, Object, scan_args::get_kwargs, RHash, RArray, Value, TypedData, DataTypeFunctions, memoize, value::BoxValue, gc};
-use bluejay_core::BuiltinScalarDefinition;
+use bluejay_core::{BuiltinScalarDefinition, definition::{OutputTypeReference as CoreOutputTypeReference}};
 
 #[derive(Debug, TypedData)]
 #[magnus(class = "Bluejay::FieldDefinition", mark)]
@@ -27,7 +27,7 @@ impl FieldDefinition {
 
     pub(crate) fn typename() -> WrappedStruct<Self> {
         memoize!((BoxValue<Value>, BoxValue<Value>, WrappedStruct<FieldDefinition>): {
-            let t = WrappedStruct::wrap(OutputTypeReference::Base(BaseOutputTypeReference::BuiltinScalarType(BuiltinScalarDefinition::String), true));
+            let t = WrappedStruct::wrap(CoreOutputTypeReference::Base(BaseOutputTypeReference::BuiltinScalarType(BuiltinScalarDefinition::String), true).into());
             let fd = Self {
                 name: "__typename".to_string(),
                 description: None,

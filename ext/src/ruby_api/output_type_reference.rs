@@ -1,6 +1,7 @@
 use magnus::{Error, Value, exception, TypedData, DataTypeFunctions, Module, scan_args::get_kwargs, RHash, Object, function};
 use super::{root, enum_type_definition::EnumTypeDefinition, object_type_definition::ObjectTypeDefinition, union_type_definition::UnionTypeDefinition, custom_scalar_type_definition::CustomScalarTypeDefinition, scalar::Scalar, interface_type_definition::InterfaceTypeDefinition};
 use crate::helpers::{WrappedStruct, WrappedDefinition};
+use bluejay_core::definition::{OutputTypeReference as CoreOutputTypeReference};
 
 #[derive(Clone, Debug)]
 pub enum BaseOutputTypeReference {
@@ -33,6 +34,10 @@ impl bluejay_core::definition::AbstractBaseOutputTypeReference for BaseOutputTyp
             Self::InterfaceType(itd) => bluejay_core::definition::BaseOutputTypeReference::InterfaceType(*itd.get(), Default::default()),
             Self::UnionType(utd) => bluejay_core::definition::BaseOutputTypeReference::UnionType(*utd.get(), Default::default()),
         }
+    }
+
+    fn name(&self) -> &str {
+        self.name()
     }
 }
 
@@ -86,17 +91,64 @@ impl BaseOutputTypeReference {
 
 #[derive(Clone, Debug, TypedData)]
 #[magnus(class = "Bluejay::OutputTypeReference", mark)]
-pub enum OutputTypeReference {
-    Base(BaseOutputTypeReference, bool),
-    List(WrappedStruct<Self>, bool),
+#[repr(transparent)]
+pub struct OutputTypeReference(CoreOutputTypeReference<BaseOutputTypeReference, WrappedOutputTypeReference>);
+
+impl AsRef<CoreOutputTypeReference<BaseOutputTypeReference, WrappedOutputTypeReference>> for OutputTypeReference {
+    fn as_ref(&self) -> &CoreOutputTypeReference<BaseOutputTypeReference, WrappedOutputTypeReference> {
+        &self.0
+    }
+}
+
+impl bluejay_core::definition::AbstractOutputTypeReference for OutputTypeReference {
+    type BaseOutputTypeReference = BaseOutputTypeReference;
+    type Wrapper = WrappedOutputTypeReference;
 }
 
 impl DataTypeFunctions for OutputTypeReference {
     fn mark(&self) {
-        match self {
-            Self::List(inner, _) => inner.mark(),
-            Self::Base(inner, _) => inner.mark(),
+        match &self.0 {
+            CoreOutputTypeReference::List(inner, _) => inner.mark(),
+            CoreOutputTypeReference::Base(inner, _) => inner.mark(),
         }
+    }
+}
+
+impl From<CoreOutputTypeReference<BaseOutputTypeReference, WrappedOutputTypeReference>> for OutputTypeReference {
+    fn from(value: CoreOutputTypeReference<BaseOutputTypeReference, WrappedOutputTypeReference>) -> Self {
+        Self(value)
+    }
+}
+
+#[derive(Clone, Debug)]
+#[repr(transparent)]
+pub struct WrappedOutputTypeReference(WrappedStruct<OutputTypeReference>);
+
+impl AsRef<CoreOutputTypeReference<BaseOutputTypeReference, Self>> for WrappedOutputTypeReference {
+    fn as_ref(&self) -> &CoreOutputTypeReference<BaseOutputTypeReference, Self> {
+        self.0.get().as_ref()
+    }
+}
+
+impl WrappedOutputTypeReference {
+    fn mark(&self) {
+        self.0.mark()
+    }
+
+    pub fn get(&self) -> &OutputTypeReference {
+        self.0.get()
+    }
+}
+
+impl From<WrappedStruct<OutputTypeReference>> for WrappedOutputTypeReference {
+    fn from(value: WrappedStruct<OutputTypeReference>) -> Self {
+        Self(value)
+    }
+}
+
+impl From<OutputTypeReference> for WrappedOutputTypeReference {
+    fn from(value: OutputTypeReference) -> Self {
+        Self(WrappedStruct::wrap(value))
     }
 }
 
@@ -107,7 +159,7 @@ impl OutputTypeReference {
         let _: () = args.optional;
         let _: () = args.splat;
         let base = BaseOutputTypeReference::new(r#type)?;
-        Ok(Self::Base(base, required))
+        Ok(Self(CoreOutputTypeReference::Base(base, required)))
     }
 
     pub fn list(kw: RHash) -> Result<Self, Error> {
@@ -115,36 +167,7 @@ impl OutputTypeReference {
         let (r#type, required): (WrappedStruct<Self>, bool) = args.required;
         let _: () = args.optional;
         let _: () = args.splat;
-        Ok(Self::List(r#type, required))
-    }
-
-    pub fn is_required(&self) -> bool {
-        match self {
-            Self::Base(_, required) => *required,
-            Self::List(_, required) => *required,
-        }
-    }
-
-    pub fn base(&self) -> &BaseOutputTypeReference {
-        match self {
-            Self::Base(inner, _) => inner,
-            Self::List(inner, _) => inner.get().base(),
-        }
-    }
-}
-
-impl bluejay_core::definition::AbstractOutputTypeReference for OutputTypeReference {
-    type BaseOutputTypeReference = BaseOutputTypeReference;
-
-    fn to_concrete(&self) -> bluejay_core::definition::OutputTypeReferenceFromAbstract<Self> {
-        match self {
-            Self::Base(botr, required) => bluejay_core::definition::OutputTypeReference::Base(bluejay_core::definition::AbstractBaseOutputTypeReference::to_concrete(botr), *required),
-            Self::List(inner, required) => bluejay_core::definition::OutputTypeReference::List(Box::new(bluejay_core::definition::AbstractOutputTypeReference::to_concrete(inner.get())), *required),
-        }
-    }
-
-    fn base_name(&self) -> &str {
-        self.base().name()
+        Ok(Self(CoreOutputTypeReference::List(r#type.into(), required)))
     }
 }
 

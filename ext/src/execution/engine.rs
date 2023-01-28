@@ -9,6 +9,9 @@ use bluejay_core::{
     ObjectValue,
     Variable as CoreVariable,
     OperationType,
+    definition::{
+        OutputTypeReference as CoreOutputTypeReference,
+    },
 };
 use bluejay_parser::ast::executable::{
     ExecutableDocument,
@@ -200,7 +203,7 @@ impl<'a> Engine<'a> {
             let field_name = fields.first().unwrap().name();
             let field_definition = object_type.field_definition(field_name).unwrap();
             let (response_value, mut errs) = self.execute_field(object_type, object_value, field_definition, &fields);
-            if field_definition.r#type().is_required() && response_value.is_nil() {
+            if field_definition.r#type().as_ref().is_required() && response_value.is_nil() {
                 has_null_for_required = true;
             }
             let key: RString = **self.key_store.borrow_mut().entry(response_key).or_insert_with(|| {
@@ -370,14 +373,14 @@ impl<'a> Engine<'a> {
     }
 
     fn complete_value(&'a self, field_type: &OutputTypeReference, fields: &[&'a Field], result: Value) -> (Value, Vec<ExecutionError<'a>>) {
-        if field_type.is_required() && result.is_nil() {
+        if field_type.as_ref().is_required() && result.is_nil() {
             return (*QNIL, vec![ExecutionError::FieldError(FieldError::ReturnedNullForNonNullType)])
         } else if result.is_nil() {
             return (result, vec![])
         }
 
-        match field_type {
-            OutputTypeReference::Base(inner, _) => {
+        match field_type.as_ref() {
+            CoreOutputTypeReference::Base(inner, _) => {
                 match inner {
                     BaseOutputTypeReference::BuiltinScalarType(bstd) => {
                         match bstd.coerce_result(result) {
@@ -408,7 +411,7 @@ impl<'a> Engine<'a> {
                     },
                 }
             },
-            OutputTypeReference::List(inner, _) => {
+            CoreOutputTypeReference::List(inner, _) => {
                 if let Some(arr) = RArray::from_value(result) {
                     let inner = inner.get();
                     let completed = RArray::with_capacity(arr.len());
@@ -420,7 +423,7 @@ impl<'a> Engine<'a> {
                         errors.append(&mut errs);
                         if value.is_nil() { has_null = true; }
                     }
-                    if inner.is_required() && has_null {
+                    if inner.as_ref().is_required() && has_null {
                         (*QNIL, errors)
                     } else {
                         (*completed, errors)
