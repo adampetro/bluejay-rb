@@ -6,10 +6,16 @@ pub trait HasDefinitionWrapper: TypedData {
     fn wrapping_class() -> RClass;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct WrappedDefinition<T: HasDefinitionWrapper> {
     cls: RClass,
     memoized_definition: OnceCell<WrappedStruct<T>>,
+}
+
+impl<T: HasDefinitionWrapper> Clone for WrappedDefinition<T> {
+    fn clone(&self) -> Self {
+        Self { cls: self.cls.clone(), memoized_definition: self.memoized_definition.clone() }
+    }
 }
 
 impl<T: HasDefinitionWrapper> WrappedDefinition<T> {

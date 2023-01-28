@@ -22,7 +22,7 @@ impl<'a> Into<RubyExecutionError> for ExecutionError<'a> {
             Self::ApplicationError(_) => RubyExecutionError::new("Internal error".to_string()),
             Self::CoercionError(error) =>  error.into(),
             Self::ParseError(error) => RubyExecutionError::new(error.message),
-            Self::FieldError(error) => RubyExecutionError::new("Field error".to_string()),
+            Self::FieldError(_) => RubyExecutionError::new("Field error".to_string()),
         }
     }
 }

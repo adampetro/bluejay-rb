@@ -1,10 +1,10 @@
 use super::root;
-use super::{input_value_definition::InputValueDefinition, output_type_reference::{OutputTypeReference, BaseOutputTypeReference}, arguments_definition::ArgumentsDefinition};
+use super::{output_type_reference::{OutputTypeReference, BaseOutputTypeReference}, arguments_definition::ArgumentsDefinition};
 use crate::helpers::{WrappedStruct};
-use magnus::{function, Error, Module, Object, scan_args::get_kwargs, RHash, RArray, Value, TypedData, DataTypeFunctions, method, memoize, value::BoxValue};
+use magnus::{function, Error, Module, Object, scan_args::get_kwargs, RHash, RArray, Value, TypedData, DataTypeFunctions, memoize, value::BoxValue};
 use bluejay_core::BuiltinScalarDefinition;
 
-#[derive(Clone, Debug, TypedData)]
+#[derive(Debug, TypedData)]
 #[magnus(class = "Bluejay::FieldDefinition", mark)]
 pub struct FieldDefinition {
     name: String,
@@ -20,7 +20,7 @@ impl FieldDefinition {
         let (name, r#type): (String, WrappedStruct<OutputTypeReference>) = args.required;
         let (argument_definitions, description): (Option<RArray>, Option<Option<String>>) = args.optional;
         let _: () = args.splat;
-        let arguments_definition = ArgumentsDefinition::new(argument_definitions)?;
+        let arguments_definition = ArgumentsDefinition::new(argument_definitions.unwrap_or_else(|| RArray::new()))?;
         let description = description.unwrap_or_default();
         Ok(Self { name, description, arguments_definition, r#type, is_builtin: false })
     }
@@ -57,8 +57,8 @@ impl FieldDefinition {
         self.description.as_ref().map(String::as_str)
     }
 
-    pub fn argument_definitions(&self) -> &[WrappedStruct<InputValueDefinition>] {
-        self.arguments_definition.as_ref()
+    pub fn argument_definitions(&self) -> &ArgumentsDefinition {
+        &self.arguments_definition
     }
 
     pub fn r#type(&self) -> &OutputTypeReference {

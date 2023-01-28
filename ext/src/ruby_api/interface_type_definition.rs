@@ -1,9 +1,8 @@
-use magnus::{function, Error, Module, Object, scan_args::get_kwargs, RHash, Value, memoize, TypedData, RArray, DataTypeFunctions, RClass, gc};
-use super::{root, field_definition::FieldDefinition, interface_implementations::InterfaceImplementations, interface_implementation::InterfaceImplementation, fields_definition::FieldsDefinition};
-use crate::helpers::{WrappedStruct, HasDefinitionWrapper};
-use bluejay_core::AsIter;
+use magnus::{function, Error, Module, Object, scan_args::get_kwargs, RHash, memoize, TypedData, RArray, DataTypeFunctions, RClass};
+use super::{root, interface_implementations::InterfaceImplementations, fields_definition::FieldsDefinition};
+use crate::helpers::HasDefinitionWrapper;
 
-#[derive(Clone, Debug, TypedData)]
+#[derive(Debug, TypedData)]
 #[magnus(class = "Bluejay::InterfaceTypeDefinition", mark)]
 pub struct InterfaceTypeDefinition {
     name: String,
@@ -18,7 +17,7 @@ impl InterfaceTypeDefinition {
         let (name, field_definitions, interface_implementations, description): (String, RArray, RArray, Option<String>) = args.required;
         let _: () = args.optional;
         let _: () = args.splat;
-        let fields_definition = FieldsDefinition::new(Some(field_definitions))?;
+        let fields_definition = FieldsDefinition::new(field_definitions)?;
         let interface_implementations = InterfaceImplementations::new(interface_implementations)?;
         Ok(Self { name, description, fields_definition, interface_implementations })
     }
@@ -31,12 +30,12 @@ impl InterfaceTypeDefinition {
         self.description.as_ref().map(String::as_str)
     }
 
-    pub fn field_definitions(&self) -> &[WrappedStruct<FieldDefinition>] {
-        self.fields_definition.as_ref()
+    pub fn fields_definition(&self) -> &FieldsDefinition {
+        &self.fields_definition
     }
 
-    pub fn interface_implementations(&self) -> &[WrappedStruct<InterfaceImplementation>] {
-        self.interface_implementations.as_ref()
+    pub fn interface_implementations(&self) -> &InterfaceImplementations {
+        &self.interface_implementations
     }
 }
 

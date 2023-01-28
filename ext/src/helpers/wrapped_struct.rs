@@ -1,4 +1,4 @@
-use magnus::{error::Error, exception, gc, value::Value, RTypedData, TryConvert, TypedData, RArray};
+use magnus::{error::Error, exception, gc, value::Value, RTypedData, TryConvert, TypedData};
 use std::{marker::PhantomData, ops::Deref};
 
 /// A small wrapper for `RTypedData` that keeps track of the concrete struct
@@ -95,5 +95,3 @@ impl<T: TypedData> AsRef<T> for WrappedStruct<T> {
         self.get()
     }
 }
-
-pub type WrappedStructMap<'a, T> = std::iter::Map<std::slice::Iter<'a, WrappedStruct<T>>, fn(&'a WrappedStruct<T>) -> &'a T>;

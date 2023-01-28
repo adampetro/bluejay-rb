@@ -1,9 +1,9 @@
 use magnus::{function, Error, Module, Object, scan_args::get_kwargs, RHash, Value, memoize, TypedData, RArray, DataTypeFunctions, RClass, gc};
 use super::{root, enum_value_definitions::EnumValueDefinitions, coerce_input::CoerceInput, coercion_error::CoercionError};
-use crate::helpers::{WrappedStruct, public_name, HasDefinitionWrapper};
+use crate::helpers::{public_name, HasDefinitionWrapper};
 use crate::execution::{FieldError, CoerceResult};
 
-#[derive(Clone, Debug, TypedData)]
+#[derive(Debug, TypedData)]
 #[magnus(class = "Bluejay::EnumTypeDefinition", mark)]
 pub struct EnumTypeDefinition {
     name: String,
@@ -20,10 +20,6 @@ impl EnumTypeDefinition {
         let _: () = args.splat;
         let enum_value_definitions = EnumValueDefinitions::new(enum_value_definitions)?;
         Ok(Self { name, description, enum_value_definitions, ruby_class })
-    }
-
-    pub(super) fn ruby_class(&self) -> RClass {
-        self.ruby_class
     }
 
     pub fn name(&self) -> &str {

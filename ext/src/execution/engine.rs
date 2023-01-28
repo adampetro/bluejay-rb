@@ -1,14 +1,12 @@
 use std::collections::{HashSet, BTreeMap, HashMap};
 use std::cell::RefCell;
 use bluejay_core::{
+    AsIter,
     Value as CoreValue,
     BooleanValue,
     IntegerValue,
     FloatValue,
     ObjectValue,
-    ListValue,
-    StringValue,
-    EnumValue,
     Variable as CoreVariable,
 };
 use bluejay_parser::ast::executable::{
@@ -32,7 +30,6 @@ use crate::ruby_api::{
     ObjectTypeDefinition,
     ExecutionResult,
     OutputTypeReference,
-    InputValueDefinition,
     BaseOutputTypeReference,
     FieldDefinition,
     InterfaceTypeDefinition,
@@ -316,8 +313,7 @@ impl<'a> Engine<'a> {
         let mut errors: Vec<ExecutionError<'a>> = Vec::new();
         let arguments: &[VariableArgument] = field.arguments().map(AsRef::as_ref).unwrap_or_default();
         let argument_definitions = field_definition.argument_definitions();
-        for argument_definition in argument_definitions {
-            let argument_definition: &InputValueDefinition = argument_definition.get();
+        for argument_definition in argument_definitions.iter() {
             let argument_name = argument_definition.name();
             let argument_type = argument_definition.r#type();
             let default_value = argument_definition.default_value();
@@ -359,7 +355,7 @@ impl<'a> Engine<'a> {
         }
     }
 
-    fn resolve_field_value(&'a self, object_type: &ObjectTypeDefinition, object_value: Value, field_name: &'a str, argument_values: Vec<Value>) -> Result<Value, ExecutionError<'a>> {
+    fn resolve_field_value(&'a self, _object_type: &ObjectTypeDefinition, object_value: Value, field_name: &'a str, argument_values: Vec<Value>) -> Result<Value, ExecutionError<'a>> {
         // TODO: use object_type somehow?
         object_value.funcall(format!("graphql_{}", field_name), argument_values.as_slice())
             .map_err(|error| ExecutionError::ApplicationError(error))

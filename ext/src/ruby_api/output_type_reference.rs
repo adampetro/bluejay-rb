@@ -1,4 +1,4 @@
-use magnus::{Error, Value, exception, TypedData, DataTypeFunctions, Module, scan_args::get_kwargs, RHash, Object, function, RClass};
+use magnus::{Error, Value, exception, TypedData, DataTypeFunctions, Module, scan_args::get_kwargs, RHash, Object, function};
 use super::{root, enum_type_definition::EnumTypeDefinition, object_type_definition::ObjectTypeDefinition, union_type_definition::UnionTypeDefinition, custom_scalar_type_definition::CustomScalarTypeDefinition, scalar::Scalar, interface_type_definition::InterfaceTypeDefinition};
 use crate::helpers::{WrappedStruct, WrappedDefinition};
 

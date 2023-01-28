@@ -20,7 +20,7 @@ use crate::helpers::{WrappedStruct, WrappedDefinition};
 use crate::execution::{Engine as ExecutionEngine};
 use magnus::{function, Error, Module, Object, scan_args::get_kwargs, RHash, RArray, Value, TypedData, DataTypeFunctions, method};
 use bluejay_core::validation::executable::Validator;
-use bluejay_core::{BuiltinScalarDefinition, IntoEnumIterator};
+use bluejay_core::{BuiltinScalarDefinition, IntoEnumIterator, AsIter};
 
 #[derive(Clone, Debug, TypedData)]
 #[magnus(class = "Bluejay::SchemaDefinition", mark)]
@@ -196,22 +196,22 @@ impl SchemaTypeVisitor {
     }
 
     fn visit_object_type_definition(&mut self, otd: &ObjectTypeDefinition) {
-        self.visit_field_definitions(otd.field_definitions())
+        self.visit_field_definitions(otd.fields_definition())
     }
 
     fn visit_union_type_definition(&mut self, utd: &UnionTypeDefinition) {
-        for union_member in utd.member_types() {
-            let t = TypeDefinitionReference::ObjectType(union_member.get().r#type(), Default::default());
+        for union_member in utd.member_types().iter() {
+            let t = TypeDefinitionReference::ObjectType(union_member.r#type(), Default::default());
             self.visit_type(t);
         }
     }
 
     fn visit_interface_type_definition(&mut self, itd: &InterfaceTypeDefinition) {
-        self.visit_field_definitions(itd.field_definitions())
+        self.visit_field_definitions(itd.fields_definition())
     }
 
     fn visit_input_object_type_definition(&mut self, iotd: &InputObjectTypeDefinition) {
-        self.visit_input_value_definitions(iotd.input_field_definitions())
+        self.visit_input_value_definitions(iotd.input_fields_definition())
     }
 
     fn visit_type(&mut self, t: TypeDefinitionReference) {
@@ -231,9 +231,8 @@ impl SchemaTypeVisitor {
         }
     }
 
-    fn visit_field_definitions(&mut self, field_definitions: &[WrappedStruct<FieldDefinition>]) {
-        for field_definition in field_definitions {
-            let field_definition = field_definition.get();
+    fn visit_field_definitions(&mut self, fields_definition: &FieldsDefinition) {
+        for field_definition in fields_definition.iter() {
             self.visit_input_value_definitions(field_definition.argument_definitions());
             let base_type = field_definition.r#type().base();
             let t: Result<TypeDefinitionReference, ()> = base_type.try_into();
@@ -243,9 +242,8 @@ impl SchemaTypeVisitor {
         }
     }
 
-    fn visit_input_value_definitions(&mut self, input_value_definitions: &[WrappedStruct<InputValueDefinition>]) {
-        for input_value_definition in input_value_definitions {
-            let input_value_definition: &InputValueDefinition = input_value_definition.get();
+    fn visit_input_value_definitions(&mut self, input_fields_definition: &InputFieldsDefinition) {
+        for input_value_definition in input_fields_definition.iter() {
             let base_type = input_value_definition.r#type().base();
             let t: Result<TypeDefinitionReference, ()> = base_type.try_into();
             if let Ok(t) = t {

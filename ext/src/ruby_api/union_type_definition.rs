@@ -1,9 +1,9 @@
-use magnus::{function, Error, Module, Object, scan_args::get_kwargs, RHash, Value, memoize, TypedData, RArray, DataTypeFunctions, RClass, gc};
-use super::{root, union_member_type::UnionMemberType, object_type_definition::ObjectTypeDefinition, union_member_types::UnionMemberTypes};
-use crate::helpers::{WrappedStruct, HasDefinitionWrapper};
+use magnus::{function, Error, Module, Object, scan_args::get_kwargs, RHash, memoize, TypedData, RArray, DataTypeFunctions, RClass};
+use super::{root, object_type_definition::ObjectTypeDefinition, union_member_types::UnionMemberTypes};
+use crate::helpers::{HasDefinitionWrapper};
 use bluejay_core::AsIter;
 
-#[derive(Clone, Debug, TypedData)]
+#[derive(Debug, TypedData)]
 #[magnus(class = "Bluejay::UnionTypeDefinition", mark)]
 pub struct UnionTypeDefinition {
     name: String,
@@ -29,8 +29,8 @@ impl UnionTypeDefinition {
         self.description.as_ref().map(String::as_str)
     }
 
-    pub fn member_types(&self) -> &[WrappedStruct<UnionMemberType>] {
-        self.member_types.as_ref()
+    pub fn member_types(&self) -> &UnionMemberTypes {
+        &self.member_types
     }
 
     pub fn contains_type(&self, t: &ObjectTypeDefinition) -> bool {

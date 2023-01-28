@@ -1,10 +1,10 @@
 use std::{collections::HashSet};
 use bluejay_core::AsIter;
 use magnus::{function, Error, Module, Object, scan_args::get_kwargs, RHash, Value, method, TypedData, RArray, DataTypeFunctions, RClass, gc, QNIL, memoize};
-use super::{root, input_value_definition::InputValueDefinition, input_fields_definition::InputFieldsDefinition, r_result::RResult, coerce_input::CoerceInput, coercion_error::CoercionError};
-use crate::helpers::{WrappedStruct, public_name, HasDefinitionWrapper, from_rarray};
+use super::{root, input_fields_definition::InputFieldsDefinition, r_result::RResult, coerce_input::CoerceInput, coercion_error::CoercionError};
+use crate::helpers::{public_name, HasDefinitionWrapper};
 
-#[derive(Clone, Debug, TypedData)]
+#[derive(Debug, TypedData)]
 #[magnus(class = "Bluejay::InputObjectTypeDefinition", mark)]
 pub struct InputObjectTypeDefinition {
     name: String,
@@ -25,10 +25,6 @@ impl InputObjectTypeDefinition {
         Ok(Self { name, description, input_fields_definition, input_value_definition_names, ruby_class })
     }
 
-    pub(super) fn ruby_class(&self) -> RClass {
-        self.ruby_class
-    }
-
     pub fn name(&self) -> &str {
         self.name.as_str()
     }
@@ -37,11 +33,7 @@ impl InputObjectTypeDefinition {
         self.description.as_ref().map(String::as_str)
     }
 
-    pub fn input_field_definitions(&self) -> &[WrappedStruct<InputValueDefinition>] {
-        self.input_fields_definition.as_ref()
-    }
-
-    fn input_fields_definition(&self) -> &InputFieldsDefinition {
+    pub fn input_fields_definition(&self) -> &InputFieldsDefinition {
         &self.input_fields_definition
     }
 }

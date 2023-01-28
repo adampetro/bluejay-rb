@@ -1,6 +1,6 @@
 use magnus::{function, Error, Module, Object, Value, scan_args::get_kwargs, RHash, memoize, TypedData, DataTypeFunctions, RClass};
 use super::{root, coerce_input::CoerceInput, coercion_error::CoercionError};
-use crate::helpers::{HasDefinitionWrapper, WrappedDefinition, WrappedStruct};
+use crate::helpers::{HasDefinitionWrapper};
 
 #[derive(Clone, Debug, TypedData)]
 #[magnus(class = "Bluejay::CustomScalarTypeDefinition", mark)]
@@ -38,7 +38,7 @@ impl HasDefinitionWrapper for CustomScalarTypeDefinition {
 }
 
 impl CoerceInput for CustomScalarTypeDefinition {
-    fn coerce_input(&self, value: Value, path: &[String]) -> Result<Result<Value, Vec<CoercionError>>, Error> {
+    fn coerce_input(&self, value: Value, _path: &[String]) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         Ok(Ok(value))
     }
 }

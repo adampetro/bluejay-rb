@@ -1,4 +1,4 @@
-use magnus::{Error, Value, exception, TypedData, DataTypeFunctions, Module, scan_args::get_kwargs, RHash, Object, function, Integer, RString, Float, RArray, RClass};
+use magnus::{Error, Value, exception, TypedData, DataTypeFunctions, Module, scan_args::get_kwargs, RHash, Object, function, Integer, RString, Float, RArray};
 use super::{root, coerce_input::CoerceInput, coercion_error::CoercionError, input_object_type_definition::InputObjectTypeDefinition, enum_type_definition::EnumTypeDefinition, custom_scalar_type_definition::CustomScalarTypeDefinition, scalar::Scalar};
 use crate::helpers::{WrappedStruct, public_name, WrappedDefinition};
 use bluejay_parser::ast::{TypeReference as ParserTypeReference};
