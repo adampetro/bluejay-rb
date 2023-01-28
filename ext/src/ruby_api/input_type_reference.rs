@@ -3,6 +3,7 @@ use super::{root, coerce_input::CoerceInput, coercion_error::CoercionError, inpu
 use crate::helpers::{WrappedStruct, public_name, WrappedDefinition};
 use bluejay_parser::ast::{TypeReference as ParserTypeReference};
 use bluejay_core::{NamedTypeReference, ListTypeReference};
+use bluejay_core::definition::{InputTypeReference as CoreInputTypeReference};
 
 #[derive(Clone, Debug)]
 pub enum BaseInputTypeReference {
@@ -157,17 +158,58 @@ impl CoerceInput for BaseInputTypeReference {
 
 #[derive(Clone, Debug, TypedData)]
 #[magnus(class = "Bluejay::InputTypeReference", mark)]
-pub enum InputTypeReference {
-    Base(BaseInputTypeReference, bool),
-    List(WrappedStruct<Self>, bool),
+#[repr(transparent)]
+pub struct InputTypeReference(CoreInputTypeReference<BaseInputTypeReference, WrappedInputTypeReference>);
+
+impl AsRef<CoreInputTypeReference<BaseInputTypeReference, WrappedInputTypeReference>> for InputTypeReference {
+    fn as_ref(&self) -> &CoreInputTypeReference<BaseInputTypeReference, WrappedInputTypeReference> {
+        &self.0
+    }
+}
+
+impl bluejay_core::definition::AbstractInputTypeReference for InputTypeReference {
+    type BaseInputTypeReference = BaseInputTypeReference;
+    type Wrapper = WrappedInputTypeReference;
 }
 
 impl DataTypeFunctions for InputTypeReference {
     fn mark(&self) {
-        match self {
-            Self::List(inner, _) => inner.mark(),
-            Self::Base(inner, _) => inner.mark(),
+        match &self.0 {
+            CoreInputTypeReference::List(inner, _) => inner.mark(),
+            CoreInputTypeReference::Base(inner, _) => inner.mark(),
         }
+    }
+}
+
+#[derive(Clone, Debug)]
+#[repr(transparent)]
+pub struct WrappedInputTypeReference(WrappedStruct<InputTypeReference>);
+
+impl AsRef<CoreInputTypeReference<BaseInputTypeReference, Self>> for WrappedInputTypeReference {
+    fn as_ref(&self) -> &CoreInputTypeReference<BaseInputTypeReference, Self> {
+        self.0.get().as_ref()
+    }
+}
+
+impl WrappedInputTypeReference {
+    fn mark(&self) {
+        self.0.mark()
+    }
+
+    fn get(&self) -> &InputTypeReference {
+        self.0.get()
+    }
+}
+
+impl From<WrappedStruct<InputTypeReference>> for WrappedInputTypeReference {
+    fn from(value: WrappedStruct<InputTypeReference>) -> Self {
+        Self(value)
+    }
+}
+
+impl From<InputTypeReference> for WrappedInputTypeReference {
+    fn from(value: InputTypeReference) -> Self {
+        Self(WrappedStruct::wrap(value))
     }
 }
 
@@ -178,7 +220,7 @@ impl InputTypeReference {
         let _: () = args.optional;
         let _: () = args.splat;
         let base = BaseInputTypeReference::new(r#type)?;
-        Ok(Self::Base(base, required))
+        Ok(Self(CoreInputTypeReference::Base(base, required)))
     }
 
     pub fn list(kw: RHash) -> Result<Self, Error> {
@@ -186,14 +228,11 @@ impl InputTypeReference {
         let (r#type, required): (WrappedStruct<Self>, bool) = args.required;
         let _: () = args.optional;
         let _: () = args.splat;
-        Ok(Self::List(r#type, required))
+        Ok(Self(CoreInputTypeReference::List(r#type.into(), required)))
     }
 
     pub fn is_required(&self) -> bool {
-        match self {
-            Self::Base(_, required) => *required,
-            Self::List(_, required) => *required,
-        }
+        self.0.is_required()
     }
 
     fn coerce_required<F: Fn(Value, &[String]) -> Result<Result<Value, Vec<CoercionError>>, Error>>(value: Value, required: bool, path: &[String], f: F) -> Result<Result<Value, Vec<CoercionError>>, Error> {
@@ -209,39 +248,21 @@ impl InputTypeReference {
         }
     }
 
-    pub fn base(&self) -> &BaseInputTypeReference {
-        match self {
-            Self::Base(inner, _) => inner,
-            Self::List(inner, _) => inner.get().base(),
-        }
-    }
-
     pub fn from_parser_type_reference(parser_type_reference: &ParserTypeReference, base: BaseInputTypeReference) -> Self {
         match parser_type_reference {
-            ParserTypeReference::NamedType(ntr) => Self::Base(base, ntr.required()),
-            ParserTypeReference::ListType(ltr) => Self::List(Self::from_parser_type_reference(ltr.inner(), base).into(), ltr.required()),
-        }
-    }
-}
-
-impl bluejay_core::definition::AbstractInputTypeReference for InputTypeReference {
-    type BaseInputTypeReference = BaseInputTypeReference;
-
-    fn to_concrete(&self) -> bluejay_core::definition::InputTypeReferenceFromAbstract<Self> {
-        match self {
-            Self::Base(bitr, required) => bluejay_core::definition::InputTypeReference::Base(bluejay_core::definition::AbstractBaseInputTypeReference::to_concrete(bitr), *required),
-            Self::List(inner, required) => bluejay_core::definition::InputTypeReference::List(Box::new(bluejay_core::definition::AbstractInputTypeReference::to_concrete(inner.get())), *required),
+            ParserTypeReference::NamedType(ntr) => Self(CoreInputTypeReference::Base(base, ntr.required())),
+            ParserTypeReference::ListType(ltr) => Self(CoreInputTypeReference::List(Self::from_parser_type_reference(ltr.inner(), base).into(), ltr.required())),
         }
     }
 }
 
 impl CoerceInput for InputTypeReference {
     fn coerce_input(&self, value: Value, path: &[String]) -> Result<Result<Value, Vec<CoercionError>>, Error> {
-        match self {
-            Self::Base(inner, required) => {
+        match &self.0 {
+            CoreInputTypeReference::Base(inner, required) => {
                 Self::coerce_required(value, *required, path, |value, path| inner.coerce_input(value, path))
             },
-            Self::List(inner, required) => {
+            CoreInputTypeReference::List(inner, required) => {
                 Self::coerce_required(value, *required, path, |value, path| {
                     let inner = inner.get();
                     

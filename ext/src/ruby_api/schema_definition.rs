@@ -244,7 +244,7 @@ impl SchemaTypeVisitor {
 
     fn visit_input_value_definitions(&mut self, input_fields_definition: &InputFieldsDefinition) {
         for input_value_definition in input_fields_definition.iter() {
-            let base_type = input_value_definition.r#type().base();
+            let base_type = input_value_definition.r#type().as_ref().base();
             let t: Result<TypeDefinitionReference, ()> = base_type.try_into();
             if let Ok(t) = t {
                 self.visit_type(t);
