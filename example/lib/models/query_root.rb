@@ -6,8 +6,8 @@ class QueryRoot
     extend(T::Sig)
     include(Graph::QueryRoot::Interface)
   
-    sig { params(location: T.nilable(String)).returns(T::Array[Team]) }
-    def graphql_teams(location)
+    sig { override.params(location: T.nilable(String)).returns(T::Array[Team]) }
+    def resolve_teams(location)
       relation = if location
         Team.where(location:)
       else

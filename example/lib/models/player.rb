@@ -8,9 +8,14 @@ class Player < FrozenRecord::Base
   add_index(:id, unique: true)
   add_index(:current_team)
 
-  sig { returns(String) }
-  def graphql_firstName = first_name
+  sig { override.returns(String) }
+  def resolve_first_name = first_name
 
-  sig { returns(String) }
-  def graphql_lastName = last_name
+  sig { override.returns(String) }
+  def resolve_last_name = last_name
+
+  sig { override.returns(T.nilable(Graph::Team::Interface)) }
+  def resolve_current_team
+    Team.where(id: current_team)
+  end
 end

@@ -56,7 +56,7 @@ module Bluejay
           include(TestSchema::QueryRoot::Interface)
 
           sig { params(name: NameInput).returns(String) }
-          def graphql_hello(name)
+          def resolve_hello(name)
             "Hello, #{name.first} #{name.last}!"
           end
         end
@@ -90,8 +90,8 @@ module Bluejay
 
       result = MySchema.execute(query:, operation_name: nil, variables: { "name" => { "first" => "Adam", "last" => "Petro" } }, initial_value: root)
 
-      assert_equal({ "__typename" => "QueryRoot", "hello" => "Hello, Adam Petro!", "otherHello" => "Hello, John Smith!" }, result.value)
       assert_empty(result.errors)
+      assert_equal({ "__typename" => "QueryRoot", "hello" => "Hello, Adam Petro!", "otherHello" => "Hello, John Smith!" }, result.value)
       puts result.errors.map(&:inspect)
     end
 

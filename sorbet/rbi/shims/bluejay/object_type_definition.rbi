@@ -7,5 +7,8 @@ module Bluejay
 
     sig { returns(String) }
     def name; end
+
+    sig { returns(T::Array[FieldDefinition]) }
+    def field_definitions; end
   end
 end

@@ -301,13 +301,12 @@ impl<'a> Engine<'a> {
 
     fn execute_field(&'a self, object_type: &ObjectTypeDefinition, object_value: Value, field_definition: &FieldDefinition, fields: &[&'a Field]) -> (Value, Vec<ExecutionError<'a>>) {
         let field = fields.first().unwrap();
-        let field_name = field.name();
         let argument_values = match self.coerce_argument_values(field_definition, field) {
             Ok(argument_values) => argument_values,
             Err(errors) => { return (*QNIL, errors); },
         };
 
-        let resolved_value = match self.resolve_field_value(object_type, object_value, field_name, argument_values) {
+        let resolved_value = match self.resolve_field_value(object_type, object_value, field_definition, argument_values) {
             Ok(resolved_value) => resolved_value,
             Err(error) => { return (*QNIL, vec![error]); },
         };
@@ -362,9 +361,9 @@ impl<'a> Engine<'a> {
         }
     }
 
-    fn resolve_field_value(&'a self, _object_type: &ObjectTypeDefinition, object_value: Value, field_name: &'a str, argument_values: Vec<Value>) -> Result<Value, ExecutionError<'a>> {
+    fn resolve_field_value(&'a self, _object_type: &ObjectTypeDefinition, object_value: Value, field_definition: & FieldDefinition, argument_values: Vec<Value>) -> Result<Value, ExecutionError<'a>> {
         // TODO: use object_type somehow?
-        object_value.funcall(format!("graphql_{}", field_name), argument_values.as_slice())
+        object_value.funcall(field_definition.ruby_resolver_method_name(), argument_values.as_slice())
             .map_err(|error| ExecutionError::ApplicationError(error))
     }
 
@@ -439,7 +438,7 @@ impl<'a> Engine<'a> {
 
     fn resolve_interface_type(&'a self, interface_type: &InterfaceTypeDefinition, object_value: Value) -> &'a ObjectTypeDefinition {
         // TODO: change to return Result<_, FieldError>
-        let typename: String = object_value.funcall("graphql___typename", ()).unwrap();
+        let typename: String = object_value.funcall(FieldDefinition::typename().get().ruby_resolver_method_name(), ()).unwrap();
         let object_type = match self.schema.r#type(typename.as_str()) {
             Some(TypeDefinitionReference::ObjectType(otd, _)) => otd.as_ref(),
             _ => panic!(),
@@ -453,7 +452,7 @@ impl<'a> Engine<'a> {
 
     fn resolve_union_type(&'a self, union_type: &UnionTypeDefinition, object_value: Value) -> &'a ObjectTypeDefinition {
         // TODO: change to return Result<_, FieldError>
-        let typename: String = object_value.funcall("graphql___typename", ()).unwrap();
+        let typename: String = object_value.funcall(FieldDefinition::typename().get().ruby_resolver_method_name(), ()).unwrap();
         let object_type = match self.schema.r#type(typename.as_str()) {
             Some(TypeDefinitionReference::ObjectType(otd, _)) => otd.as_ref(),
             _ => panic!(),

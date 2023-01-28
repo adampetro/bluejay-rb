@@ -114,13 +114,13 @@ module Domain
     const(:year, Integer)
 
     sig { returns(Integer) }
-    def graphql_round = round
+    def resolve_round = round
 
     sig { returns(Integer) }
-    def graphql_selection = selection
+    def resolve_selection = selection
 
     sig { returns(Integer) }
-    def graphql_year = year
+    def resolve_year = year
   end
 
   class Player < T::Struct
@@ -133,16 +133,16 @@ module Domain
     const(:draft_position, T.nilable(DraftPosition))
 
     sig { returns(String) }
-    def graphql_firstName = first_name
+    def resolve_first_name = first_name
 
     sig { returns(String) }
-    def graphql_lastName = last_name
+    def resolve_last_name = last_name
 
     sig { returns(Integer) }
-    def graphql_age = age
+    def resolve_age = age
 
     sig { returns(T.nilable(DraftPosition)) }
-    def graphql_draftPosition = draft_position
+    def resolve_draft_position = draft_position
   end
 
   class Team < T::Struct
@@ -293,18 +293,18 @@ module Domain
               ),
             ],
           ),
-        ]
+        ] * 167
       end
     end
 
     sig { returns(String) }
-    def graphql_name = name
+    def resolve_name = name
 
     sig { returns(String) }
-    def graphql_city = city
+    def resolve_city = city
 
     sig { returns(T::Array[Player]) }
-    def graphql_players = players
+    def resolve_players = players
   end
 
   class QueryRoot < T::Struct
@@ -314,7 +314,7 @@ module Domain
     const(:teams, T::Array[Team])
 
     sig { returns(T::Array[Team]) }
-    def graphql_teams
+    def resolve_teams
       teams
     end
   end

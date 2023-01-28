@@ -94,6 +94,7 @@ pub fn init() -> Result<(), Error> {
 
     class.define_singleton_method("new", function!(ObjectTypeDefinition::new, 1))?;
     class.define_method("name", method!(ObjectTypeDefinition::name, 0))?;
+    class.define_method("field_definitions", method!(|otd: &ObjectTypeDefinition| -> RArray { (*otd.fields_definition()).into() }, 0))?;
 
     Ok(())
 }

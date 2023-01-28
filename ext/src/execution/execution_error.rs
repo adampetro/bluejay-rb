@@ -19,7 +19,7 @@ impl<'a> Into<RubyExecutionError> for ExecutionError<'a> {
             Self::NoOperationWithName { name } => RubyExecutionError::new(format!("No operation definition named `{}`", name)),
             Self::CannotUseAnonymousOperation => RubyExecutionError::new("Operation name is required when document does not contain exactly 1 operation definition".to_string()),
             Self::RequiredVariableMissingValue { name } => RubyExecutionError::new(format!("No value was provided for required variable `${}`", name)),
-            Self::ApplicationError(_) => RubyExecutionError::new("Internal error".to_string()),
+            Self::ApplicationError(error) => RubyExecutionError::new(format!("Internal error: {}", error)),
             Self::CoercionError(error) =>  error.into(),
             Self::ParseError(error) => RubyExecutionError::new(error.message),
             Self::FieldError(_) => RubyExecutionError::new("Field error".to_string()),
