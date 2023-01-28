@@ -1,7 +1,7 @@
 use super::root;
 use super::{output_type_reference::{OutputTypeReference, BaseOutputTypeReference}, arguments_definition::ArgumentsDefinition};
 use crate::helpers::{WrappedStruct};
-use magnus::{function, Error, Module, Object, scan_args::get_kwargs, RHash, RArray, Value, TypedData, DataTypeFunctions, memoize, value::BoxValue};
+use magnus::{function, Error, Module, Object, scan_args::get_kwargs, RHash, RArray, Value, TypedData, DataTypeFunctions, memoize, value::BoxValue, gc};
 use bluejay_core::BuiltinScalarDefinition;
 
 #[derive(Debug, TypedData)]
@@ -43,7 +43,7 @@ impl FieldDefinition {
 
 impl DataTypeFunctions for FieldDefinition {
     fn mark(&self) {
-        self.arguments_definition.mark();
+        gc::mark(self.arguments_definition);
         self.r#type.mark();
     }
 }

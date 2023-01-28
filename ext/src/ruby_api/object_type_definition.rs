@@ -1,5 +1,5 @@
 use bluejay_core::AsIter;
-use magnus::{function, Error, Module, Object, scan_args::get_kwargs, RHash, memoize, TypedData, RArray, DataTypeFunctions, RClass, method};
+use magnus::{function, Error, Module, Object, scan_args::get_kwargs, RHash, memoize, TypedData, RArray, DataTypeFunctions, RClass, method, gc};
 use super::{root, field_definition::FieldDefinition, interface_implementations::InterfaceImplementations, interface_type_definition::InterfaceTypeDefinition, fields_definition::FieldsDefinition};
 use crate::helpers::HasDefinitionWrapper;
 
@@ -27,8 +27,8 @@ impl ObjectTypeDefinition {
 
 impl DataTypeFunctions for ObjectTypeDefinition {
     fn mark(&self) {
-        self.fields_definition.mark();
-        self.interface_implementations.mark();
+        gc::mark(self.fields_definition);
+        gc::mark(self.interface_implementations);
     }
 }
 

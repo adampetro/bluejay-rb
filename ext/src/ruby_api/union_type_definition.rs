@@ -1,4 +1,4 @@
-use magnus::{function, Error, Module, Object, scan_args::get_kwargs, RHash, memoize, TypedData, RArray, DataTypeFunctions, RClass};
+use magnus::{function, Error, Module, Object, scan_args::get_kwargs, RHash, memoize, TypedData, RArray, DataTypeFunctions, RClass, gc};
 use super::{root, object_type_definition::ObjectTypeDefinition, union_member_types::UnionMemberTypes};
 use crate::helpers::{HasDefinitionWrapper};
 use bluejay_core::AsIter;
@@ -42,7 +42,7 @@ impl UnionTypeDefinition {
 
 impl DataTypeFunctions for UnionTypeDefinition {
     fn mark(&self) {
-        self.member_types.mark();
+        gc::mark(self.member_types);
     }
 }
 

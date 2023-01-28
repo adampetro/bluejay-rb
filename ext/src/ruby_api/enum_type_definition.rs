@@ -37,7 +37,7 @@ impl EnumTypeDefinition {
 
 impl DataTypeFunctions for EnumTypeDefinition {
     fn mark(&self) {
-        self.enum_value_definitions.mark();
+        gc::mark(self.enum_value_definitions);
         gc::mark(self.ruby_class);
     }
 }

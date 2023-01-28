@@ -1,4 +1,4 @@
-use magnus::{function, Error, Module, Object, scan_args::get_kwargs, RHash, memoize, TypedData, RArray, DataTypeFunctions, RClass};
+use magnus::{function, Error, Module, Object, scan_args::get_kwargs, RHash, memoize, TypedData, RArray, DataTypeFunctions, RClass, gc};
 use super::{root, interface_implementations::InterfaceImplementations, fields_definition::FieldsDefinition};
 use crate::helpers::HasDefinitionWrapper;
 
@@ -41,8 +41,8 @@ impl InterfaceTypeDefinition {
 
 impl DataTypeFunctions for InterfaceTypeDefinition {
     fn mark(&self) {
-        self.fields_definition.mark();
-        self.interface_implementations.mark();
+        gc::mark(self.fields_definition);
+        gc::mark(self.interface_implementations);
     }
 }
 

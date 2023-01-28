@@ -40,7 +40,7 @@ impl InputObjectTypeDefinition {
 
 impl DataTypeFunctions for InputObjectTypeDefinition {
     fn mark(&self) {
-        self.input_fields_definition.mark();
+        gc::mark(self.input_fields_definition);
         gc::mark(self.ruby_class);
     }
 }
@@ -132,7 +132,7 @@ pub fn init() -> Result<(), Error> {
 
     class.define_singleton_method("new", function!(InputObjectTypeDefinition::new, 1))?;
     class.define_method("coerce_input", method!(|itd: &InputObjectTypeDefinition, input: Value| -> Result<RResult, Error> { itd.coerce_input(input, &[]).map(Into::into) }, 1))?;
-    class.define_method("input_field_definitions", method!(|itd: &InputObjectTypeDefinition| -> RArray { *itd.input_fields_definition().as_ref() }, 0))?;
+    class.define_method("input_field_definitions", method!(|itd: &InputObjectTypeDefinition| -> RArray { (*itd.input_fields_definition()).into() }, 0))?;
 
     Ok(())
 }
