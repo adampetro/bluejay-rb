@@ -84,6 +84,7 @@ pub fn init() -> Result<(), Error> {
 
     class.define_singleton_method("new", function!(InputValueDefinition::new, 1))?;
     class.define_method("name", method!(InputValueDefinition::name, 0))?;
+    class.define_method("type", method!(|ivd: &InputValueDefinition| ivd.r#type, 0))?;
 
     Ok(())
 }

@@ -105,6 +105,8 @@ pub fn init() -> Result<(), Error> {
     class.define_singleton_method("new", function!(FieldDefinition::new, 1))?;
     class.define_method("name", method!(FieldDefinition::name, 0))?;
     class.define_method("resolver_method_name", method!(FieldDefinition::ruby_resolver_method_name, 0))?;
+    class.define_method("argument_definitions", method!(|fd: &FieldDefinition| -> RArray { (*fd.argument_definitions()).into() }, 0))?;
+    class.define_method("type", method!(|fd: &FieldDefinition| fd.r#type, 0))?;
 
     Ok(())
 }

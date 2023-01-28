@@ -9,6 +9,12 @@ class Team
 
   module FrozenRecordAttributeMethods
     sig { returns(T.untyped) }
+    def id; end
+
+    sig { returns(T::Boolean) }
+    def id?; end
+
+    sig { returns(T.untyped) }
     def location; end
 
     sig { returns(T::Boolean) }

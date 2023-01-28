@@ -21,6 +21,12 @@ class Player
     def first_name?; end
 
     sig { returns(T.untyped) }
+    def id; end
+
+    sig { returns(T::Boolean) }
+    def id?; end
+
+    sig { returns(T.untyped) }
     def last_name; end
 
     sig { returns(T::Boolean) }

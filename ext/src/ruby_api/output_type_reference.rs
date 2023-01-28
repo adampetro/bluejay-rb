@@ -1,4 +1,4 @@
-use magnus::{Error, Value, exception, TypedData, DataTypeFunctions, Module, scan_args::get_kwargs, RHash, Object, function};
+use magnus::{Error, Value, exception, TypedData, DataTypeFunctions, Module, scan_args::get_kwargs, RHash, Object, function, method};
 use super::{root, enum_type_definition::EnumTypeDefinition, object_type_definition::ObjectTypeDefinition, union_type_definition::UnionTypeDefinition, custom_scalar_type_definition::CustomScalarTypeDefinition, scalar::Scalar, interface_type_definition::InterfaceTypeDefinition};
 use crate::helpers::{WrappedStruct, WrappedDefinition};
 use bluejay_core::definition::{OutputTypeReference as CoreOutputTypeReference};
@@ -87,6 +87,17 @@ impl BaseOutputTypeReference {
             Self::UnionType(utd) => utd.as_ref().name(),
         }
     }
+
+    fn sorbet_type(&self) -> String {
+        match self {
+            Self::BuiltinScalarType(bstd) => Scalar::from(*bstd).sorbet_type_fully_qualified_name().to_owned(),
+            Self::CustomScalarType(_) => "T.untyped".to_string(),
+            Self::EnumType(_) => "T.untyped".to_string(),
+            Self::InterfaceType(itd) => format!("{}::Interface", itd.fully_qualified_name()),
+            Self::ObjectType(otd) => format!("{}::Interface", otd.fully_qualified_name()),
+            Self::UnionType(utd) => utd.as_ref().sorbet_type()
+        }
+    }
 }
 
 #[derive(Clone, Debug, TypedData)]
@@ -152,6 +163,12 @@ impl From<OutputTypeReference> for WrappedOutputTypeReference {
     }
 }
 
+impl AsRef<WrappedStruct<OutputTypeReference>> for WrappedOutputTypeReference {
+    fn as_ref(&self) -> &WrappedStruct<OutputTypeReference> {
+        &self.0
+    }
+}
+
 impl OutputTypeReference {
     pub fn new(kw: RHash) -> Result<Self, Error> {
         let args = get_kwargs(kw, &["type", "required"], &[])?;
@@ -169,6 +186,41 @@ impl OutputTypeReference {
         let _: () = args.splat;
         Ok(Self(CoreOutputTypeReference::List(r#type.into(), required)))
     }
+
+    fn is_list(&self) -> bool {
+        matches!(&self.0, CoreOutputTypeReference::List(_, _))
+    }
+
+    fn is_base(&self) -> bool {
+        matches!(&self.0, CoreOutputTypeReference::Base(_, _))
+    }
+
+    fn is_required(&self) -> bool {
+        self.0.is_required()
+    }
+
+    fn unwrap_list(&self) -> Result<WrappedStruct<OutputTypeReference>, Error> {
+        match &self.0 {
+            CoreOutputTypeReference::List(inner, _) => Ok(*inner.as_ref()),
+            CoreOutputTypeReference::Base(_, _) => Err(Error::new(
+                exception::runtime_error(),
+                "Tried to unwrap a non-list OutputTypeReference".to_owned(),
+            )),
+        }
+    }
+
+    fn sorbet_type(&self) -> String {
+        let is_required = self.0.is_required();
+        let inner = match &self.0 {
+            CoreOutputTypeReference::List(inner, _) => format!("T::Array[{}]", inner.get().sorbet_type()),
+            CoreOutputTypeReference::Base(base, _) => base.sorbet_type(),
+        };
+        if is_required {
+            inner
+        } else {
+            format!("T.nilable({})", inner)
+        }
+    }
 }
 
 pub fn init() -> Result<(), Error> {
@@ -176,6 +228,11 @@ pub fn init() -> Result<(), Error> {
 
     class.define_singleton_method("new", function!(OutputTypeReference::new, 1))?;
     class.define_singleton_method("list", function!(OutputTypeReference::list, 1))?;
+    class.define_method("list?", method!(OutputTypeReference::is_list, 0))?;
+    class.define_method("base?", method!(OutputTypeReference::is_base, 0))?;
+    class.define_method("required?", method!(OutputTypeReference::is_required, 0))?;
+    class.define_method("sorbet_type", method!(OutputTypeReference::sorbet_type, 0))?;
+    class.define_method("unwrap_list", method!(OutputTypeReference::unwrap_list, 0))?;
 
     Ok(())
 }

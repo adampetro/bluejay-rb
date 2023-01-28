@@ -10,5 +10,11 @@ module Bluejay
 
     sig { returns(String) }
     def resolver_method_name; end
+
+    sig { returns(T::Array[InputValueDefinition]) }
+    def argument_definitions; end
+
+    sig { returns(OutputTypeReference) }
+    def type; end
   end
 end

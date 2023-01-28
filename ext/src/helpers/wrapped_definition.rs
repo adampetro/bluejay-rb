@@ -45,6 +45,10 @@ impl<T: HasDefinitionWrapper> WrappedDefinition<T> {
             ws.mark();
         }
     }
+
+    pub fn fully_qualified_name(&self) -> String {
+        unsafe { self.cls.name() }.into_owned()
+    }
 }
 
 impl<T: HasDefinitionWrapper> TryConvert for WrappedDefinition<T> {

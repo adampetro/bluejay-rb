@@ -7,5 +7,8 @@ module Bluejay
 
     sig { returns(String) }
     def name; end
+
+    sig { returns(InputTypeReference) }
+    def type; end
   end
 end

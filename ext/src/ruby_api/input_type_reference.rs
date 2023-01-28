@@ -1,4 +1,4 @@
-use magnus::{Error, Value, exception, TypedData, DataTypeFunctions, Module, scan_args::get_kwargs, RHash, Object, function, Integer, RString, Float, RArray};
+use magnus::{Error, Value, exception, TypedData, DataTypeFunctions, Module, scan_args::get_kwargs, RHash, Object, function, Integer, RString, Float, RArray, method};
 use super::{root, coerce_input::CoerceInput, coercion_error::CoercionError, input_object_type_definition::InputObjectTypeDefinition, enum_type_definition::EnumTypeDefinition, custom_scalar_type_definition::CustomScalarTypeDefinition, scalar::Scalar};
 use crate::helpers::{WrappedStruct, public_name, WrappedDefinition};
 use bluejay_parser::ast::{TypeReference as ParserTypeReference};
@@ -58,6 +58,15 @@ impl BaseInputTypeReference {
             Self::InputObjectType(wd) => wd.mark(),
             Self::EnumType(wd) => wd.mark(),
             Self::CustomScalarType(wd) => wd.mark(),
+        }
+    }
+
+    fn sorbet_type(&self) -> String {
+        match self {
+            Self::BuiltinScalarType(bstd) => Scalar::from(*bstd).sorbet_type_fully_qualified_name().to_owned(),
+            Self::CustomScalarType(_) => "T.untyped".to_string(),
+            Self::EnumType(_) => "T.untyped".to_string(),
+            Self::InputObjectType(iotd) => iotd.fully_qualified_name(),
         }
     }
 
@@ -213,6 +222,12 @@ impl From<InputTypeReference> for WrappedInputTypeReference {
     }
 }
 
+impl AsRef<WrappedStruct<InputTypeReference>> for WrappedInputTypeReference {
+    fn as_ref(&self) -> &WrappedStruct<InputTypeReference> {
+        &self.0
+    }
+}
+
 impl InputTypeReference {
     pub fn new(kw: RHash) -> Result<Self, Error> {
         let args = get_kwargs(kw, &["type", "required"], &[])?;
@@ -229,10 +244,6 @@ impl InputTypeReference {
         let _: () = args.optional;
         let _: () = args.splat;
         Ok(Self(CoreInputTypeReference::List(r#type.into(), required)))
-    }
-
-    pub fn is_required(&self) -> bool {
-        self.0.is_required()
     }
 
     fn coerce_required<F: Fn(Value, &[String]) -> Result<Result<Value, Vec<CoercionError>>, Error>>(value: Value, required: bool, path: &[String], f: F) -> Result<Result<Value, Vec<CoercionError>>, Error> {
@@ -252,6 +263,41 @@ impl InputTypeReference {
         match parser_type_reference {
             ParserTypeReference::NamedType(ntr) => Self(CoreInputTypeReference::Base(base, ntr.required())),
             ParserTypeReference::ListType(ltr) => Self(CoreInputTypeReference::List(Self::from_parser_type_reference(ltr.inner(), base).into(), ltr.required())),
+        }
+    }
+
+    fn is_list(&self) -> bool {
+        matches!(&self.0, CoreInputTypeReference::List(_, _))
+    }
+
+    fn is_base(&self) -> bool {
+        matches!(&self.0, CoreInputTypeReference::Base(_, _))
+    }
+
+    pub fn is_required(&self) -> bool {
+        self.0.is_required()
+    }
+
+    fn unwrap_list(&self) -> Result<WrappedStruct<InputTypeReference>, Error> {
+        match &self.0 {
+            CoreInputTypeReference::List(inner, _) => Ok(*inner.as_ref()),
+            CoreInputTypeReference::Base(_, _) => Err(Error::new(
+                exception::runtime_error(),
+                "Tried to unwrap a non-list InputTypeReference".to_owned(),
+            )),
+        }
+    }
+
+    fn sorbet_type(&self) -> String {
+        let is_required = self.0.is_required();
+        let inner = match &self.0 {
+            CoreInputTypeReference::List(inner, _) => format!("T::Array[{}]", inner.get().sorbet_type()),
+            CoreInputTypeReference::Base(base, _) => base.sorbet_type(),
+        };
+        if is_required {
+            inner
+        } else {
+            format!("T.nilable({})", inner)
         }
     }
 }
@@ -302,6 +348,11 @@ pub fn init() -> Result<(), Error> {
 
     class.define_singleton_method("new", function!(InputTypeReference::new, 1))?;
     class.define_singleton_method("list", function!(InputTypeReference::list, 1))?;
+    class.define_method("list?", method!(InputTypeReference::is_list, 0))?;
+    class.define_method("base?", method!(InputTypeReference::is_base, 0))?;
+    class.define_method("required?", method!(InputTypeReference::is_required, 0))?;
+    class.define_method("sorbet_type", method!(InputTypeReference::sorbet_type, 0))?;
+    class.define_method("unwrap_list", method!(InputTypeReference::unwrap_list, 0))?;
 
     Ok(())
 }

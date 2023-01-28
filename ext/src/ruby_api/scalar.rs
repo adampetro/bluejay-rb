@@ -14,6 +14,24 @@ impl Into<BuiltinScalarDefinition> for Scalar {
     }
 }
 
+impl From<BuiltinScalarDefinition> for Scalar {
+    fn from(value: BuiltinScalarDefinition) -> Self {
+        Self(value)
+    }
+}
+
+impl Scalar {
+    pub fn sorbet_type_fully_qualified_name(&self) -> &str {
+        match self.0 {
+            BuiltinScalarDefinition::Boolean => "T::Boolean",
+            BuiltinScalarDefinition::Float => "Float",
+            BuiltinScalarDefinition::ID => "T.any(String, Integer)",
+            BuiltinScalarDefinition::Int => "Integer",
+            BuiltinScalarDefinition::String => "String",
+        }
+    }
+}
+
 pub fn init() -> Result<(), Error> {
     let class = root().define_class("Scalar", Default::default())?;
 

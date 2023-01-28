@@ -38,6 +38,18 @@ impl UnionTypeDefinition {
             .iter()
             .any(|mt| mt.r#type().as_ref().name() == t.name())
     }
+
+    pub fn sorbet_type(&self) -> String {
+        format!(
+            "T.any({})",
+            itertools::join(
+                self.member_types
+                    .iter()
+                    .map(|member_type| member_type.r#type().fully_qualified_name()),
+                ", ",
+            ),
+        )
+    }
 }
 
 impl DataTypeFunctions for UnionTypeDefinition {
