@@ -1,5 +1,4 @@
-use std::collections::{HashSet, BTreeMap, HashMap};
-use std::cell::RefCell;
+use std::collections::{HashSet, BTreeMap};
 use bluejay_core::{
     AsIter,
     Value as CoreValue,
@@ -43,15 +42,16 @@ use crate::execution::{
     ExecutionError,
     FieldError,
     CoerceResult,
+    KeyStore,
 };
 use crate::helpers::WrappedStruct;
-use magnus::{RHash, Value, QNIL, RArray, RString, value::BoxValue, Error};
+use magnus::{RHash, Value, QNIL, RArray, RString, Error};
 
 pub struct Engine<'a> {
     schema: &'a SchemaDefinition,
     document: &'a ExecutableDocument<'a>,
     variable_values: &'a RHash, // pointer to ensure it stays on the stack somewhere
-    key_store: RefCell<HashMap<&'a str, BoxValue<RString>>>,
+    key_store: KeyStore<'a>,
 }
 
 impl<'a> Engine<'a> {
@@ -72,7 +72,7 @@ impl<'a> Engine<'a> {
             Err(errors) => { return Ok(Self::execution_result(Default::default(), errors)); },
         };
 
-        let instance = Engine { schema: &schema, document: &document, variable_values: &coerced_variable_values, key_store: RefCell::new(HashMap::new()) };
+        let instance = Engine { schema: &schema, document: &document, variable_values: &coerced_variable_values, key_store: KeyStore::new() };
 
         match operation_definition.operation_type() {
             OperationType::Query => {
@@ -206,11 +206,7 @@ impl<'a> Engine<'a> {
             if field_definition.r#type().as_ref().is_required() && response_value.is_nil() {
                 has_null_for_required = true;
             }
-            let key: RString = **self.key_store.borrow_mut().entry(response_key).or_insert_with(|| {
-                let s: RString = response_key.into();
-                s.freeze();
-                BoxValue::new(s)
-            });
+            let key: RString = self.key_store.get(response_key);
             result_map.aset(key, response_value).unwrap();
             errors.append(&mut errs);
         }
