@@ -2,7 +2,7 @@
 # frozen_string_literal: true
 
 module Graph
-  class Player < Bluejay::ObjectType
+  class Person < Bluejay::InterfaceType
     class << self
       extend(T::Sig)
 
@@ -11,14 +11,6 @@ module Graph
         [
           Bluejay::FieldDefinition.new(name: "firstName", type: ot!(Bluejay::Scalar::String)),
           Bluejay::FieldDefinition.new(name: "lastName", type: ot!(Bluejay::Scalar::String)),
-          Bluejay::FieldDefinition.new(name: "currentTeam", type: ot(Team)),
-        ]
-      end
-
-      sig { override.returns(T::Array[Bluejay::InterfaceImplementation]) }
-      def interface_implementations
-        [
-          Bluejay::InterfaceImplementation.new(Person)
         ]
       end
     end

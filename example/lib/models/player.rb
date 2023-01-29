@@ -16,6 +16,6 @@ class Player < FrozenRecord::Base
 
   sig { override.returns(T.nilable(Graph::Team::Interface)) }
   def resolve_current_team
-    Team.where(id: current_team)
+    Team.find_by(id: current_team)
   end
 end

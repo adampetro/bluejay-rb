@@ -8,6 +8,7 @@ module Bluejay
       T.class_of(EnumType),
       T.class_of(ObjectType),
       T.class_of(UnionType),
+      T.class_of(InterfaceType),
       T.class_of(CustomScalarType),
     )
   end

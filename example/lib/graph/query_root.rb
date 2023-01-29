@@ -16,6 +16,7 @@ module Graph
               Bluejay::InputValueDefinition.new(name: "location", type: it(Bluejay::Scalar::String)),
             ],
           ),
+          Bluejay::FieldDefinition.new(name: "people", type: lot!(ot!(Person))),
         ]
       end
     end

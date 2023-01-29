@@ -43,7 +43,17 @@ module Bluejay
 
       sig { returns(InterfaceTypeDefinition) }
       def definition
-        @definition ||= T.let(InterfaceTypeDefinition.new(name: graphql_name, description:, field_definitions:, interface_implementations:), T.nilable(InterfaceTypeDefinition))
+        @definition ||= T.let(nil, T.nilable(InterfaceTypeDefinition))
+        @definition ||= begin
+          interface_implementations = self.interface_implementations
+          interface = Module.new do |mod|
+            interface_implementations.each do |interface_implementation|
+              mod.include(interface_implementation.interface.const_get(:Interface))
+            end
+          end
+          const_set(:Interface, interface)
+          InterfaceTypeDefinition.new(name: graphql_name, description:, field_definitions:, interface_implementations:)
+        end
       end
     end
   end

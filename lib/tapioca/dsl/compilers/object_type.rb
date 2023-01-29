@@ -22,6 +22,11 @@ module Tapioca
 
           klass.mark_abstract
 
+          constant.interface_implementations.each do |interface_implementation|
+            interface = interface_implementation.interface.const_get(:Interface)
+            klass.create_include(interface.name)
+          end
+
           constant.field_definitions.each do |field_definition|
             parameters = field_definition.argument_definitions.map do |argument_definition|
               create_param(argument_definition.name, type: argument_definition.type.sorbet_type)

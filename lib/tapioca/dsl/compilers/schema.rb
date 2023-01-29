@@ -21,7 +21,7 @@ module Tapioca
           parameters = [
             create_kw_param("query", type: "String"),
             create_kw_param("operation_name", type: "T.nilable(String)"),
-            create_kw_param("initial_value", type: "#{klass.name}::Root"),
+            create_kw_param("initial_value", type: "#{constant.name}::Root"),
             create_kw_opt_param("variables", type: "T::Hash[String, T.untyped]", default: "{}"),
           ]
           klass.custom_create_method("execute", return_type: "Bluejay::ExecutionResult", parameters:, class_method: true)

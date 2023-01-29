@@ -48,6 +48,11 @@ module RBI
       add_helper("interface")
     end
 
+    sig { params(name: String).void }
+    def create_include(name)
+      self << RBI::Include.new(name)
+    end
+
     private
 
     sig { params(name: String).void }

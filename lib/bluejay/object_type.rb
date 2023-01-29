@@ -47,9 +47,14 @@ module Bluejay
         @definition ||= begin
           graphql_name = self.graphql_name
           field_definitions = self.field_definitions
+          interface_implementations = self.interface_implementations
           interface = Module.new do |mod|
-            for field_definition in field_definitions
+            field_definitions.each do |field_definition|
               mod.define_method(field_definition.resolver_method_name) { graphql_name }
+            end
+
+            interface_implementations.each do |interface_implementation|
+              mod.include(interface_implementation.interface.const_get(:Interface))
             end
 
             mod.define_method(:resolve_typename) { graphql_name }

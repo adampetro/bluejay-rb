@@ -15,5 +15,10 @@ class QueryRoot
       end
       relation.to_a
     end
+
+    sig { override.returns(T::Array[Graph::Person::Interface]) }
+    def resolve_people
+      Player.all.to_a
+    end
   end
 end

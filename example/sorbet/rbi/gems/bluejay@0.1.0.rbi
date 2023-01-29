@@ -19,7 +19,7 @@ end
 Bluejay::BaseInputTypeReference = T.type_alias { T.any(::Bluejay::Scalar, T.class_of(Bluejay::CustomScalarType), T.class_of(Bluejay::EnumType), T.class_of(Bluejay::InputType)) }
 
 # source://bluejay//../../bluejay-rb/lib/bluejay/base_output_type_reference.rb#5
-Bluejay::BaseOutputTypeReference = T.type_alias { T.any(::Bluejay::Scalar, T.class_of(Bluejay::CustomScalarType), T.class_of(Bluejay::EnumType), T.class_of(Bluejay::ObjectType), T.class_of(Bluejay::UnionType)) }
+Bluejay::BaseOutputTypeReference = T.type_alias { T.any(::Bluejay::Scalar, T.class_of(Bluejay::CustomScalarType), T.class_of(Bluejay::EnumType), T.class_of(Bluejay::InterfaceType), T.class_of(Bluejay::ObjectType), T.class_of(Bluejay::UnionType)) }
 
 class Bluejay::CoercionError
   def ==(_arg0); end
@@ -102,7 +102,7 @@ class Bluejay::EnumType
 
     private
 
-    # source://bluejay//../../bluejay-rb/lib/bluejay/enum_type.rb#47
+    # source://bluejay//../../bluejay-rb/lib/bluejay/enum_type.rb#38
     sig(:final) { returns(::Bluejay::EnumTypeDefinition) }
     def definition; end
   end
@@ -138,6 +138,11 @@ class Bluejay::ExecutionResult
 end
 
 class Bluejay::FieldDefinition
+  def argument_definitions; end
+  def name; end
+  def resolver_method_name; end
+  def type; end
+
   class << self
     def new(_arg0); end
   end
@@ -206,13 +211,19 @@ class Bluejay::InputType
 
     private
 
-    # source://bluejay//../../bluejay-rb/lib/bluejay/input_type.rb#55
+    # source://bluejay//../../bluejay-rb/lib/bluejay/input_type.rb#44
     sig(:final) { returns(::Bluejay::InputObjectTypeDefinition) }
     def definition; end
   end
 end
 
 class Bluejay::InputTypeReference
+  def base?; end
+  def list?; end
+  def required?; end
+  def sorbet_type; end
+  def unwrap_list; end
+
   class << self
     def list(_arg0); end
     def new(_arg0); end
@@ -248,6 +259,8 @@ end
 
 class Bluejay::InputValueDefinition
   def name; end
+  def ruby_name; end
+  def type; end
 
   class << self
     def new(_arg0); end
@@ -255,6 +268,8 @@ class Bluejay::InputValueDefinition
 end
 
 class Bluejay::InterfaceImplementation
+  def interface; end
+
   class << self
     def new(_arg0); end
   end
@@ -362,13 +377,14 @@ class Bluejay::ObjectType
 
     private
 
-    # source://bluejay//../../bluejay-rb/lib/bluejay/object_type.rb#50
+    # source://bluejay//../../bluejay-rb/lib/bluejay/object_type.rb#45
     sig { returns(::Bluejay::ObjectTypeDefinition) }
     def definition; end
   end
 end
 
 class Bluejay::ObjectTypeDefinition
+  def field_definitions; end
   def name; end
 
   class << self
@@ -377,6 +393,12 @@ class Bluejay::ObjectTypeDefinition
 end
 
 class Bluejay::OutputTypeReference
+  def base?; end
+  def list?; end
+  def required?; end
+  def sorbet_type; end
+  def unwrap_list; end
+
   class << self
     def list(_arg0); end
     def new(_arg0); end
@@ -396,7 +418,7 @@ module Bluejay::OutputTypeReferenceShorthands
   # source://bluejay//../../bluejay-rb/lib/bluejay/output_type_reference_shorthands.rb#9
   sig do
     params(
-      t: T.any(::Bluejay::Scalar, T.class_of(Bluejay::CustomScalarType), T.class_of(Bluejay::EnumType), T.class_of(Bluejay::ObjectType), T.class_of(Bluejay::UnionType))
+      t: T.any(::Bluejay::Scalar, T.class_of(Bluejay::CustomScalarType), T.class_of(Bluejay::EnumType), T.class_of(Bluejay::InterfaceType), T.class_of(Bluejay::ObjectType), T.class_of(Bluejay::UnionType))
     ).returns(::Bluejay::OutputTypeReference)
   end
   def ot(t); end
@@ -404,7 +426,7 @@ module Bluejay::OutputTypeReferenceShorthands
   # source://bluejay//../../bluejay-rb/lib/bluejay/output_type_reference_shorthands.rb#14
   sig do
     params(
-      t: T.any(::Bluejay::Scalar, T.class_of(Bluejay::CustomScalarType), T.class_of(Bluejay::EnumType), T.class_of(Bluejay::ObjectType), T.class_of(Bluejay::UnionType))
+      t: T.any(::Bluejay::Scalar, T.class_of(Bluejay::CustomScalarType), T.class_of(Bluejay::EnumType), T.class_of(Bluejay::InterfaceType), T.class_of(Bluejay::ObjectType), T.class_of(Bluejay::UnionType))
     ).returns(::Bluejay::OutputTypeReference)
   end
   def ot!(t); end
@@ -447,11 +469,11 @@ class Bluejay::Schema
       params(
         query: ::String,
         operation_name: T.nilable(::String),
-        variables: T::Hash[::String, T.untyped],
-        initial_value: ::Object
+        initial_value: ::Object,
+        variables: T::Hash[::String, T.untyped]
       ).returns(::Bluejay::ExecutionResult)
     end
-    def execute(query:, operation_name:, variables: T.unsafe(nil), initial_value: T.unsafe(nil)); end
+    def execute(query:, operation_name:, initial_value:, variables: T.unsafe(nil)); end
 
     # source://bluejay//../../bluejay-rb/lib/bluejay/schema.rb#23
     sig { overridable.returns(T.nilable(T.class_of(Bluejay::ObjectType))) }

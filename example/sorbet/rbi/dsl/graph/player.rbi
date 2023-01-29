@@ -5,6 +5,8 @@
 # Please instead update this file by running `bin/tapioca dsl Graph::Player`.
 
 module Graph::Player::Interface
+  include Graph::Person::Interface
+
   abstract!
 
   sig { abstract.returns(T.nilable(Graph::Team::Interface)) }

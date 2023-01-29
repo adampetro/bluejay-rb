@@ -1,5 +1,5 @@
 use super::{root, interface_type_definition::InterfaceTypeDefinition};
-use magnus::{RClass, function, Error, Module, Object, TypedData, DataTypeFunctions};
+use magnus::{RClass, function, Error, Module, Object, TypedData, DataTypeFunctions, method};
 use crate::helpers::{WrappedDefinition, WrappedStruct};
 
 #[derive(Clone, Debug, TypedData)]
@@ -36,6 +36,7 @@ pub fn init() -> Result<(), Error> {
     let class = root().define_class("InterfaceImplementation", Default::default())?;
 
     class.define_singleton_method("new", function!(InterfaceImplementation::new, 1))?;
+    class.define_method("interface", method!(|ii: &InterfaceImplementation| ii.interface.class(), 0))?;
 
     Ok(())
 }

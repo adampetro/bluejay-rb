@@ -51,4 +51,28 @@ class TestExample < Minitest::Test
 
     assert_equal(expected_value, result.value)
   end
+
+  def test_query_with_interface
+    query = <<~GQL
+      query {
+        people {
+          firstName
+          lastName
+          __typename
+          ...on Player {
+            currentTeam { name location }
+          }
+        }
+      }
+    GQL
+
+    result = Graph::Schema.execute(query:, operation_name: nil, initial_value: SchemaRoot)
+    assert_empty(result.errors)
+
+    expected_value = {
+      "people" => [{ "__typename" => "Player", "firstName" => "Auston", "lastName" => "Matthews", "currentTeam" => { "name" => "Maple Leafs", "location" => "Toronto" } }],
+    }
+
+    assert_equal(expected_value, result.value)
+  end
 end
