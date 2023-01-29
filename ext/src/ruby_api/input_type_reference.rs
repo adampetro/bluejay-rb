@@ -65,7 +65,7 @@ impl BaseInputTypeReference {
         match self {
             Self::BuiltinScalarType(bstd) => Scalar::from(*bstd).sorbet_type_fully_qualified_name().to_owned(),
             Self::CustomScalarType(_) => "T.untyped".to_string(),
-            Self::EnumType(_) => "T.untyped".to_string(),
+            Self::EnumType(_) => "String".to_string(),
             Self::InputObjectType(iotd) => iotd.fully_qualified_name(),
         }
     }

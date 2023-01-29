@@ -20,10 +20,5 @@ module Bluejay
         end
       end
     end
-
-    def test_something
-      puts MyEnumType::Type.values
-      assert_equal(2, MyEnumType::Type.values.length)
-    end
   end
 end

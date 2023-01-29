@@ -39,7 +39,7 @@ module Bluejay
     def test_coerce_input_valid
       result = MyInputType.coerce_input({ "myArg" => ["X"], "mySelf" => { "myArg" => "Y" }, "myEnum" => "ONE" })
       assert_predicate(result, :ok?)
-      assert_equal(MyInputType.new(["X"], MyInputType.new(["Y"], nil, nil), MyEnumType::Type::ONE), result.unwrap)
+      assert_equal(MyInputType.new(["X"], MyInputType.new(["Y"], nil, nil), "ONE"), result.unwrap)
     end
 
     def test_coerce_input_extraneous_field

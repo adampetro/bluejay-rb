@@ -92,7 +92,7 @@ impl BaseOutputTypeReference {
         match self {
             Self::BuiltinScalarType(bstd) => Scalar::from(*bstd).sorbet_type_fully_qualified_name().to_owned(),
             Self::CustomScalarType(_) => "T.untyped".to_string(),
-            Self::EnumType(_) => "T.untyped".to_string(),
+            Self::EnumType(_) => "String".to_string(),
             Self::InterfaceType(itd) => format!("{}::Interface", itd.fully_qualified_name()),
             Self::ObjectType(otd) => format!("{}::Interface", otd.fully_qualified_name()),
             Self::UnionType(utd) => utd.as_ref().sorbet_type()

@@ -1,4 +1,5 @@
 use magnus::{function, Error, Module, Object, scan_args::get_kwargs, RHash, Value, memoize, TypedData, RArray, DataTypeFunctions, RClass, gc};
+use bluejay_core::AsIter;
 use super::{root, enum_value_definitions::EnumValueDefinitions, coerce_input::CoerceInput, coercion_error::CoercionError};
 use crate::helpers::{public_name, HasDefinitionWrapper};
 use crate::execution::{FieldError, CoerceResult};
@@ -9,17 +10,16 @@ pub struct EnumTypeDefinition {
     name: String,
     description: Option<String>,
     enum_value_definitions: EnumValueDefinitions,
-    ruby_class: RClass
 }
 
 impl EnumTypeDefinition {
     fn new(kw: RHash) -> Result<Self, Error> {
-        let args = get_kwargs(kw, &["name", "enum_value_definitions", "description", "ruby_class"], &[])?;
-        let (name, enum_value_definitions, description, ruby_class): (String, RArray, Option<String>, RClass) = args.required;
+        let args = get_kwargs(kw, &["name", "enum_value_definitions", "description"], &[])?;
+        let (name, enum_value_definitions, description): (String, RArray, Option<String>) = args.required;
         let _: () = args.optional;
         let _: () = args.splat;
         let enum_value_definitions = EnumValueDefinitions::new(enum_value_definitions)?;
-        Ok(Self { name, description, enum_value_definitions, ruby_class })
+        Ok(Self { name, description, enum_value_definitions })
     }
 
     pub fn name(&self) -> &str {
@@ -38,7 +38,6 @@ impl EnumTypeDefinition {
 impl DataTypeFunctions for EnumTypeDefinition {
     fn mark(&self) {
         gc::mark(self.enum_value_definitions);
-        gc::mark(self.ruby_class);
     }
 }
 
@@ -48,10 +47,14 @@ impl CoerceInput for EnumTypeDefinition {
         match s {
             Ok(s) => {
                 // TODO: don't use const_get
-                Ok(self.ruby_class.const_get(s.as_str()).map_err(|_| vec![CoercionError::new(
-                    format!("No member `{}` on {}", s.as_str(), self.name.as_str()),
-                    path.to_owned(),
-                )]))
+                if self.enum_value_definitions.iter().any(|evd| evd.name() == s.as_str()) {
+                    Ok(Ok(value))
+                } else {
+                    Ok(Err(vec![CoercionError::new(
+                        format!("No member `{}` on {}", s.as_str(), self.name.as_str()),
+                        path.to_owned(),
+                    )]))
+                }
             },
             Err(_) => {
                 Ok(Err(vec![CoercionError::new(
@@ -87,8 +90,8 @@ impl bluejay_core::definition::EnumTypeDefinition for EnumTypeDefinition {
 
 impl CoerceResult for EnumTypeDefinition {
     fn coerce_result(&self, value: Value) -> Result<Value, FieldError> {
-        if value.is_kind_of(self.ruby_class) {
-            Ok(value.funcall("serialize", ()).unwrap())
+        if value.try_convert().ok().map(|value: String| self.enum_value_definitions.iter().any(|evd| evd.name() == value.as_str())).unwrap_or(false) {
+            Ok(value)
         } else {
             Err(FieldError::CannotCoerceResultToEnumType)
         }

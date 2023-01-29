@@ -37,18 +37,7 @@ module Bluejay
       sig(:final) { returns(EnumTypeDefinition) }
       def definition
         @definition ||= T.let(nil, T.nilable(EnumTypeDefinition))
-        @definition ||= begin
-          enum_value_definitions = self.enum_value_definitions
-          sorbet_enum = Class.new(T::Enum) do |klass|
-            enums do
-              enum_value_definitions.each do |evd|
-                klass.const_set(evd.name, klass.new)
-              end
-            end
-          end
-          const_set(:Type, sorbet_enum)
-          EnumTypeDefinition.new(name: graphql_name, enum_value_definitions:, description:, ruby_class: sorbet_enum)
-        end
+        @definition ||= EnumTypeDefinition.new(name: graphql_name, enum_value_definitions:, description:)
       end
     end
   end
