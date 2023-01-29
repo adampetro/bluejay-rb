@@ -13,5 +13,5 @@ rb-sys = "0.9"
 once_cell = "1.17"
 convert_case = "0.6.0"
 itertools = "0.10.5"
-bluejay-parser = { version = "0.1.0-alpha.0", path = "../../bluejay/bluejay-parser" }
-bluejay-core = { version = "0.1.0-alpha.0", path = "../../bluejay/bluejay-core" }
+bluejay-parser = { version = "0.1.0-alpha.0" }
+bluejay-core = { version = "0.1.0-alpha.0" }
