@@ -43,6 +43,11 @@ module RBI
       add_helper("abstract")
     end
 
+    sig { void }
+    def mark_interface
+      add_helper("interface")
+    end
+
     private
 
     sig { params(name: String).void }

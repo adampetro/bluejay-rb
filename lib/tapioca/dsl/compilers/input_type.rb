@@ -2,13 +2,11 @@
 # frozen_string_literal: true
 
 require_relative "../../../rbi_ext/model"
-require_relative "helper"
 
 module Tapioca
   module Compilers
     class InputType < Tapioca::Dsl::Compiler
       extend T::Sig
-      include(Helper)
 
       ConstantType = type_member { { fixed: T.class_of(Bluejay::InputType) } }
 

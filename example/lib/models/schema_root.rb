@@ -4,8 +4,9 @@
 class SchemaRoot
   class << self
     extend(T::Sig)
+    include(Graph::Schema::Root)
   
-    sig { returns(T.class_of(QueryRoot)) }
+    sig { override.returns(T.class_of(QueryRoot)) }
     def query
       QueryRoot
     end

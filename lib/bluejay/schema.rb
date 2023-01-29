@@ -24,8 +24,8 @@ module Bluejay
         nil
       end
 
-      sig { params(query: String, operation_name: T.nilable(String), variables: T::Hash[String, T.untyped], initial_value: Object).returns(ExecutionResult) }
-      def execute(query:, operation_name:, variables: {}, initial_value: nil)
+      sig { params(query: String, operation_name: T.nilable(String), initial_value: Object, variables: T::Hash[String, T.untyped]).returns(ExecutionResult) }
+      def execute(query:, operation_name:, initial_value:, variables: {})
         definition.execute(query, operation_name, variables, initial_value)
       end
 
@@ -45,7 +45,18 @@ module Bluejay
 
       sig { returns(SchemaDefinition) }
       def definition
-        @definition ||= T.let(SchemaDefinition.new(description:, query:, mutation:), T.nilable(SchemaDefinition))
+        @definition ||= T.let(nil, T.nilable(SchemaDefinition))
+        @definition ||= begin
+          mutation = self.mutation
+          interface = Module.new do |mod|
+            mod.define_method(:query) {}
+            if mutation
+              mod.define_method(:mutation) {}
+            end
+          end
+          const_set(:Root, interface)
+          SchemaDefinition.new(description:, query:, mutation:)
+        end
       end
     end
   end
