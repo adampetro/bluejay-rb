@@ -1,4 +1,5 @@
 use magnus::{function, Error, Module, Object, scan_args::get_kwargs, RHash, Value, TypedData, DataTypeFunctions, method};
+use convert_case::{Casing, Case};
 use super::{root, input_type_reference::InputTypeReference, coerce_input::CoerceInput, coercion_error::CoercionError, json_value::{JsonValue, JsonValueInner}};
 use crate::helpers::WrappedStruct;
 
@@ -9,6 +10,7 @@ pub struct InputValueDefinition {
     description: Option<String>,
     r#type: WrappedStruct<InputTypeReference>,
     default_value: Option<JsonValue>,
+    ruby_name: String,
 }
 
 impl InputValueDefinition {
@@ -18,7 +20,8 @@ impl InputValueDefinition {
         let (description, default_value): (Option<Option<String>>, Option<JsonValue>) = args.optional;
         let description = description.unwrap_or_default();
         let _: () = args.splat;
-        Ok(Self { name, description, r#type, default_value })
+        let ruby_name = name.to_case(Case::Snake);
+        Ok(Self { name, description, r#type, default_value, ruby_name })
     }
 
     pub fn name(&self) -> &str {
@@ -43,6 +46,10 @@ impl InputValueDefinition {
         } else {
             self.r#type.get().is_required()
         }
+    }
+
+    fn ruby_name(&self) -> &str {
+        self.ruby_name.as_str()
     }
 }
 
@@ -85,6 +92,7 @@ pub fn init() -> Result<(), Error> {
     class.define_singleton_method("new", function!(InputValueDefinition::new, 1))?;
     class.define_method("name", method!(InputValueDefinition::name, 0))?;
     class.define_method("type", method!(|ivd: &InputValueDefinition| ivd.r#type, 0))?;
+    class.define_method("ruby_name", method!(InputValueDefinition::ruby_name, 0))?;
 
     Ok(())
 }

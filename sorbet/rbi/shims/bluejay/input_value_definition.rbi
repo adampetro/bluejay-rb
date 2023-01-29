@@ -10,5 +10,8 @@ module Bluejay
 
     sig { returns(InputTypeReference) }
     def type; end
+
+    sig { returns(String) }
+    def ruby_name; end
   end
 end

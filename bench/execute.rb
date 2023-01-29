@@ -293,7 +293,7 @@ module Domain
               ),
             ],
           ),
-        ] * 167
+        ]
       end
     end
 
@@ -370,5 +370,5 @@ Bench.all do |x|
 
   x.compare!
   # puts Legacy::Schema.execute(query, root_value:, validate: false).to_h
-  # puts New::Schema.execute(query:, operation_name: nil, initial_value: root_value).value
+  # puts New::Schema.execute(query:, operation_name: nil, initial_value: schema_root_value).value
 end

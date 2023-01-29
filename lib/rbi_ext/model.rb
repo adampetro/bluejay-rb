@@ -10,8 +10,8 @@ module RBI
     sig do
       params(
         name: String,
+        return_type: T.nilable(String),
         parameters: T::Array[TypedParam],
-        return_type: String,
         class_method: T::Boolean,
         visibility: RBI::Visibility,
         comments: T::Array[RBI::Comment],
@@ -19,7 +19,7 @@ module RBI
         is_abstract: T::Boolean,
       ).void
     end
-    def create_method(name, parameters: [], return_type:, class_method: false, visibility: RBI::Public.new,
+    def custom_create_method(name, return_type:, parameters: [], class_method: false, visibility: RBI::Public.new,
         comments: [], is_final: false, is_abstract: false)
       return unless Tapioca::RBIHelper.valid_method_name?(name)
 

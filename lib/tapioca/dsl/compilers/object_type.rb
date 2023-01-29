@@ -10,7 +10,7 @@ module Tapioca
       extend T::Sig
       include(Helper)
 
-      ConstantType = type_member {{ fixed: T.class_of(Bluejay::ObjectType) }}
+      ConstantType = type_member { { fixed: T.class_of(Bluejay::ObjectType) } }
 
       sig { override.returns(T::Enumerable[Module]) }
       def self.gather_constants
@@ -20,7 +20,7 @@ module Tapioca
       sig { override.void }
       def decorate
         root.create_path(constant.const_get(:Interface)) do |klass|
-          klass.create_method("resolve_typename", return_type: "String", is_final: true)
+          klass.custom_create_method("resolve_typename", return_type: "String", is_final: true)
 
           klass.mark_abstract
 
@@ -31,13 +31,7 @@ module Tapioca
 
             return_type = field_definition.type.sorbet_type
 
-            klass.create_method(field_definition.resolver_method_name, parameters:, return_type:, is_abstract: true)
-
-            # klass.create_method(attr_name, return_type: "String")
-            # klass.create_method("#{attr_name}=", parameters: [ create_param("value", type: "String") ], return_type: "void")
-            # klass.create_method("#{attr_name}_encrypted", return_type: "String")
-            # klass.create_method("#{attr_name}_encrypted=", parameters: [ create_param("value", type: "String") ], return_type: "void")
-
+            klass.custom_create_method(field_definition.resolver_method_name, parameters:, return_type:, is_abstract: true)
           end
         end
       end
