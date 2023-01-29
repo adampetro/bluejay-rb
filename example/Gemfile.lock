@@ -1,7 +1,7 @@
 PATH
   remote: ..
   specs:
-    bluejay (0.1.0)
+    bluejay (0.1.0.alpha.0)
       sorbet-runtime
 
 GEM

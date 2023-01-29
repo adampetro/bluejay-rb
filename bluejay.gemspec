@@ -10,14 +10,14 @@ Gem::Specification.new do |spec|
 
   spec.summary = "A fast GraphQL engine."
   spec.description = "A fast GraphQL engine."
-  spec.homepage = "https://github.com/adampetro/graphql"
-  spec.required_ruby_version = ">= 2.6.0"
-
-  spec.metadata["allowed_push_host"] = "TODO: Set to your gem server 'https://example.com'"
+  spec.homepage = "https://github.com/adampetro/bluejay-rb"
+  spec.required_ruby_version = ">= 3.1.0"
+  spec.license = "MIT"
 
   spec.metadata["homepage_uri"] = spec.homepage
-  spec.metadata["source_code_uri"] = "https://github.com/adampetro/graphql/blob/main/bluejay-rb"
-  spec.metadata["changelog_uri"] = "https://github.com/adampetro/graphql/blob/main/bluejay-rb/CHANGELOG"
+  spec.metadata["source_code_uri"] = "https://github.com/adampetro/bluejay-rb"
+  spec.metadata["changelog_uri"] = "https://github.com/adampetro/bluejay-rb/blob/main/CHANGELOG"
+  spec.metadata["cargo_crate_name"] = "ext"
 
   spec.files = Dir["{lib,ext}/**/*", "LICENSE", "README.md", "Cargo.*"]
   spec.bindir = "exe"
