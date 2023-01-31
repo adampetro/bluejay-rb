@@ -25,7 +25,9 @@ module Bench
   end
 
   def all(&blk)
+    puts "Profiling IPS:"
     ips(&blk)
+    puts "Profiling Ruby memory allocations:"
     memory(&blk)
   end
 end
