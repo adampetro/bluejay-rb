@@ -19,7 +19,7 @@ Gem::Specification.new do |spec|
   spec.metadata["changelog_uri"] = "https://github.com/adampetro/bluejay-rb/blob/main/CHANGELOG"
   spec.metadata["cargo_crate_name"] = "ext"
 
-  spec.files = Dir["{lib,ext}/**/*", "LICENSE", "README.md", "Cargo.*"]
+  spec.files = Dir["{lib,ext}/**/*", "LICENSE", "README.md", "Cargo.*", "rust-toolchain.toml"]
   spec.bindir = "exe"
   spec.executables = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
