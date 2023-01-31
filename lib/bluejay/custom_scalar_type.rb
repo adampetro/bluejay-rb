@@ -33,7 +33,10 @@ module Bluejay
 
       sig(:final) { returns(CustomScalarTypeDefinition) }
       def definition
-        @definition ||= T.let(CustomScalarTypeDefinition.new(name: graphql_name, description:), T.nilable(CustomScalarTypeDefinition))
+        @definition ||= T.let(
+          CustomScalarTypeDefinition.new(name: graphql_name, description:),
+          T.nilable(CustomScalarTypeDefinition),
+        )
       end
     end
   end

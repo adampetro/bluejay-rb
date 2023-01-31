@@ -20,7 +20,7 @@ module RBI
       ).void
     end
     def custom_create_method(name, return_type:, parameters: [], class_method: false, visibility: RBI::Public.new,
-        comments: [], is_final: false, is_abstract: false)
+      comments: [], is_final: false, is_abstract: false)
       return unless Tapioca::RBIHelper.valid_method_name?(name)
 
       sig = RBI::Sig.new(return_type:, is_final:, is_abstract:)

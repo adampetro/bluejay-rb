@@ -10,9 +10,13 @@ module Tapioca
 
       ConstantType = type_member { { fixed: T.class_of(Bluejay::ObjectType) } }
 
-      sig { override.returns(T::Enumerable[Module]) }
-      def self.gather_constants
-        all_classes.select { |c| c < Bluejay::ObjectType }
+      class << self
+        extend(T::Sig)
+
+        sig { override.returns(T::Enumerable[Module]) }
+        def gather_constants
+          all_classes.select { |c| c < Bluejay::ObjectType }
+        end
       end
 
       sig { override.void }
@@ -34,7 +38,12 @@ module Tapioca
 
             return_type = field_definition.type.sorbet_type
 
-            klass.custom_create_method(field_definition.resolver_method_name, parameters:, return_type:, is_abstract: true)
+            klass.custom_create_method(
+              field_definition.resolver_method_name,
+              parameters:,
+              return_type:,
+              is_abstract: true,
+            )
           end
         end
       end

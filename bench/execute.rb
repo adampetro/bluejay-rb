@@ -155,7 +155,7 @@ module Domain
 
     class << self
       extend(T::Sig)
-  
+
       sig { returns(T::Array[Team]) }
       def all
         [
@@ -356,19 +356,18 @@ Bench.all do |x|
     }
   GQL
 
+  unless Legacy::Schema.execute(query, root_value:, validate: false).to_h["data"] == \
+      New::Schema.execute(query:, operation_name: nil, initial_value: schema_root_value).value
+    raise "results not equal"
+  end
+
   x.report(:graphql) do
-    result = Legacy::Schema.execute(query, root_value:, validate: false)
-    # puts result.to_h
-    # raise "error" unless result.to_h == { "data" => { "teams" => [{ "name" => "Maple Leafs", "city" => "Toronto" }] } }
-    # raise "error" unless result.to_h["errors"].nil?
+    Legacy::Schema.execute(query, root_value:, validate: false)
   end
 
   x.report(:bluejay) do
-    result = New::Schema.execute(query:, operation_name: nil, initial_value: schema_root_value)
-    # raise "error" unless result.value == { "teams" => [{ "name" => "Maple Leafs", "city" => "Toronto" }]}
+    New::Schema.execute(query:, operation_name: nil, initial_value: schema_root_value)
   end
 
   x.compare!
-  # puts Legacy::Schema.execute(query, root_value:, validate: false).to_h
-  # puts New::Schema.execute(query:, operation_name: nil, initial_value: schema_root_value).value
 end

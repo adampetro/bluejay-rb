@@ -88,10 +88,22 @@ module Bluejay
       GQL
       root = Domain::SchemaRoot
 
-      result = MySchema.execute(query:, operation_name: nil, variables: { "name" => { "first" => "Adam", "last" => "Petro" } }, initial_value: root)
+      result = MySchema.execute(
+        query:,
+        operation_name: nil,
+        variables: { "name" => { "first" => "Adam", "last" => "Petro" } },
+        initial_value: root,
+      )
 
       assert_empty(result.errors)
-      assert_equal({ "__typename" => "QueryRoot", "hello" => "Hello, Adam Petro!", "otherHello" => "Hello, John Smith!" }, result.value)
+      assert_equal(
+        {
+          "__typename" => "QueryRoot",
+          "hello" => "Hello, Adam Petro!",
+          "otherHello" => "Hello, John Smith!",
+        },
+        result.value,
+      )
       puts result.errors.map(&:inspect)
     end
 

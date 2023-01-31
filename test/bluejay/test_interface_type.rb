@@ -14,7 +14,7 @@ module Bluejay
         sig { override.returns(T::Array[FieldDefinition]) }
         def field_definitions
           [
-            FieldDefinition.new(name: "myField", type: ot!(Scalar::String))
+            FieldDefinition.new(name: "myField", type: ot!(Scalar::String)),
           ]
         end
       end

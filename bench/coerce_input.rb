@@ -10,7 +10,11 @@ class MyInputType < Bluejay::InputType
     sig { override.returns(T::Array[Bluejay::InputValueDefinition]) }
     def input_field_definitions
       [
-        Bluejay::InputValueDefinition.new(name: "myArg", type: lit!(it!(Bluejay::Scalar::String)), description: "This is my arg"),
+        Bluejay::InputValueDefinition.new(
+          name: "myArg",
+          type: lit!(it!(Bluejay::Scalar::String)),
+          description: "This is my arg",
+        ),
         Bluejay::InputValueDefinition.new(name: "myOtherArg", type: it!(Bluejay::Scalar::Int)),
       ]
     end

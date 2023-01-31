@@ -44,18 +44,18 @@ module Bluejay
       def definition
         @definition ||= T.let(nil, T.nilable(InputObjectTypeDefinition))
         @definition ||= begin
-          self.define_method(:initialize) do |*args|
+          define_method(:initialize) do |*args|
             self.class.send(:definition).input_field_definitions.zip(args) do |ivd, arg|
-              self.instance_variable_set("@#{ivd.name}", arg)
+              instance_variable_set("@#{ivd.name}", arg)
             end
           end
-          self.define_method(:==) do |other|
+          define_method(:==) do |other|
             self.class == other.class && self.class.send(:definition).input_field_definitions.all? do |ivd|
-              self.send(ivd.name) == other.send(ivd.name)
+              send(ivd.name) == other.send(ivd.name)
             end
           end
           input_field_definitions = self.input_field_definitions
-          input_field_definitions.each { |ivd| self.attr_reader(ivd.name) }
+          input_field_definitions.each { |ivd| attr_reader(ivd.name) }
           InputObjectTypeDefinition.new(name: graphql_name, input_field_definitions:, description:, ruby_class: self)
         end
       end

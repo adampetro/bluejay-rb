@@ -25,5 +25,5 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
   spec.extensions = ["ext/extconf.rb"]
 
-  spec.add_dependency "sorbet-runtime"
+  spec.add_dependency("sorbet-runtime")
 end

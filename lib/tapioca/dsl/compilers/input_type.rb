@@ -10,9 +10,13 @@ module Tapioca
 
       ConstantType = type_member { { fixed: T.class_of(Bluejay::InputType) } }
 
-      sig { override.returns(T::Enumerable[Module]) }
-      def self.gather_constants
-        all_classes.select { |c| c < Bluejay::InputType }
+      class << self
+        extend(T::Sig)
+
+        sig { override.returns(T::Enumerable[Module]) }
+        def gather_constants
+          all_classes.select { |c| c < Bluejay::InputType }
+        end
       end
 
       sig { override.void }
@@ -25,7 +29,10 @@ module Tapioca
           klass.custom_create_method("initialize", parameters:, return_type: nil)
 
           constant.input_field_definitions.each do |input_field_definition|
-            klass.custom_create_method(input_field_definition.ruby_name, return_type: input_field_definition.type.sorbet_type)
+            klass.custom_create_method(
+              input_field_definition.ruby_name,
+              return_type: input_field_definition.type.sorbet_type,
+            )
           end
         end
       end

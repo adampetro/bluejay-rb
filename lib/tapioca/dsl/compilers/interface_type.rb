@@ -10,9 +10,13 @@ module Tapioca
 
       ConstantType = type_member { { fixed: T.class_of(Bluejay::InterfaceType) } }
 
-      sig { override.returns(T::Enumerable[Module]) }
-      def self.gather_constants
-        all_classes.select { |c| c < Bluejay::InterfaceType }
+      class << self
+        extend(T::Sig)
+
+        sig { override.returns(T::Enumerable[Module]) }
+        def gather_constants
+          all_classes.select { |c| c < Bluejay::InterfaceType }
+        end
       end
 
       sig { override.void }

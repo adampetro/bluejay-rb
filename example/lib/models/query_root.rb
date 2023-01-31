@@ -5,7 +5,7 @@ class QueryRoot
   class << self
     extend(T::Sig)
     include(Graph::QueryRoot::Interface)
-  
+
     sig { override.params(location: T.nilable(String)).returns(T::Array[Team]) }
     def resolve_teams(location)
       relation = if location

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 namespace :bench do
   task all: :compile
 

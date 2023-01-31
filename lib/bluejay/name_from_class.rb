@@ -5,7 +5,7 @@ module Bluejay
   module NameFromClass
     extend(T::Sig)
     extend(T::Helpers)
-    
+
     requires_ancestor { Class }
 
     private

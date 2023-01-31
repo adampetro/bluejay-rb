@@ -5,8 +5,8 @@ require "test_helper"
 
 class TestExample < Minitest::Test
   def test_that_it_does_something
-    refute_nil 1
-    assert_equal 8, Team.count
+    refute_nil(1)
+    assert_equal(8, Team.count)
   end
 
   def test_query
@@ -21,7 +21,7 @@ class TestExample < Minitest::Test
 
     result = Graph::Schema.execute(query:, operation_name: nil, initial_value: SchemaRoot)
     assert_empty(result.errors)
-    
+
     expected_value = {
       "teams" => Team.all.map do |team|
         { "name" => team.name, "location" => team.location }
@@ -42,11 +42,20 @@ class TestExample < Minitest::Test
       }
     GQL
 
-    result = Graph::Schema.execute(query:, operation_name: nil, initial_value: SchemaRoot, variables: { "location" => "Toronto" })
+    result = Graph::Schema.execute(
+      query:,
+      operation_name: nil,
+      initial_value: SchemaRoot,
+      variables: { "location" => "Toronto" },
+    )
     assert_empty(result.errors)
-    
+
     expected_value = {
-      "teams" => [{ "name" => "Maple Leafs", "location" => "Toronto", "players" => [{ "firstName" => "Auston", "lastName" => "Matthews" }] }],
+      "teams" => [{
+        "name" => "Maple Leafs",
+        "location" => "Toronto",
+        "players" => [{ "firstName" => "Auston", "lastName" => "Matthews" }],
+      }],
     }
 
     assert_equal(expected_value, result.value)
@@ -70,7 +79,12 @@ class TestExample < Minitest::Test
     assert_empty(result.errors)
 
     expected_value = {
-      "people" => [{ "__typename" => "Player", "firstName" => "Auston", "lastName" => "Matthews", "currentTeam" => { "name" => "Maple Leafs", "location" => "Toronto" } }],
+      "people" => [{
+        "__typename" => "Player",
+        "firstName" => "Auston",
+        "lastName" => "Matthews",
+        "currentTeam" => { "name" => "Maple Leafs", "location" => "Toronto" },
+      }],
     }
 
     assert_equal(expected_value, result.value)

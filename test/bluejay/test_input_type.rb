@@ -43,7 +43,7 @@ module Bluejay
     end
 
     def test_coerce_input_extraneous_field
-      result = MyInputType.coerce_input({ "myArg" => [], "notAField" => nil, })
+      result = MyInputType.coerce_input({ "myArg" => [], "notAField" => nil })
       assert_predicate(result, :err?)
       assert_equal(1, result.unwrap_err.length)
       assert_equal(

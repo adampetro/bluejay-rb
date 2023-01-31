@@ -24,7 +24,14 @@ module Bluejay
         nil
       end
 
-      sig { params(query: String, operation_name: T.nilable(String), initial_value: Object, variables: T::Hash[String, T.untyped]).returns(ExecutionResult) }
+      sig do
+        params(
+          query: String,
+          operation_name: T.nilable(String),
+          initial_value: Object,
+          variables: T::Hash[String, T.untyped],
+        ).returns(ExecutionResult)
+      end
       def execute(query:, operation_name:, initial_value:, variables: {})
         definition.execute(query, operation_name, variables, initial_value)
       end

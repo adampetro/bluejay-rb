@@ -10,9 +10,13 @@ module Tapioca
 
       ConstantType = type_member { { fixed: T.class_of(Bluejay::Schema) } }
 
-      sig { override.returns(T::Enumerable[Module]) }
-      def self.gather_constants
-        all_classes.select { |c| c < Bluejay::Schema }
+      class << self
+        extend(T::Sig)
+
+        sig { override.returns(T::Enumerable[Module]) }
+        def gather_constants
+          all_classes.select { |c| c < Bluejay::Schema }
+        end
       end
 
       sig { override.void }
@@ -24,7 +28,12 @@ module Tapioca
             create_kw_param("initial_value", type: "#{constant.name}::Root"),
             create_kw_opt_param("variables", type: "T::Hash[String, T.untyped]", default: "{}"),
           ]
-          klass.custom_create_method("execute", return_type: "Bluejay::ExecutionResult", parameters:, class_method: true)
+          klass.custom_create_method(
+            "execute",
+            return_type: "Bluejay::ExecutionResult",
+            parameters:,
+            class_method: true,
+          )
         end
 
         root.create_path(constant.const_get(:Root)) do |klass|

@@ -16,6 +16,9 @@ group :development do
   gem "rake-compiler"
   gem "rb_sys"
   gem "rubocop", "~> 1.21"
+  gem "rubocop-minitest", "~> 0.27.0"
+  gem "rubocop-rake", "~> 0.6.0"
+  gem "rubocop-shopify", "~> 2.12"
   gem "sorbet"
   gem "tapioca", require: false
 end
