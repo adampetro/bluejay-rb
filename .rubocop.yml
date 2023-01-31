@@ -1,6 +1,25 @@
 inherit_gem:
   rubocop-shopify: rubocop.yml
 
+require:
+- rubocop-sorbet
+- rubocop-rake
+- rubocop-minitest
+
 AllCops:
   TargetRubyVersion: 3.1
   SuggestExtensions: false
+  NewCops: enable
+
+Sorbet/ValidSigil:
+  MinimumStrictness: ignore
+
+Sorbet/FalseSigil:
+  Enabled: false
+
+Sorbet/StrictSigil:
+  Include:
+    - "{lib,example}/**/*.rb"
+
+Sorbet/ConstantsFromStrings:
+  Enabled: false

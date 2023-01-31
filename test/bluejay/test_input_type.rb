@@ -38,12 +38,14 @@ module Bluejay
 
     def test_coerce_input_valid
       result = MyInputType.coerce_input({ "myArg" => ["X"], "mySelf" => { "myArg" => "Y" }, "myEnum" => "ONE" })
+
       assert_predicate(result, :ok?)
       assert_equal(MyInputType.new(["X"], MyInputType.new(["Y"], nil, nil), "ONE"), result.unwrap)
     end
 
     def test_coerce_input_extraneous_field
       result = MyInputType.coerce_input({ "myArg" => [], "notAField" => nil })
+
       assert_predicate(result, :err?)
       assert_equal(1, result.unwrap_err.length)
       assert_equal(
@@ -54,6 +56,7 @@ module Bluejay
 
     def test_coerce_input_field_wrong_type
       result = MyInputType.coerce_input({ "myArg" => 1 })
+
       assert_predicate(result, :err?)
       assert_equal(1, result.unwrap_err.length)
       assert_equal(

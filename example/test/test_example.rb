@@ -20,6 +20,7 @@ class TestExample < Minitest::Test
     GQL
 
     result = Graph::Schema.execute(query:, operation_name: nil, initial_value: SchemaRoot)
+
     assert_empty(result.errors)
 
     expected_value = {
@@ -48,6 +49,7 @@ class TestExample < Minitest::Test
       initial_value: SchemaRoot,
       variables: { "location" => "Toronto" },
     )
+
     assert_empty(result.errors)
 
     expected_value = {
@@ -76,6 +78,7 @@ class TestExample < Minitest::Test
     GQL
 
     result = Graph::Schema.execute(query:, operation_name: nil, initial_value: SchemaRoot)
+
     assert_empty(result.errors)
 
     expected_value = {
