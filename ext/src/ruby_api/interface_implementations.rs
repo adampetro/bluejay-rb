@@ -1,5 +1,5 @@
-use super::{interface_implementation::InterfaceImplementation};
-use crate::helpers::{WrappedStruct, TypedFrozenRArray};
+use super::interface_implementation::InterfaceImplementation;
+use crate::helpers::{TypedFrozenRArray, WrappedStruct};
 
 pub type InterfaceImplementations = TypedFrozenRArray<WrappedStruct<InterfaceImplementation>>;
 

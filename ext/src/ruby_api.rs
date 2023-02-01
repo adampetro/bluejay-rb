@@ -1,4 +1,4 @@
-use magnus::{define_module, memoize, Error, RModule, function};
+use magnus::{define_module, function, memoize, Error, RModule};
 
 mod arguments_definition;
 mod coerce_input;
@@ -12,8 +12,8 @@ mod execution_result;
 mod field_definition;
 mod fields_definition;
 mod input_fields_definition;
-mod input_type_reference;
 mod input_object_type_definition;
+mod input_type_reference;
 mod input_value_definition;
 mod interface_implementation;
 mod interface_implementations;
@@ -29,17 +29,17 @@ mod union_member_types;
 mod union_type_definition;
 mod validation_error;
 
-pub use schema_definition::{SchemaDefinition, TypeDefinitionReference};
-pub use execution_error::ExecutionError;
-pub use input_type_reference::{BaseInputTypeReference, InputTypeReference};
 pub use coerce_input::CoerceInput;
 pub use coercion_error::CoercionError;
+pub use execution_error::ExecutionError;
 pub use execution_result::ExecutionResult;
+pub use field_definition::FieldDefinition;
+pub use input_type_reference::{BaseInputTypeReference, InputTypeReference};
+pub use input_value_definition::InputValueDefinition;
+pub use interface_type_definition::InterfaceTypeDefinition;
 pub use object_type_definition::ObjectTypeDefinition;
 pub use output_type_reference::{BaseOutputTypeReference, OutputTypeReference};
-pub use input_value_definition::InputValueDefinition;
-pub use field_definition::FieldDefinition;
-pub use interface_type_definition::InterfaceTypeDefinition;
+pub use schema_definition::{SchemaDefinition, TypeDefinitionReference};
 pub use union_type_definition::UnionTypeDefinition;
 
 pub fn root() -> RModule {
@@ -69,7 +69,17 @@ pub fn init() -> Result<(), Error> {
     union_member_type::init()?;
     union_type_definition::init()?;
     validation_error::init()?;
-    r.define_module_function("parse", function!(|s: String| { let (doc, errs) = bluejay_parser::parse(s.as_str()); (doc.operation_definitions().len() + doc.fragment_definitions().len()) > 0 && errs.is_empty() }, 1))?;
+    r.define_module_function(
+        "parse",
+        function!(
+            |s: String| {
+                let (doc, errs) = bluejay_parser::parse(s.as_str());
+                (doc.operation_definitions().len() + doc.fragment_definitions().len()) > 0
+                    && errs.is_empty()
+            },
+            1
+        ),
+    )?;
 
     Ok(())
 }

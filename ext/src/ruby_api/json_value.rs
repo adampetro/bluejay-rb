@@ -1,6 +1,12 @@
-use magnus::{Value, TryConvert, Error, Integer, Float, value::{Qtrue, Qfalse}, RString, RArray, RHash, r_hash::ForEach, exception, QNIL};
+use magnus::{
+    exception,
+    r_hash::ForEach,
+    value::{Qfalse, Qtrue},
+    Error, Float, Integer, RArray, RHash, RString, TryConvert, Value, QNIL,
+};
 
-pub type JsonValueInner = bluejay_core::Value<true, String, i32, f64, String, bool, (), String, ListValue, ObjectValue>;
+pub type JsonValueInner =
+    bluejay_core::Value<true, String, i32, f64, String, bool, (), String, ListValue, ObjectValue>;
 
 #[derive(Clone, Debug)]
 pub struct ListValue(Vec<JsonValueInner>);
@@ -32,7 +38,11 @@ impl bluejay_core::ObjectValue<JsonValueInner> for ObjectValue {
 
 impl Into<Value> for ObjectValue {
     fn into(self) -> Value {
-        *RHash::from_iter(self.0.iter().map(|(k, v)| (k.as_str(), core_value_to_value(v.clone()))))
+        *RHash::from_iter(
+            self.0
+                .iter()
+                .map(|(k, v)| (k.as_str(), core_value_to_value(v.clone()))),
+        )
     }
 }
 
@@ -80,10 +90,9 @@ impl TryConvert for JsonValue {
         } else {
             Err(Error::new(
                 exception::type_error(),
-                format!(
-                    "no implicit conversion of {} into JsonValue",
-                    unsafe { val.classname() },
-                ),
+                format!("no implicit conversion of {} into JsonValue", unsafe {
+                    val.classname()
+                },),
             ))
         }
     }

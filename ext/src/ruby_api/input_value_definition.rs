@@ -1,7 +1,16 @@
-use magnus::{function, Error, Module, Object, scan_args::get_kwargs, RHash, Value, TypedData, DataTypeFunctions, method};
-use convert_case::{Casing, Case};
-use super::{root, input_type_reference::InputTypeReference, coerce_input::CoerceInput, coercion_error::CoercionError, json_value::{JsonValue, JsonValueInner}};
+use super::{
+    coerce_input::CoerceInput,
+    coercion_error::CoercionError,
+    input_type_reference::InputTypeReference,
+    json_value::{JsonValue, JsonValueInner},
+    root,
+};
 use crate::helpers::WrappedStruct;
+use convert_case::{Case, Casing};
+use magnus::{
+    function, method, scan_args::get_kwargs, DataTypeFunctions, Error, Module, Object, RHash,
+    TypedData, Value,
+};
 
 #[derive(Debug, TypedData)]
 #[magnus(class = "Bluejay::InputValueDefinition", mark)]
@@ -17,11 +26,18 @@ impl InputValueDefinition {
     pub fn new(kw: RHash) -> Result<Self, Error> {
         let args = get_kwargs(kw, &["name", "type"], &["description", "default_value"])?;
         let (name, r#type): (String, WrappedStruct<InputTypeReference>) = args.required;
-        let (description, default_value): (Option<Option<String>>, Option<JsonValue>) = args.optional;
+        let (description, default_value): (Option<Option<String>>, Option<JsonValue>) =
+            args.optional;
         let description = description.unwrap_or_default();
         let _: () = args.splat;
         let ruby_name = name.to_case(Case::Snake);
-        Ok(Self { name, description, r#type, default_value, ruby_name })
+        Ok(Self {
+            name,
+            description,
+            r#type,
+            default_value,
+            ruby_name,
+        })
     }
 
     pub fn name(&self) -> &str {
@@ -60,7 +76,11 @@ impl DataTypeFunctions for InputValueDefinition {
 }
 
 impl CoerceInput for InputValueDefinition {
-    fn coerce_input(&self, value: Value, path: &[String]) -> Result<Result<Value, Vec<CoercionError>>, Error> {
+    fn coerce_input(
+        &self,
+        value: Value,
+        path: &[String],
+    ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         self.r#type.get().coerce_input(value, path)
     }
 }

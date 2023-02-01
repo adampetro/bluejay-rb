@@ -1,5 +1,5 @@
-use super::{union_member_type::UnionMemberType};
-use crate::helpers::{WrappedStruct, TypedFrozenRArray};
+use super::union_member_type::UnionMemberType;
+use crate::helpers::{TypedFrozenRArray, WrappedStruct};
 
 pub type UnionMemberTypes = TypedFrozenRArray<WrappedStruct<UnionMemberType>>;
 

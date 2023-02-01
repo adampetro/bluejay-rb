@@ -1,7 +1,7 @@
-use crate::ruby_api::{ExecutionError as RubyExecutionError, CoercionError};
 use crate::execution::FieldError;
-use magnus::{Error as MagnusError};
-use bluejay_parser::{Error as ParseError};
+use crate::ruby_api::{CoercionError, ExecutionError as RubyExecutionError};
+use bluejay_parser::Error as ParseError;
+use magnus::Error as MagnusError;
 
 pub enum ExecutionError<'a> {
     NoOperationWithName { name: &'a str },

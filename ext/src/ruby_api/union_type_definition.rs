@@ -1,7 +1,12 @@
-use magnus::{function, Error, Module, Object, scan_args::get_kwargs, RHash, memoize, TypedData, RArray, DataTypeFunctions, RClass, gc};
-use super::{root, object_type_definition::ObjectTypeDefinition, union_member_types::UnionMemberTypes};
-use crate::helpers::{HasDefinitionWrapper};
+use super::{
+    object_type_definition::ObjectTypeDefinition, root, union_member_types::UnionMemberTypes,
+};
+use crate::helpers::HasDefinitionWrapper;
 use bluejay_core::AsIter;
+use magnus::{
+    function, gc, memoize, scan_args::get_kwargs, DataTypeFunctions, Error, Module, Object, RArray,
+    RClass, RHash, TypedData,
+};
 
 #[derive(Debug, TypedData)]
 #[magnus(class = "Bluejay::UnionTypeDefinition", mark)]
@@ -18,7 +23,11 @@ impl UnionTypeDefinition {
         let _: () = args.optional;
         let _: () = args.splat;
         let member_types = UnionMemberTypes::new(member_types)?;
-        Ok(Self { name, description, member_types })
+        Ok(Self {
+            name,
+            description,
+            member_types,
+        })
     }
 
     pub fn name(&self) -> &str {

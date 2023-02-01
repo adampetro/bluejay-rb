@@ -1,6 +1,9 @@
-use magnus::{function, Error, Module, Value, TypedData, gc, DataTypeFunctions, method, Object, exception, rb_sys::AsRawValue};
-use super::{root};
+use super::root;
 use crate::helpers::WrappedStruct;
+use magnus::{
+    exception, function, gc, method, rb_sys::AsRawValue, DataTypeFunctions, Error, Module, Object,
+    TypedData, Value,
+};
 
 #[derive(Clone, Debug, TypedData)]
 #[magnus(class = "Bluejay::Result", mark)]
@@ -43,7 +46,7 @@ impl RResult {
             rb_self.to_value().as_raw(),
             match rs_self.0 {
                 Ok(_) => "ok_value",
-                Err(_) => "error_value"
+                Err(_) => "error_value",
             },
             match rs_self.0 {
                 Ok(val) => val,

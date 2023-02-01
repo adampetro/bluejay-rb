@@ -1,6 +1,6 @@
-use once_cell::unsync::OnceCell;
-use magnus::{RClass, TypedData, Error, Module, exception, gc, TryConvert, Value};
 use super::WrappedStruct;
+use magnus::{exception, gc, Error, Module, RClass, TryConvert, TypedData, Value};
+use once_cell::unsync::OnceCell;
 
 pub trait HasDefinitionWrapper: TypedData {
     fn wrapping_class() -> RClass;
@@ -14,14 +14,20 @@ pub struct WrappedDefinition<T: HasDefinitionWrapper> {
 
 impl<T: HasDefinitionWrapper> Clone for WrappedDefinition<T> {
     fn clone(&self) -> Self {
-        Self { cls: self.cls.clone(), memoized_definition: self.memoized_definition.clone() }
+        Self {
+            cls: self.cls.clone(),
+            memoized_definition: self.memoized_definition.clone(),
+        }
     }
 }
 
 impl<T: HasDefinitionWrapper> WrappedDefinition<T> {
     pub fn new(cls: RClass) -> Result<Self, Error> {
         if cls.is_inherited(T::wrapping_class()) {
-            Ok(Self { cls, memoized_definition: OnceCell::new() })
+            Ok(Self {
+                cls,
+                memoized_definition: OnceCell::new(),
+            })
         } else {
             Err(Error::new(
                 exception::type_error(),

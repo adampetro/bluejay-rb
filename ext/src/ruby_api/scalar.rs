@@ -1,6 +1,6 @@
+use super::root;
 use bluejay_core::BuiltinScalarDefinition;
-use magnus::{Error, Module, TypedData, DataTypeFunctions};
-use super::{root};
+use magnus::{DataTypeFunctions, Error, Module, TypedData};
 
 #[derive(Clone, Debug, TypedData)]
 #[magnus(class = "Bluejay::Scalar", mark)]

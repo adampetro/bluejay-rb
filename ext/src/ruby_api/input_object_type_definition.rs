@@ -1,8 +1,14 @@
-use std::{collections::HashSet};
-use bluejay_core::AsIter;
-use magnus::{function, Error, Module, Object, scan_args::get_kwargs, RHash, Value, method, TypedData, RArray, DataTypeFunctions, RClass, gc, QNIL, memoize};
-use super::{root, input_fields_definition::InputFieldsDefinition, r_result::RResult, coerce_input::CoerceInput, coercion_error::CoercionError};
+use super::{
+    coerce_input::CoerceInput, coercion_error::CoercionError,
+    input_fields_definition::InputFieldsDefinition, r_result::RResult, root,
+};
 use crate::helpers::{public_name, HasDefinitionWrapper};
+use bluejay_core::AsIter;
+use magnus::{
+    function, gc, memoize, method, scan_args::get_kwargs, DataTypeFunctions, Error, Module, Object,
+    RArray, RClass, RHash, TypedData, Value, QNIL,
+};
+use std::collections::HashSet;
 
 #[derive(Debug, TypedData)]
 #[magnus(class = "Bluejay::InputObjectTypeDefinition", mark)]
@@ -11,18 +17,42 @@ pub struct InputObjectTypeDefinition {
     description: Option<String>,
     input_fields_definition: InputFieldsDefinition,
     input_value_definition_names: HashSet<String>,
-    ruby_class: RClass
+    ruby_class: RClass,
 }
 
 impl InputObjectTypeDefinition {
     fn new(kw: RHash) -> Result<Self, Error> {
-        let args = get_kwargs(kw, &["name", "input_field_definitions", "description", "ruby_class"], &[])?;
-        let (name, input_field_definitions, description, ruby_class): (String, RArray, Option<String>, RClass) = args.required;
+        let args = get_kwargs(
+            kw,
+            &[
+                "name",
+                "input_field_definitions",
+                "description",
+                "ruby_class",
+            ],
+            &[],
+        )?;
+        let (name, input_field_definitions, description, ruby_class): (
+            String,
+            RArray,
+            Option<String>,
+            RClass,
+        ) = args.required;
         let _: () = args.optional;
         let _: () = args.splat;
         let input_fields_definition = InputFieldsDefinition::new(input_field_definitions)?;
-        let input_value_definition_names = HashSet::from_iter(input_fields_definition.iter().map(|ivd| ivd.name().to_owned()));
-        Ok(Self { name, description, input_fields_definition, input_value_definition_names, ruby_class })
+        let input_value_definition_names = HashSet::from_iter(
+            input_fields_definition
+                .iter()
+                .map(|ivd| ivd.name().to_owned()),
+        );
+        Ok(Self {
+            name,
+            description,
+            input_fields_definition,
+            input_value_definition_names,
+            ruby_class,
+        })
     }
 
     pub fn name(&self) -> &str {
@@ -68,7 +98,11 @@ impl bluejay_core::definition::InputObjectTypeDefinition for InputObjectTypeDefi
 }
 
 impl CoerceInput for InputObjectTypeDefinition {
-    fn coerce_input(&self, value: Value, path: &[String]) -> Result<Result<Value, Vec<CoercionError>>, Error> {
+    fn coerce_input(
+        &self,
+        value: Value,
+        path: &[String],
+    ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         if let Some(hash) = RHash::from_value(value) {
             let args = RArray::new();
             let mut errors = Vec::new();
@@ -89,8 +123,12 @@ impl CoerceInput for InputObjectTypeDefinition {
                         let mut inner_path = path.to_owned();
                         inner_path.push(ivd.name().to_owned());
                         match ivd.coerce_input(value.unwrap_or(*QNIL), &inner_path)? {
-                            Ok(coerced_value) => { args.push(coerced_value).unwrap(); },
-                            Err(errs) => { errors.extend(errs); },
+                            Ok(coerced_value) => {
+                                args.push(coerced_value).unwrap();
+                            }
+                            Err(errs) => {
+                                errors.extend(errs);
+                            }
                         }
                     }
                 }
@@ -110,7 +148,9 @@ impl CoerceInput for InputObjectTypeDefinition {
             }));
 
             if errors.is_empty() {
-                self.ruby_class.new_instance(unsafe { args.as_slice() }).map(Ok)
+                self.ruby_class
+                    .new_instance(unsafe { args.as_slice() })
+                    .map(Ok)
             } else {
                 Ok(Err(errors))
             }
@@ -120,7 +160,11 @@ impl CoerceInput for InputObjectTypeDefinition {
             Ok(Ok(value))
         } else {
             Ok(Err(vec![CoercionError::new(
-                format!("No implicit conversion of {} to {}", public_name(value), self.name),
+                format!(
+                    "No implicit conversion of {} to {}",
+                    public_name(value),
+                    self.name
+                ),
                 path.to_owned(),
             )]))
         }
@@ -131,8 +175,22 @@ pub fn init() -> Result<(), Error> {
     let class = root().define_class("InputObjectTypeDefinition", Default::default())?;
 
     class.define_singleton_method("new", function!(InputObjectTypeDefinition::new, 1))?;
-    class.define_method("coerce_input", method!(|itd: &InputObjectTypeDefinition, input: Value| -> Result<RResult, Error> { itd.coerce_input(input, &[]).map(Into::into) }, 1))?;
-    class.define_method("input_field_definitions", method!(|itd: &InputObjectTypeDefinition| -> RArray { (*itd.input_fields_definition()).into() }, 0))?;
+    class.define_method(
+        "coerce_input",
+        method!(
+            |itd: &InputObjectTypeDefinition, input: Value| -> Result<RResult, Error> {
+                itd.coerce_input(input, &[]).map(Into::into)
+            },
+            1
+        ),
+    )?;
+    class.define_method(
+        "input_field_definitions",
+        method!(
+            |itd: &InputObjectTypeDefinition| -> RArray { (*itd.input_fields_definition()).into() },
+            0
+        ),
+    )?;
 
     Ok(())
 }

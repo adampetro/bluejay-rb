@@ -1,6 +1,6 @@
-use super::{root, object_type_definition::ObjectTypeDefinition};
-use magnus::{RClass, function, Error, Module, Object, TypedData, DataTypeFunctions};
+use super::{object_type_definition::ObjectTypeDefinition, root};
 use crate::helpers::WrappedDefinition;
+use magnus::{function, DataTypeFunctions, Error, Module, Object, RClass, TypedData};
 
 #[derive(Clone, Debug, TypedData)]
 #[magnus(class = "Bluejay::UnionMemberType", mark)]

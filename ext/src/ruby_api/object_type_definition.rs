@@ -1,7 +1,14 @@
-use bluejay_core::AsIter;
-use magnus::{function, Error, Module, Object, scan_args::get_kwargs, RHash, memoize, TypedData, RArray, DataTypeFunctions, RClass, method, gc};
-use super::{root, field_definition::FieldDefinition, interface_implementations::InterfaceImplementations, interface_type_definition::InterfaceTypeDefinition, fields_definition::FieldsDefinition};
+use super::{
+    field_definition::FieldDefinition, fields_definition::FieldsDefinition,
+    interface_implementations::InterfaceImplementations,
+    interface_type_definition::InterfaceTypeDefinition, root,
+};
 use crate::helpers::HasDefinitionWrapper;
+use bluejay_core::AsIter;
+use magnus::{
+    function, gc, memoize, method, scan_args::get_kwargs, DataTypeFunctions, Error, Module, Object,
+    RArray, RClass, RHash, TypedData,
+};
 
 #[derive(Debug, TypedData)]
 #[magnus(class = "Bluejay::ObjectTypeDefinition", mark)]
@@ -14,14 +21,33 @@ pub struct ObjectTypeDefinition {
 
 impl ObjectTypeDefinition {
     fn new(kw: RHash) -> Result<Self, Error> {
-        let args = get_kwargs(kw, &["name", "field_definitions", "interface_implementations", "description"], &[])?;
-        let (name, field_definitions, interface_implementations, description): (String, RArray, RArray, Option<String>) = args.required;
+        let args = get_kwargs(
+            kw,
+            &[
+                "name",
+                "field_definitions",
+                "interface_implementations",
+                "description",
+            ],
+            &[],
+        )?;
+        let (name, field_definitions, interface_implementations, description): (
+            String,
+            RArray,
+            RArray,
+            Option<String>,
+        ) = args.required;
         let _: () = args.optional;
         let _: () = args.splat;
         field_definitions.push(FieldDefinition::typename())?;
         let fields_definition = FieldsDefinition::new(field_definitions)?;
         let interface_implementations = InterfaceImplementations::new(interface_implementations)?;
-        Ok(Self { name, description, fields_definition, interface_implementations })
+        Ok(Self {
+            name,
+            description,
+            fields_definition,
+            interface_implementations,
+        })
     }
 }
 
@@ -62,9 +88,7 @@ impl ObjectTypeDefinition {
     }
 
     pub fn field_definition(&self, name: &str) -> Option<&FieldDefinition> {
-        self.fields_definition
-            .iter()
-            .find(|fd| fd.name() == name)
+        self.fields_definition.iter().find(|fd| fd.name() == name)
     }
 }
 
@@ -94,7 +118,13 @@ pub fn init() -> Result<(), Error> {
 
     class.define_singleton_method("new", function!(ObjectTypeDefinition::new, 1))?;
     class.define_method("name", method!(ObjectTypeDefinition::name, 0))?;
-    class.define_method("field_definitions", method!(|otd: &ObjectTypeDefinition| -> RArray { (*otd.fields_definition()).into() }, 0))?;
+    class.define_method(
+        "field_definitions",
+        method!(
+            |otd: &ObjectTypeDefinition| -> RArray { (*otd.fields_definition()).into() },
+            0
+        ),
+    )?;
 
     Ok(())
 }

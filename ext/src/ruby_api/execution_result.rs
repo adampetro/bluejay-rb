@@ -1,7 +1,7 @@
 use super::root;
 use super::ExecutionError;
-use crate::helpers::{WrappedStruct};
-use magnus::{gc, Error, Module, RArray, Value, TypedData, DataTypeFunctions, method};
+use crate::helpers::WrappedStruct;
+use magnus::{gc, method, DataTypeFunctions, Error, Module, RArray, TypedData, Value};
 
 #[derive(Clone, Debug, TypedData)]
 #[magnus(class = "Bluejay::ExecutionResult", mark)]

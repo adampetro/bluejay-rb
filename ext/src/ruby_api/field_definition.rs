@@ -1,9 +1,17 @@
 use super::root;
-use super::{output_type_reference::{OutputTypeReference, BaseOutputTypeReference}, arguments_definition::ArgumentsDefinition};
-use crate::helpers::{WrappedStruct};
-use magnus::{function, Error, Module, Object, scan_args::get_kwargs, RHash, RArray, Value, TypedData, DataTypeFunctions, memoize, value::BoxValue, gc, method};
+use super::{
+    arguments_definition::ArgumentsDefinition,
+    output_type_reference::{BaseOutputTypeReference, OutputTypeReference},
+};
+use crate::helpers::WrappedStruct;
+use bluejay_core::{
+    definition::OutputTypeReference as CoreOutputTypeReference, BuiltinScalarDefinition,
+};
 use convert_case::{Case, Casing};
-use bluejay_core::{BuiltinScalarDefinition, definition::{OutputTypeReference as CoreOutputTypeReference}};
+use magnus::{
+    function, gc, memoize, method, scan_args::get_kwargs, value::BoxValue, DataTypeFunctions,
+    Error, Module, Object, RArray, RHash, TypedData, Value,
+};
 
 #[derive(Debug, TypedData)]
 #[magnus(class = "Bluejay::FieldDefinition", mark)]
@@ -18,14 +26,27 @@ pub struct FieldDefinition {
 
 impl FieldDefinition {
     pub fn new(kw: RHash) -> Result<Self, Error> {
-        let args = get_kwargs(kw, &["name", "type"], &["argument_definitions", "description"])?;
+        let args = get_kwargs(
+            kw,
+            &["name", "type"],
+            &["argument_definitions", "description"],
+        )?;
         let (name, r#type): (String, WrappedStruct<OutputTypeReference>) = args.required;
-        let (argument_definitions, description): (Option<RArray>, Option<Option<String>>) = args.optional;
+        let (argument_definitions, description): (Option<RArray>, Option<Option<String>>) =
+            args.optional;
         let _: () = args.splat;
-        let arguments_definition = ArgumentsDefinition::new(argument_definitions.unwrap_or_else(|| RArray::new()))?;
+        let arguments_definition =
+            ArgumentsDefinition::new(argument_definitions.unwrap_or_else(|| RArray::new()))?;
         let description = description.unwrap_or_default();
         let ruby_resolver_method_name = format!("resolve_{}", name.to_case(Case::Snake));
-        Ok(Self { name, description, arguments_definition, r#type, is_builtin: false, ruby_resolver_method_name })
+        Ok(Self {
+            name,
+            description,
+            arguments_definition,
+            r#type,
+            is_builtin: false,
+            ruby_resolver_method_name,
+        })
     }
 
     pub(crate) fn typename() -> WrappedStruct<Self> {
@@ -104,8 +125,17 @@ pub fn init() -> Result<(), Error> {
 
     class.define_singleton_method("new", function!(FieldDefinition::new, 1))?;
     class.define_method("name", method!(FieldDefinition::name, 0))?;
-    class.define_method("resolver_method_name", method!(FieldDefinition::ruby_resolver_method_name, 0))?;
-    class.define_method("argument_definitions", method!(|fd: &FieldDefinition| -> RArray { (*fd.argument_definitions()).into() }, 0))?;
+    class.define_method(
+        "resolver_method_name",
+        method!(FieldDefinition::ruby_resolver_method_name, 0),
+    )?;
+    class.define_method(
+        "argument_definitions",
+        method!(
+            |fd: &FieldDefinition| -> RArray { (*fd.argument_definitions()).into() },
+            0
+        ),
+    )?;
     class.define_method("type", method!(|fd: &FieldDefinition| fd.r#type, 0))?;
 
     Ok(())

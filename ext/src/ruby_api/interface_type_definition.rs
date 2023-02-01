@@ -1,6 +1,11 @@
-use magnus::{function, Error, Module, Object, scan_args::get_kwargs, RHash, memoize, TypedData, RArray, DataTypeFunctions, RClass, gc};
-use super::{root, interface_implementations::InterfaceImplementations, fields_definition::FieldsDefinition};
+use super::{
+    fields_definition::FieldsDefinition, interface_implementations::InterfaceImplementations, root,
+};
 use crate::helpers::HasDefinitionWrapper;
+use magnus::{
+    function, gc, memoize, scan_args::get_kwargs, DataTypeFunctions, Error, Module, Object, RArray,
+    RClass, RHash, TypedData,
+};
 
 #[derive(Debug, TypedData)]
 #[magnus(class = "Bluejay::InterfaceTypeDefinition", mark)]
@@ -13,13 +18,32 @@ pub struct InterfaceTypeDefinition {
 
 impl InterfaceTypeDefinition {
     fn new(kw: RHash) -> Result<Self, Error> {
-        let args = get_kwargs(kw, &["name", "field_definitions", "interface_implementations", "description"], &[])?;
-        let (name, field_definitions, interface_implementations, description): (String, RArray, RArray, Option<String>) = args.required;
+        let args = get_kwargs(
+            kw,
+            &[
+                "name",
+                "field_definitions",
+                "interface_implementations",
+                "description",
+            ],
+            &[],
+        )?;
+        let (name, field_definitions, interface_implementations, description): (
+            String,
+            RArray,
+            RArray,
+            Option<String>,
+        ) = args.required;
         let _: () = args.optional;
         let _: () = args.splat;
         let fields_definition = FieldsDefinition::new(field_definitions)?;
         let interface_implementations = InterfaceImplementations::new(interface_implementations)?;
-        Ok(Self { name, description, fields_definition, interface_implementations })
+        Ok(Self {
+            name,
+            description,
+            fields_definition,
+            interface_implementations,
+        })
     }
 
     pub fn name(&self) -> &str {

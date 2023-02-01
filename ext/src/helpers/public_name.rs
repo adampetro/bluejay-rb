@@ -13,7 +13,9 @@ pub fn public_name(value: Value) -> &'static str {
         "list"
     } else if value.is_kind_of(magnus::class::hash()) {
         "object"
-    } else if value.is_kind_of(magnus::class::true_class()) || value.is_kind_of(magnus::class::false_class()) {
+    } else if value.is_kind_of(magnus::class::true_class())
+        || value.is_kind_of(magnus::class::false_class())
+    {
         "boolean"
     } else {
         "unknown"

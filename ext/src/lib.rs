@@ -1,4 +1,4 @@
-use magnus::{Error};
+use magnus::Error;
 
 mod execution;
 mod helpers;

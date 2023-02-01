@@ -1,9 +1,9 @@
 use super::root;
 use crate::helpers::WrappedStruct;
-use bluejay_core::validation::executable::{Error as CoreError};
-use bluejay_parser::ast::executable::ExecutableDocument;
 use crate::ruby_api::SchemaDefinition;
-use magnus::{function, Error, Module, Object, Value, method, rb_sys::AsRawValue};
+use bluejay_core::validation::executable::Error as CoreError;
+use bluejay_parser::ast::executable::ExecutableDocument;
+use magnus::{function, method, rb_sys::AsRawValue, Error, Module, Object, Value};
 
 #[derive(Clone, Debug, PartialEq)]
 #[magnus::wrap(class = "Bluejay::ValidationError", mark)]
@@ -42,11 +42,27 @@ impl ValidationError {
 impl<'a> From<CoreError<'a, ExecutableDocument<'a>, SchemaDefinition>> for ValidationError {
     fn from(value: CoreError<'a, ExecutableDocument<'a>, SchemaDefinition>) -> Self {
         match value {
-            CoreError::NotLoneAnonymousOperation { anonymous_operations: _ } => Self::new("Anonymous operations are not allowed when there is more than one operation".to_string()),
-            CoreError::NonUniqueOperationNames { name, operations: _ } => Self::new(format!("More than one operation named `{}`", name)),
-            CoreError::SubscriptionRootNotSingleField { operation: _ } => Self::new("Subscription operations can only select one field at the root".to_string()),
-            CoreError::FieldDoesNotExistOnType { field, r#type } => Self::new(format!("Field `{}` does not exist on `{}`", field.name(), r#type.name())),
-            CoreError::FieldSelectionsDoNotMerge { selection_set: _ } => Self::new("Field selections do not merge".to_string()),
+            CoreError::NotLoneAnonymousOperation {
+                anonymous_operations: _,
+            } => Self::new(
+                "Anonymous operations are not allowed when there is more than one operation"
+                    .to_string(),
+            ),
+            CoreError::NonUniqueOperationNames {
+                name,
+                operations: _,
+            } => Self::new(format!("More than one operation named `{}`", name)),
+            CoreError::SubscriptionRootNotSingleField { operation: _ } => Self::new(
+                "Subscription operations can only select one field at the root".to_string(),
+            ),
+            CoreError::FieldDoesNotExistOnType { field, r#type } => Self::new(format!(
+                "Field `{}` does not exist on `{}`",
+                field.name(),
+                r#type.name()
+            )),
+            CoreError::FieldSelectionsDoNotMerge { selection_set: _ } => {
+                Self::new("Field selections do not merge".to_string())
+            }
         }
     }
 }

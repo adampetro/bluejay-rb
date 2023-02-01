@@ -10,7 +10,7 @@ pub struct WrappedStruct<T: TypedData> {
     phantom: PhantomData<T>,
 }
 
-impl<T: TypedData> Copy for WrappedStruct<T>  {}
+impl<T: TypedData> Copy for WrappedStruct<T> {}
 
 impl<T: TypedData> Clone for WrappedStruct<T> {
     fn clone(&self) -> Self {

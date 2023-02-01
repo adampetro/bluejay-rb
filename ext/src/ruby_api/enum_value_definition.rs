@@ -1,6 +1,9 @@
 use super::root;
 use crate::helpers::WrappedStruct;
-use magnus::{function, Error, Module, Object, scan_args::get_kwargs, RHash, TypedData, DataTypeFunctions, method};
+use magnus::{
+    function, method, scan_args::get_kwargs, DataTypeFunctions, Error, Module, Object, RHash,
+    TypedData,
+};
 
 #[derive(Clone, Debug, TypedData)]
 #[magnus(class = "Bluejay::EnumValueDefinition", mark)]
@@ -23,10 +26,7 @@ impl EnumValueDefinition {
     }
 }
 
-impl DataTypeFunctions for EnumValueDefinition {
-    fn mark(&self) {
-    }
-}
+impl DataTypeFunctions for EnumValueDefinition {}
 
 impl bluejay_core::definition::EnumValueDefinition for EnumValueDefinition {
     fn description(&self) -> Option<&str> {

@@ -1,10 +1,10 @@
 mod coerce_result;
-mod execution_error;
 mod engine;
+mod execution_error;
 mod field_error;
 mod key_store;
 pub use coerce_result::CoerceResult;
-use execution_error::ExecutionError;
 pub use engine::Engine;
+use execution_error::ExecutionError;
 pub use field_error::FieldError;
 use key_store::KeyStore;

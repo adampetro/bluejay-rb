@@ -1,6 +1,6 @@
 use super::{root, ExecutionError};
 use crate::helpers::WrappedStruct;
-use magnus::{function, Error, Module, Object, RArray, Value, method, rb_sys::AsRawValue};
+use magnus::{function, method, rb_sys::AsRawValue, Error, Module, Object, RArray, Value};
 
 #[derive(Clone, Debug, PartialEq)]
 #[magnus::wrap(class = "Bluejay::CoercionError", mark)]

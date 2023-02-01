@@ -1,8 +1,14 @@
-use magnus::{function, Error, Module, Object, scan_args::get_kwargs, RHash, Value, memoize, TypedData, RArray, DataTypeFunctions, RClass, gc};
-use bluejay_core::AsIter;
-use super::{root, enum_value_definitions::EnumValueDefinitions, coerce_input::CoerceInput, coercion_error::CoercionError};
+use super::{
+    coerce_input::CoerceInput, coercion_error::CoercionError,
+    enum_value_definitions::EnumValueDefinitions, root,
+};
+use crate::execution::{CoerceResult, FieldError};
 use crate::helpers::{public_name, HasDefinitionWrapper};
-use crate::execution::{FieldError, CoerceResult};
+use bluejay_core::AsIter;
+use magnus::{
+    function, gc, memoize, scan_args::get_kwargs, DataTypeFunctions, Error, Module, Object, RArray,
+    RClass, RHash, TypedData, Value,
+};
 
 #[derive(Debug, TypedData)]
 #[magnus(class = "Bluejay::EnumTypeDefinition", mark)]
@@ -15,11 +21,16 @@ pub struct EnumTypeDefinition {
 impl EnumTypeDefinition {
     fn new(kw: RHash) -> Result<Self, Error> {
         let args = get_kwargs(kw, &["name", "enum_value_definitions", "description"], &[])?;
-        let (name, enum_value_definitions, description): (String, RArray, Option<String>) = args.required;
+        let (name, enum_value_definitions, description): (String, RArray, Option<String>) =
+            args.required;
         let _: () = args.optional;
         let _: () = args.splat;
         let enum_value_definitions = EnumValueDefinitions::new(enum_value_definitions)?;
-        Ok(Self { name, description, enum_value_definitions })
+        Ok(Self {
+            name,
+            description,
+            enum_value_definitions,
+        })
     }
 
     pub fn name(&self) -> &str {
@@ -42,12 +53,20 @@ impl DataTypeFunctions for EnumTypeDefinition {
 }
 
 impl CoerceInput for EnumTypeDefinition {
-    fn coerce_input(&self, value: Value, path: &[String]) -> Result<Result<Value, Vec<CoercionError>>, Error> {
+    fn coerce_input(
+        &self,
+        value: Value,
+        path: &[String],
+    ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         let s: Result<String, _> = value.try_convert();
         match s {
             Ok(s) => {
                 // TODO: don't use const_get
-                if self.enum_value_definitions.iter().any(|evd| evd.name() == s.as_str()) {
+                if self
+                    .enum_value_definitions
+                    .iter()
+                    .any(|evd| evd.name() == s.as_str())
+                {
                     Ok(Ok(value))
                 } else {
                     Ok(Err(vec![CoercionError::new(
@@ -55,13 +74,15 @@ impl CoerceInput for EnumTypeDefinition {
                         path.to_owned(),
                     )]))
                 }
-            },
-            Err(_) => {
-                Ok(Err(vec![CoercionError::new(
-                    format!("No implicit conversion of {} to {}", public_name(value), self.name.as_str()),
-                    path.to_owned(),
-                )]))
             }
+            Err(_) => Ok(Err(vec![CoercionError::new(
+                format!(
+                    "No implicit conversion of {} to {}",
+                    public_name(value),
+                    self.name.as_str()
+                ),
+                path.to_owned(),
+            )])),
         }
     }
 }
@@ -90,7 +111,16 @@ impl bluejay_core::definition::EnumTypeDefinition for EnumTypeDefinition {
 
 impl CoerceResult for EnumTypeDefinition {
     fn coerce_result(&self, value: Value) -> Result<Value, FieldError> {
-        if value.try_convert().ok().map(|value: String| self.enum_value_definitions.iter().any(|evd| evd.name() == value.as_str())).unwrap_or(false) {
+        if value
+            .try_convert()
+            .ok()
+            .map(|value: String| {
+                self.enum_value_definitions
+                    .iter()
+                    .any(|evd| evd.name() == value.as_str())
+            })
+            .unwrap_or(false)
+        {
             Ok(value)
         } else {
             Err(FieldError::CannotCoerceResultToEnumType)
