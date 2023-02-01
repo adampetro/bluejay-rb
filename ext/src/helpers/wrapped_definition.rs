@@ -15,7 +15,7 @@ pub struct WrappedDefinition<T: HasDefinitionWrapper> {
 impl<T: HasDefinitionWrapper> Clone for WrappedDefinition<T> {
     fn clone(&self) -> Self {
         Self {
-            cls: self.cls.clone(),
+            cls: self.cls,
             memoized_definition: self.memoized_definition.clone(),
         }
     }

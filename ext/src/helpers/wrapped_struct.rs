@@ -25,7 +25,7 @@ impl<T: TypedData> WrappedStruct<T> {
     }
 
     /// Get the Ruby [`Value`] for this struct.
-    pub fn to_value(&self) -> Value {
+    pub fn to_value(self) -> Value {
         self.inner.into()
     }
 
@@ -60,7 +60,7 @@ impl<T: TypedData> Deref for WrappedStruct<T> {
 impl<T: TypedData> From<T> for WrappedStruct<T> {
     fn from(t: T) -> Self {
         Self {
-            inner: RTypedData::wrap(t).into(),
+            inner: RTypedData::wrap(t),
             phantom: PhantomData,
         }
     }

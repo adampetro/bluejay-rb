@@ -6,8 +6,8 @@ use crate::execution::{CoerceResult, FieldError};
 use crate::helpers::{public_name, HasDefinitionWrapper};
 use bluejay_core::AsIter;
 use magnus::{
-    function, gc, memoize, scan_args::get_kwargs, DataTypeFunctions, Error, Module, Object, RArray,
-    RClass, RHash, TypedData, Value,
+    function, gc, memoize, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error,
+    Module, Object, RArray, RClass, RHash, TypedData, Value,
 };
 
 #[derive(Debug, TypedData)]
@@ -20,11 +20,10 @@ pub struct EnumTypeDefinition {
 
 impl EnumTypeDefinition {
     fn new(kw: RHash) -> Result<Self, Error> {
-        let args = get_kwargs(kw, &["name", "enum_value_definitions", "description"], &[])?;
+        let args: KwArgs<(String, RArray, Option<String>), (), ()> =
+            get_kwargs(kw, &["name", "enum_value_definitions", "description"], &[])?;
         let (name, enum_value_definitions, description): (String, RArray, Option<String>) =
             args.required;
-        let _: () = args.optional;
-        let _: () = args.splat;
         let enum_value_definitions = EnumValueDefinitions::new(enum_value_definitions)?;
         Ok(Self {
             name,
@@ -38,7 +37,7 @@ impl EnumTypeDefinition {
     }
 
     pub fn description(&self) -> Option<&str> {
-        self.description.as_ref().map(String::as_str)
+        self.description.as_deref()
     }
 
     pub fn enum_value_definitions(&self) -> &EnumValueDefinitions {
@@ -97,7 +96,7 @@ impl bluejay_core::definition::EnumTypeDefinition for EnumTypeDefinition {
     type EnumValueDefinitions = EnumValueDefinitions;
 
     fn description(&self) -> Option<&str> {
-        self.description.as_ref().map(String::as_str)
+        self.description.as_deref()
     }
 
     fn name(&self) -> &str {

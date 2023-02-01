@@ -4,8 +4,8 @@ use super::{
 use crate::helpers::HasDefinitionWrapper;
 use bluejay_core::AsIter;
 use magnus::{
-    function, gc, memoize, scan_args::get_kwargs, DataTypeFunctions, Error, Module, Object, RArray,
-    RClass, RHash, TypedData,
+    function, gc, memoize, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error,
+    Module, Object, RArray, RClass, RHash, TypedData,
 };
 
 #[derive(Debug, TypedData)]
@@ -18,10 +18,9 @@ pub struct UnionTypeDefinition {
 
 impl UnionTypeDefinition {
     fn new(kw: RHash) -> Result<Self, Error> {
-        let args = get_kwargs(kw, &["name", "member_types", "description"], &[])?;
-        let (name, member_types, description): (String, RArray, Option<String>) = args.required;
-        let _: () = args.optional;
-        let _: () = args.splat;
+        let args: KwArgs<(String, RArray, Option<String>), (), ()> =
+            get_kwargs(kw, &["name", "member_types", "description"], &[])?;
+        let (name, member_types, description) = args.required;
         let member_types = UnionMemberTypes::new(member_types)?;
         Ok(Self {
             name,
@@ -35,7 +34,7 @@ impl UnionTypeDefinition {
     }
 
     pub fn description(&self) -> Option<&str> {
-        self.description.as_ref().map(String::as_str)
+        self.description.as_deref()
     }
 
     pub fn member_types(&self) -> &UnionMemberTypes {
@@ -77,7 +76,7 @@ impl bluejay_core::definition::UnionTypeDefinition for UnionTypeDefinition {
     type UnionMemberTypes = UnionMemberTypes;
 
     fn description(&self) -> Option<&str> {
-        self.description.as_ref().map(String::as_str)
+        self.description.as_deref()
     }
 
     fn name(&self) -> &str {

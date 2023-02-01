@@ -47,13 +47,13 @@ impl<T: TryConvert> Deref for TypedFrozenRArray<T> {
     type Target = Value;
 
     fn deref(&self) -> &Self::Target {
-        &*self.data
+        &self.data
     }
 }
 
-impl<T: TryConvert> Into<RArray> for TypedFrozenRArray<T> {
-    fn into(self) -> RArray {
-        self.data
+impl<T: TryConvert> From<TypedFrozenRArray<T>> for RArray {
+    fn from(val: TypedFrozenRArray<T>) -> Self {
+        val.data
     }
 }
 
@@ -61,7 +61,7 @@ impl<T: TypedData> AsIter for TypedFrozenRArray<WrappedStruct<T>> {
     type Item = T;
     type Iterator<'a> = std::iter::Map<std::slice::Iter<'a, Value>, fn(&'a Value) -> &'a T> where T: 'a;
 
-    fn iter<'a>(&'a self) -> Self::Iterator<'a> {
+    fn iter(&self) -> Self::Iterator<'_> {
         unsafe { self.data.as_slice() }
             .iter()
             .map(|val| val.try_convert().unwrap())

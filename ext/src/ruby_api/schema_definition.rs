@@ -23,8 +23,8 @@ use crate::helpers::{WrappedDefinition, WrappedStruct};
 use bluejay_core::validation::executable::Validator;
 use bluejay_core::{AsIter, BuiltinScalarDefinition, IntoEnumIterator};
 use magnus::{
-    function, method, scan_args::get_kwargs, DataTypeFunctions, Error, Module, Object, RArray,
-    RHash, TypedData, Value,
+    function, method, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error, Module,
+    Object, RArray, RHash, TypedData, Value,
 };
 use std::collections::{hash_map::Entry, HashMap};
 
@@ -39,14 +39,12 @@ pub struct SchemaDefinition {
 
 impl SchemaDefinition {
     pub fn new(kw: RHash) -> Result<Self, Error> {
-        let args = get_kwargs(kw, &["description", "query", "mutation"], &[])?;
+        let args: KwArgs<_, (), ()> = get_kwargs(kw, &["description", "query", "mutation"], &[])?;
         let (description, query, mutation): (
             Option<String>,
             WrappedDefinition<ObjectTypeDefinition>,
             Option<WrappedDefinition<ObjectTypeDefinition>>,
         ) = args.required;
-        let _: () = args.optional;
-        let _: () = args.splat;
         let contained_types = SchemaTypeVisitor::compute_contained_types(&query, mutation.as_ref());
         Ok(Self {
             description,
@@ -74,7 +72,7 @@ impl SchemaDefinition {
         ExecutionEngine::execute_request(
             self,
             query.as_str(),
-            operation_name.as_ref().map(String::as_str),
+            operation_name.as_deref(),
             variable_values,
             initial_value,
         )
@@ -138,7 +136,7 @@ impl<'a> bluejay_core::definition::SchemaDefinition<'a> for SchemaDefinition {
     type TypeDefinitionReference = TypeDefinitionReference;
 
     fn description(&self) -> Option<&str> {
-        self.description.as_ref().map(String::as_str)
+        self.description.as_deref()
     }
 
     fn query(&self) -> &Self::ObjectTypeDefinition {
@@ -159,14 +157,14 @@ impl TryFrom<&BaseInputTypeReference> for TypeDefinitionReference {
 
     fn try_from(value: &BaseInputTypeReference) -> Result<Self, Self::Error> {
         match value {
-            BaseInputTypeReference::BuiltinScalarType(_) => Err(()),
-            BaseInputTypeReference::CustomScalarType(cstd) => {
+            BaseInputTypeReference::BuiltinScalar(_) => Err(()),
+            BaseInputTypeReference::CustomScalar(cstd) => {
                 Ok(Self::CustomScalarType(cstd.clone(), Default::default()))
             }
-            BaseInputTypeReference::EnumType(etd) => {
+            BaseInputTypeReference::Enum(etd) => {
                 Ok(Self::EnumType(etd.clone(), Default::default()))
             }
-            BaseInputTypeReference::InputObjectType(iotd) => {
+            BaseInputTypeReference::InputObject(iotd) => {
                 Ok(Self::InputObjectType(iotd.clone(), Default::default()))
             }
         }
@@ -179,16 +177,16 @@ impl TryInto<BaseInputTypeReference> for &TypeDefinitionReference {
     fn try_into(self) -> Result<BaseInputTypeReference, Self::Error> {
         match self {
             TypeDefinitionReference::BuiltinScalarType(bstd) => {
-                Ok(BaseInputTypeReference::BuiltinScalarType(*bstd))
+                Ok(BaseInputTypeReference::BuiltinScalar(*bstd))
             }
             TypeDefinitionReference::CustomScalarType(cstd, _) => {
-                Ok(BaseInputTypeReference::CustomScalarType(cstd.clone()))
+                Ok(BaseInputTypeReference::CustomScalar(cstd.clone()))
             }
             TypeDefinitionReference::EnumType(etd, _) => {
-                Ok(BaseInputTypeReference::EnumType(etd.clone()))
+                Ok(BaseInputTypeReference::Enum(etd.clone()))
             }
             TypeDefinitionReference::InputObjectType(iotd, _) => {
-                Ok(BaseInputTypeReference::InputObjectType(iotd.clone()))
+                Ok(BaseInputTypeReference::InputObject(iotd.clone()))
             }
             TypeDefinitionReference::InterfaceType(_, _)
             | TypeDefinitionReference::ObjectType(_, _)
@@ -202,20 +200,20 @@ impl TryFrom<&BaseOutputTypeReference> for TypeDefinitionReference {
 
     fn try_from(value: &BaseOutputTypeReference) -> Result<Self, Self::Error> {
         match value {
-            BaseOutputTypeReference::BuiltinScalarType(_) => Err(()),
-            BaseOutputTypeReference::CustomScalarType(cstd) => {
+            BaseOutputTypeReference::BuiltinScalar(_) => Err(()),
+            BaseOutputTypeReference::CustomScalar(cstd) => {
                 Ok(Self::CustomScalarType(cstd.clone(), Default::default()))
             }
-            BaseOutputTypeReference::EnumType(etd) => {
+            BaseOutputTypeReference::Enum(etd) => {
                 Ok(Self::EnumType(etd.clone(), Default::default()))
             }
-            BaseOutputTypeReference::ObjectType(otd) => {
+            BaseOutputTypeReference::Object(otd) => {
                 Ok(Self::ObjectType(otd.clone(), Default::default()))
             }
-            BaseOutputTypeReference::InterfaceType(itd) => {
+            BaseOutputTypeReference::Interface(itd) => {
                 Ok(Self::InterfaceType(itd.clone(), Default::default()))
             }
-            BaseOutputTypeReference::UnionType(utd) => {
+            BaseOutputTypeReference::Union(utd) => {
                 Ok(Self::UnionType(utd.clone(), Default::default()))
             }
         }
@@ -226,9 +224,9 @@ struct SchemaTypeVisitor {
     types: HashMap<String, TypeDefinitionReference>,
 }
 
-impl Into<HashMap<String, TypeDefinitionReference>> for SchemaTypeVisitor {
-    fn into(self) -> HashMap<String, TypeDefinitionReference> {
-        self.types
+impl From<SchemaTypeVisitor> for HashMap<String, TypeDefinitionReference> {
+    fn from(val: SchemaTypeVisitor) -> HashMap<String, TypeDefinitionReference> {
+        val.types
     }
 }
 

@@ -3,8 +3,8 @@ use super::{
 };
 use crate::helpers::HasDefinitionWrapper;
 use magnus::{
-    function, gc, memoize, scan_args::get_kwargs, DataTypeFunctions, Error, Module, Object, RArray,
-    RClass, RHash, TypedData,
+    function, gc, memoize, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error,
+    Module, Object, RArray, RClass, RHash, TypedData,
 };
 
 #[derive(Debug, TypedData)]
@@ -18,7 +18,7 @@ pub struct InterfaceTypeDefinition {
 
 impl InterfaceTypeDefinition {
     fn new(kw: RHash) -> Result<Self, Error> {
-        let args = get_kwargs(
+        let args: KwArgs<(String, RArray, RArray, Option<String>), (), ()> = get_kwargs(
             kw,
             &[
                 "name",
@@ -28,14 +28,7 @@ impl InterfaceTypeDefinition {
             ],
             &[],
         )?;
-        let (name, field_definitions, interface_implementations, description): (
-            String,
-            RArray,
-            RArray,
-            Option<String>,
-        ) = args.required;
-        let _: () = args.optional;
-        let _: () = args.splat;
+        let (name, field_definitions, interface_implementations, description) = args.required;
         let fields_definition = FieldsDefinition::new(field_definitions)?;
         let interface_implementations = InterfaceImplementations::new(interface_implementations)?;
         Ok(Self {
@@ -51,7 +44,7 @@ impl InterfaceTypeDefinition {
     }
 
     pub fn description(&self) -> Option<&str> {
-        self.description.as_ref().map(String::as_str)
+        self.description.as_deref()
     }
 
     pub fn fields_definition(&self) -> &FieldsDefinition {
@@ -81,7 +74,7 @@ impl bluejay_core::definition::InterfaceTypeDefinition for InterfaceTypeDefiniti
     type InterfaceImplementations = InterfaceImplementations;
 
     fn description(&self) -> Option<&str> {
-        self.description.as_ref().map(String::as_str)
+        self.description.as_deref()
     }
 
     fn name(&self) -> &str {

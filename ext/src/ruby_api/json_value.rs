@@ -19,9 +19,9 @@ impl AsRef<[JsonValueInner]> for ListValue {
 
 impl bluejay_core::ListValue<JsonValueInner> for ListValue {}
 
-impl Into<Value> for ListValue {
-    fn into(self) -> Value {
-        *RArray::from_iter(self.0.iter().map(|v| core_value_to_value(v.clone())))
+impl From<ListValue> for Value {
+    fn from(val: ListValue) -> Value {
+        *RArray::from_iter(val.0.iter().map(|v| core_value_to_value(v.clone())))
     }
 }
 
@@ -36,10 +36,10 @@ impl bluejay_core::ObjectValue<JsonValueInner> for ObjectValue {
     }
 }
 
-impl Into<Value> for ObjectValue {
-    fn into(self) -> Value {
+impl From<ObjectValue> for Value {
+    fn from(val: ObjectValue) -> Value {
         *RHash::from_iter(
-            self.0
+            val.0
                 .iter()
                 .map(|(k, v)| (k.as_str(), core_value_to_value(v.clone()))),
         )
@@ -99,9 +99,9 @@ impl TryConvert for JsonValue {
 }
 
 // TODO: get rid of this once input coercion is done by core crate
-impl Into<Value> for JsonValue {
-    fn into(self) -> Value {
-        core_value_to_value(self.0)
+impl From<JsonValue> for Value {
+    fn from(val: JsonValue) -> Value {
+        core_value_to_value(val.0)
     }
 }
 

@@ -13,16 +13,16 @@ pub enum ExecutionError<'a> {
     FieldError(FieldError),
 }
 
-impl<'a> Into<RubyExecutionError> for ExecutionError<'a> {
-    fn into(self) -> RubyExecutionError {
-        match self {
-            Self::NoOperationWithName { name } => RubyExecutionError::new(format!("No operation definition named `{}`", name)),
-            Self::CannotUseAnonymousOperation => RubyExecutionError::new("Operation name is required when document does not contain exactly 1 operation definition".to_string()),
-            Self::RequiredVariableMissingValue { name } => RubyExecutionError::new(format!("No value was provided for required variable `${}`", name)),
-            Self::ApplicationError(error) => RubyExecutionError::new(format!("Internal error: {}", error)),
-            Self::CoercionError(error) =>  error.into(),
-            Self::ParseError(error) => RubyExecutionError::new(error.message),
-            Self::FieldError(_) => RubyExecutionError::new("Field error".to_string()),
+impl<'a> From<ExecutionError<'a>> for RubyExecutionError {
+    fn from(val: ExecutionError<'a>) -> Self {
+        match val {
+            ExecutionError::NoOperationWithName { name } => Self::new(format!("No operation definition named `{name}`")),
+            ExecutionError::CannotUseAnonymousOperation => Self::new("Operation name is required when document does not contain exactly 1 operation definition".to_string()),
+            ExecutionError::RequiredVariableMissingValue { name } => Self::new(format!("No value was provided for required variable `${name}`")),
+            ExecutionError::ApplicationError(error) => Self::new(format!("Internal error: {error}")),
+            ExecutionError::CoercionError(error) =>  error.into(),
+            ExecutionError::ParseError(error) => Self::new(error.message),
+            ExecutionError::FieldError(_) => Self::new("Field error".to_string()),
         }
     }
 }

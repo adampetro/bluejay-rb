@@ -6,8 +6,8 @@ use super::{
 use crate::helpers::HasDefinitionWrapper;
 use bluejay_core::AsIter;
 use magnus::{
-    function, gc, memoize, method, scan_args::get_kwargs, DataTypeFunctions, Error, Module, Object,
-    RArray, RClass, RHash, TypedData,
+    function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions,
+    Error, Module, Object, RArray, RClass, RHash, TypedData,
 };
 
 #[derive(Debug, TypedData)]
@@ -21,7 +21,7 @@ pub struct ObjectTypeDefinition {
 
 impl ObjectTypeDefinition {
     fn new(kw: RHash) -> Result<Self, Error> {
-        let args = get_kwargs(
+        let args: KwArgs<(String, RArray, RArray, Option<String>), (), ()> = get_kwargs(
             kw,
             &[
                 "name",
@@ -31,14 +31,7 @@ impl ObjectTypeDefinition {
             ],
             &[],
         )?;
-        let (name, field_definitions, interface_implementations, description): (
-            String,
-            RArray,
-            RArray,
-            Option<String>,
-        ) = args.required;
-        let _: () = args.optional;
-        let _: () = args.splat;
+        let (name, field_definitions, interface_implementations, description) = args.required;
         field_definitions.push(FieldDefinition::typename())?;
         let fields_definition = FieldsDefinition::new(field_definitions)?;
         let interface_implementations = InterfaceImplementations::new(interface_implementations)?;
@@ -70,7 +63,7 @@ impl ObjectTypeDefinition {
     }
 
     pub fn description(&self) -> Option<&str> {
-        self.description.as_ref().map(String::as_str)
+        self.description.as_deref()
     }
 
     pub fn fields_definition(&self) -> &FieldsDefinition {
@@ -97,7 +90,7 @@ impl bluejay_core::definition::ObjectTypeDefinition for ObjectTypeDefinition {
     type InterfaceImplementations = InterfaceImplementations;
 
     fn description(&self) -> Option<&str> {
-        self.description.as_ref().map(String::as_str)
+        self.description.as_deref()
     }
 
     fn name(&self) -> &str {

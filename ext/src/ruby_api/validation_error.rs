@@ -51,7 +51,7 @@ impl<'a> From<CoreError<'a, ExecutableDocument<'a>, SchemaDefinition>> for Valid
             CoreError::NonUniqueOperationNames {
                 name,
                 operations: _,
-            } => Self::new(format!("More than one operation named `{}`", name)),
+            } => Self::new(format!("More than one operation named `{name}`")),
             CoreError::SubscriptionRootNotSingleField { operation: _ } => Self::new(
                 "Subscription operations can only select one field at the root".to_string(),
             ),

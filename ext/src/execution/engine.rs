@@ -24,6 +24,12 @@ pub struct Engine<'a> {
     key_store: KeyStore<'a>,
 }
 
+type MergedSelectionSets<'a, 'b> = std::iter::FlatMap<
+    std::slice::Iter<'b, &'a Field<'a>>,
+    &'a [Selection<'a>],
+    fn(&&'a Field) -> &'a [Selection<'a>],
+>;
+
 impl<'a> Engine<'a> {
     pub fn execute_request(
         schema: &SchemaDefinition,
@@ -52,7 +58,7 @@ impl<'a> Engine<'a> {
         };
 
         let coerced_variable_values =
-            match Self::get_variable_values(&schema, &operation_definition, variable_values) {
+            match Self::get_variable_values(schema, operation_definition, variable_values) {
                 Ok(cvv) => cvv,
                 Err(errors) => {
                     return Ok(Self::execution_result(Default::default(), errors));
@@ -60,7 +66,7 @@ impl<'a> Engine<'a> {
             };
 
         let instance = Engine {
-            schema: &schema,
+            schema,
             document: &document,
             variable_values: &coerced_variable_values,
             key_store: KeyStore::new(),
@@ -87,15 +93,13 @@ impl<'a> Engine<'a> {
                 .operation_definitions()
                 .iter()
                 .find(|od| matches!(od.name(), Some(n) if n == operation_name))
-                .ok_or_else(|| ExecutionError::NoOperationWithName {
+                .ok_or(ExecutionError::NoOperationWithName {
                     name: operation_name,
                 })
+        } else if document.operation_definitions().len() == 1 {
+            Ok(&document.operation_definitions()[0])
         } else {
-            if document.operation_definitions().len() == 1 {
-                Ok(&document.operation_definitions()[0])
-            } else {
-                Err(ExecutionError::CannotUseAnonymousOperation)
-            }
+            Err(ExecutionError::CannotUseAnonymousOperation)
         }
     }
 
@@ -124,32 +128,37 @@ impl<'a> Engine<'a> {
             let default_value = variable_definition.default_value();
             let value = variable_values.get(variable_name);
             let has_value = value.is_some();
-            if !has_value && default_value.is_some() {
-                coerced_values
-                    .aset(
-                        variable_name,
-                        Self::value_from_core_const_value(default_value.unwrap()),
-                    )
-                    .unwrap();
-            } else if variable_type.is_required() && !has_value {
-                errors.push(ExecutionError::RequiredVariableMissingValue {
-                    name: variable_name,
-                });
-            } else {
-                let path = vec![variable_name.to_owned()];
-                let value = value.unwrap_or_default();
-                match variable_type.coerce_input(value, &path) {
-                    Ok(Ok(coerced_value)) => {
-                        coerced_values.aset(variable_name, coerced_value).unwrap();
+            match default_value {
+                Some(default_value) if !has_value => {
+                    coerced_values
+                        .aset(
+                            variable_name,
+                            Self::value_from_core_const_value(default_value),
+                        )
+                        .unwrap();
+                }
+                _ => {
+                    if variable_type.is_required() && !has_value {
+                        errors.push(ExecutionError::RequiredVariableMissingValue {
+                            name: variable_name,
+                        });
+                    } else {
+                        let path = vec![variable_name.to_owned()];
+                        let value = value.unwrap_or_default();
+                        match variable_type.coerce_input(value, &path) {
+                            Ok(Ok(coerced_value)) => {
+                                coerced_values.aset(variable_name, coerced_value).unwrap();
+                            }
+                            Ok(Err(coercion_errors)) => {
+                                errors.extend(
+                                    coercion_errors
+                                        .into_iter()
+                                        .map(ExecutionError::CoercionError),
+                                );
+                            }
+                            Err(error) => errors.push(ExecutionError::ApplicationError(error)),
+                        }
                     }
-                    Ok(Err(coercion_errors)) => {
-                        errors.extend(
-                            coercion_errors
-                                .into_iter()
-                                .map(|ce| ExecutionError::CoercionError(ce)),
-                        );
-                    }
-                    Err(error) => errors.push(ExecutionError::ApplicationError(error)),
                 }
             }
         }
@@ -314,7 +323,7 @@ impl<'a> Engine<'a> {
                         for (response_key, fragment_group) in &fragment_grouped_field_set {
                             let group_for_response_key =
                                 grouped_fields.entry(response_key).or_default();
-                            group_for_response_key.extend_from_slice(&fragment_group);
+                            group_for_response_key.extend_from_slice(fragment_group);
                         }
                     }
                 }
@@ -337,7 +346,7 @@ impl<'a> Engine<'a> {
                     for (response_key, fragment_group) in &fragment_grouped_field_set {
                         let group_for_response_key =
                             grouped_fields.entry(response_key).or_default();
-                        group_for_response_key.extend_from_slice(&fragment_group);
+                        group_for_response_key.extend_from_slice(fragment_group);
                     }
                 }
             }
@@ -430,48 +439,51 @@ impl<'a> Engine<'a> {
                     }
                 });
             let has_value = argument_value.is_some();
-            if !has_value && default_value.is_some() {
-                match argument_type
-                    .coerce_input(default_value.unwrap(), &[argument_name.to_owned()])
-                {
-                    Ok(Ok(coerced_value)) => {
-                        coerced_args.push(coerced_value);
-                    }
-                    // TODO: would be kind of bad if default value didn't coerce
-                    Ok(Err(coercion_errors)) => {
-                        errors.extend(
-                            coercion_errors
-                                .into_iter()
-                                .map(|ce| ExecutionError::CoercionError(ce)),
-                        );
-                    }
-                    Err(error) => {
-                        errors.push(ExecutionError::ApplicationError(error));
+            match default_value {
+                Some(default_value) if !has_value => {
+                    match argument_type.coerce_input(default_value, &[argument_name.to_owned()]) {
+                        Ok(Ok(coerced_value)) => {
+                            coerced_args.push(coerced_value);
+                        }
+                        // TODO: would be kind of bad if default value didn't coerce
+                        Ok(Err(coercion_errors)) => {
+                            errors.extend(
+                                coercion_errors
+                                    .into_iter()
+                                    .map(ExecutionError::CoercionError),
+                            );
+                        }
+                        Err(error) => {
+                            errors.push(ExecutionError::ApplicationError(error));
+                        }
                     }
                 }
-            } else if argument_type.is_required()
-                && (!has_value || matches!(argument_value, Some(v) if v.is_nil()))
-            {
-                // TODO: field error
-                // shouldn't this never happen if query is validated and variables coerced to match definition in query?
-            } else {
-                // TODO: see if it is possible to distinguish between null and no value being passed
-                match argument_type.coerce_input(
-                    argument_value.unwrap_or_default(),
-                    &[argument_name.to_owned()],
-                ) {
-                    Ok(Ok(coerced_value)) => {
-                        coerced_args.push(coerced_value);
-                    }
-                    Ok(Err(coercion_errors)) => {
-                        errors.extend(
-                            coercion_errors
-                                .into_iter()
-                                .map(|ce| ExecutionError::CoercionError(ce)),
-                        );
-                    }
-                    Err(error) => {
-                        errors.push(ExecutionError::ApplicationError(error));
+                _ => {
+                    if argument_type.is_required()
+                        && (!has_value || matches!(argument_value, Some(v) if v.is_nil()))
+                    {
+                        // TODO: field error
+                        // shouldn't this never happen if query is validated and variables coerced to match definition in query?
+                    } else {
+                        // TODO: see if it is possible to distinguish between null and no value being passed
+                        match argument_type.coerce_input(
+                            argument_value.unwrap_or_default(),
+                            &[argument_name.to_owned()],
+                        ) {
+                            Ok(Ok(coerced_value)) => {
+                                coerced_args.push(coerced_value);
+                            }
+                            Ok(Err(coercion_errors)) => {
+                                errors.extend(
+                                    coercion_errors
+                                        .into_iter()
+                                        .map(ExecutionError::CoercionError),
+                                );
+                            }
+                            Err(error) => {
+                                errors.push(ExecutionError::ApplicationError(error));
+                            }
+                        }
                     }
                 }
             }
@@ -497,7 +509,7 @@ impl<'a> Engine<'a> {
                 field_definition.ruby_resolver_method_name(),
                 argument_values.as_slice(),
             )
-            .map_err(|error| ExecutionError::ApplicationError(error))
+            .map_err(ExecutionError::ApplicationError)
     }
 
     fn complete_value(
@@ -520,29 +532,29 @@ impl<'a> Engine<'a> {
         match field_type.as_ref() {
             CoreOutputTypeReference::Base(inner, _) => {
                 match inner {
-                    BaseOutputTypeReference::BuiltinScalarType(bstd) => {
+                    BaseOutputTypeReference::BuiltinScalar(bstd) => {
                         match bstd.coerce_result(result) {
                             Ok(value) => (value, vec![]),
                             Err(error) => (*QNIL, vec![ExecutionError::FieldError(error)]),
                         }
                     }
-                    BaseOutputTypeReference::CustomScalarType(_) => (result, vec![]), // TODO: see if any checks are needed here
-                    BaseOutputTypeReference::EnumType(etd) => {
+                    BaseOutputTypeReference::CustomScalar(_) => (result, vec![]), // TODO: see if any checks are needed here
+                    BaseOutputTypeReference::Enum(etd) => {
                         match etd.as_ref().coerce_result(result) {
                             Ok(value) => (value, vec![]),
                             Err(error) => (*QNIL, vec![ExecutionError::FieldError(error)]),
                         }
                     }
-                    BaseOutputTypeReference::ObjectType(otd) => {
+                    BaseOutputTypeReference::Object(otd) => {
                         let sub_selection_set = Self::merge_selection_sets(fields);
                         self.execute_selection_set(sub_selection_set, otd.as_ref(), result)
                     }
-                    BaseOutputTypeReference::InterfaceType(itd) => {
+                    BaseOutputTypeReference::Interface(itd) => {
                         let object_type = self.resolve_interface_type(itd.as_ref(), result);
                         let sub_selection_set = Self::merge_selection_sets(fields);
                         self.execute_selection_set(sub_selection_set, object_type, result)
                     }
-                    BaseOutputTypeReference::UnionType(utd) => {
+                    BaseOutputTypeReference::Union(utd) => {
                         let object_type = self.resolve_union_type(utd.as_ref(), result);
                         let sub_selection_set = Self::merge_selection_sets(fields);
                         self.execute_selection_set(sub_selection_set, object_type, result)
@@ -580,13 +592,7 @@ impl<'a> Engine<'a> {
         }
     }
 
-    fn merge_selection_sets<'b>(
-        fields: &'b [&'a Field],
-    ) -> std::iter::FlatMap<
-        std::slice::Iter<'b, &'a Field<'a>>,
-        &'a [Selection<'a>],
-        fn(&&'a Field) -> &'a [Selection<'a>],
-    > {
+    fn merge_selection_sets<'b>(fields: &'b [&'a Field]) -> MergedSelectionSets<'a, 'b> {
         fields
             .iter()
             .flat_map(|field| field.selection_set().map(AsRef::as_ref).unwrap_or_default())

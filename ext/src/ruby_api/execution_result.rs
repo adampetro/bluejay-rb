@@ -20,7 +20,7 @@ impl ExecutionResult {
     }
 
     fn errors(&self) -> RArray {
-        RArray::from_iter(self.errors.iter().map(|err| *err))
+        RArray::from_iter(self.errors.iter().copied())
     }
 }
 

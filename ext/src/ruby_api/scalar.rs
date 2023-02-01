@@ -8,9 +8,9 @@ pub struct Scalar(BuiltinScalarDefinition);
 
 impl DataTypeFunctions for Scalar {}
 
-impl Into<BuiltinScalarDefinition> for Scalar {
-    fn into(self) -> BuiltinScalarDefinition {
-        self.0
+impl From<Scalar> for BuiltinScalarDefinition {
+    fn from(val: Scalar) -> BuiltinScalarDefinition {
+        val.0
     }
 }
 

@@ -42,9 +42,9 @@ impl CoercionError {
     }
 }
 
-impl Into<ExecutionError> for CoercionError {
-    fn into(self) -> ExecutionError {
-        ExecutionError::new(self.message)
+impl From<CoercionError> for ExecutionError {
+    fn from(val: CoercionError) -> Self {
+        ExecutionError::new(val.message)
     }
 }
 

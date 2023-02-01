@@ -1,8 +1,8 @@
 use super::root;
 use crate::helpers::WrappedStruct;
 use magnus::{
-    function, method, scan_args::get_kwargs, DataTypeFunctions, Error, Module, Object, RHash,
-    TypedData,
+    function, method, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error, Module,
+    Object, RHash, TypedData,
 };
 
 #[derive(Clone, Debug, TypedData)]
@@ -14,10 +14,10 @@ pub struct EnumValueDefinition {
 
 impl EnumValueDefinition {
     pub fn new(kw: RHash) -> Result<Self, Error> {
-        let args = get_kwargs(kw, &["name"], &["description"])?;
-        let (name,): (String,) = args.required;
-        let (description,): (Option<String>,) = args.optional;
-        let _: () = args.splat;
+        let args: KwArgs<(String,), (Option<String>,), ()> =
+            get_kwargs(kw, &["name"], &["description"])?;
+        let (name,) = args.required;
+        let (description,) = args.optional;
         Ok(Self { name, description })
     }
 
@@ -30,7 +30,7 @@ impl DataTypeFunctions for EnumValueDefinition {}
 
 impl bluejay_core::definition::EnumValueDefinition for EnumValueDefinition {
     fn description(&self) -> Option<&str> {
-        self.description.as_ref().map(String::as_str)
+        self.description.as_deref()
     }
 
     fn name(&self) -> &str {

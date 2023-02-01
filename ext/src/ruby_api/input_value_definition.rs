@@ -8,8 +8,8 @@ use super::{
 use crate::helpers::WrappedStruct;
 use convert_case::{Case, Casing};
 use magnus::{
-    function, method, scan_args::get_kwargs, DataTypeFunctions, Error, Module, Object, RHash,
-    TypedData, Value,
+    function, method, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error, Module,
+    Object, RHash, TypedData, Value,
 };
 
 #[derive(Debug, TypedData)]
@@ -24,12 +24,12 @@ pub struct InputValueDefinition {
 
 impl InputValueDefinition {
     pub fn new(kw: RHash) -> Result<Self, Error> {
-        let args = get_kwargs(kw, &["name", "type"], &["description", "default_value"])?;
+        let args: KwArgs<_, _, ()> =
+            get_kwargs(kw, &["name", "type"], &["description", "default_value"])?;
         let (name, r#type): (String, WrappedStruct<InputTypeReference>) = args.required;
         let (description, default_value): (Option<Option<String>>, Option<JsonValue>) =
             args.optional;
         let description = description.unwrap_or_default();
-        let _: () = args.splat;
         let ruby_name = name.to_case(Case::Snake);
         Ok(Self {
             name,
@@ -45,7 +45,7 @@ impl InputValueDefinition {
     }
 
     pub fn description(&self) -> Option<&str> {
-        self.description.as_ref().map(String::as_str)
+        self.description.as_deref()
     }
 
     pub fn r#type(&self) -> &InputTypeReference {
@@ -94,7 +94,7 @@ impl bluejay_core::definition::InputValueDefinition for InputValueDefinition {
     }
 
     fn description(&self) -> Option<&str> {
-        self.description.as_ref().map(String::as_str)
+        self.description.as_deref()
     }
 
     fn r#type(&self) -> &Self::InputTypeReference {

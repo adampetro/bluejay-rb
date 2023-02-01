@@ -1,8 +1,8 @@
 use super::{coerce_input::CoerceInput, coercion_error::CoercionError, root};
 use crate::helpers::HasDefinitionWrapper;
 use magnus::{
-    function, memoize, scan_args::get_kwargs, DataTypeFunctions, Error, Module, Object, RClass,
-    RHash, TypedData, Value,
+    function, memoize, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error, Module,
+    Object, RClass, RHash, TypedData, Value,
 };
 
 #[derive(Clone, Debug, TypedData)]
@@ -16,10 +16,9 @@ pub struct CustomScalarTypeDefinition {
 
 impl CustomScalarTypeDefinition {
     fn new(kw: RHash) -> Result<Self, Error> {
-        let args = get_kwargs(kw, &["name", "description"], &[])?;
-        let (name, description): (String, Option<String>) = args.required;
-        let _: () = args.optional;
-        let _: () = args.splat;
+        let args: KwArgs<(String, Option<String>), (), ()> =
+            get_kwargs(kw, &["name", "description"], &[])?;
+        let (name, description) = args.required;
         Ok(Self { name, description })
     }
 
@@ -28,7 +27,7 @@ impl CustomScalarTypeDefinition {
     }
 
     pub fn description(&self) -> Option<&str> {
-        self.description.as_ref().map(String::as_str)
+        self.description.as_deref()
     }
 }
 
@@ -52,7 +51,7 @@ impl CoerceInput for CustomScalarTypeDefinition {
 
 impl bluejay_core::definition::ScalarTypeDefinition for CustomScalarTypeDefinition {
     fn description(&self) -> Option<&str> {
-        self.description.as_ref().map(|s| s.as_str())
+        self.description.as_deref()
     }
 
     fn name(&self) -> &str {

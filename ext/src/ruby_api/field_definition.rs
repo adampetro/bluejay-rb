@@ -9,8 +9,8 @@ use bluejay_core::{
 };
 use convert_case::{Case, Casing};
 use magnus::{
-    function, gc, memoize, method, scan_args::get_kwargs, value::BoxValue, DataTypeFunctions,
-    Error, Module, Object, RArray, RHash, TypedData, Value,
+    function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs, value::BoxValue,
+    DataTypeFunctions, Error, Module, Object, RArray, RHash, TypedData, Value,
 };
 
 #[derive(Debug, TypedData)]
@@ -26,7 +26,7 @@ pub struct FieldDefinition {
 
 impl FieldDefinition {
     pub fn new(kw: RHash) -> Result<Self, Error> {
-        let args = get_kwargs(
+        let args: KwArgs<_, _, ()> = get_kwargs(
             kw,
             &["name", "type"],
             &["argument_definitions", "description"],
@@ -34,9 +34,8 @@ impl FieldDefinition {
         let (name, r#type): (String, WrappedStruct<OutputTypeReference>) = args.required;
         let (argument_definitions, description): (Option<RArray>, Option<Option<String>>) =
             args.optional;
-        let _: () = args.splat;
         let arguments_definition =
-            ArgumentsDefinition::new(argument_definitions.unwrap_or_else(|| RArray::new()))?;
+            ArgumentsDefinition::new(argument_definitions.unwrap_or_else(RArray::new))?;
         let description = description.unwrap_or_default();
         let ruby_resolver_method_name = format!("resolve_{}", name.to_case(Case::Snake));
         Ok(Self {
@@ -51,7 +50,7 @@ impl FieldDefinition {
 
     pub(crate) fn typename() -> WrappedStruct<Self> {
         memoize!((BoxValue<Value>, BoxValue<Value>, WrappedStruct<FieldDefinition>): {
-            let t = WrappedStruct::wrap(CoreOutputTypeReference::Base(BaseOutputTypeReference::BuiltinScalarType(BuiltinScalarDefinition::String), true).into());
+            let t = WrappedStruct::wrap(CoreOutputTypeReference::Base(BaseOutputTypeReference::BuiltinScalar(BuiltinScalarDefinition::String), true).into());
             let fd = Self {
                 name: "__typename".to_string(),
                 description: None,
@@ -83,7 +82,7 @@ impl FieldDefinition {
     }
 
     pub fn description(&self) -> Option<&str> {
-        self.description.as_ref().map(String::as_str)
+        self.description.as_deref()
     }
 
     pub fn argument_definitions(&self) -> &ArgumentsDefinition {
@@ -100,7 +99,7 @@ impl bluejay_core::definition::FieldDefinition for FieldDefinition {
     type OutputTypeReference = OutputTypeReference;
 
     fn description(&self) -> Option<&str> {
-        self.description.as_ref().map(String::as_str)
+        self.description.as_deref()
     }
 
     fn name(&self) -> &str {

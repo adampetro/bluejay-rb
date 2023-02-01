@@ -5,8 +5,8 @@ use super::{
 use crate::helpers::{public_name, HasDefinitionWrapper};
 use bluejay_core::AsIter;
 use magnus::{
-    function, gc, memoize, method, scan_args::get_kwargs, DataTypeFunctions, Error, Module, Object,
-    RArray, RClass, RHash, TypedData, Value, QNIL,
+    function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions,
+    Error, Module, Object, RArray, RClass, RHash, TypedData, Value, QNIL,
 };
 use std::collections::HashSet;
 
@@ -22,7 +22,7 @@ pub struct InputObjectTypeDefinition {
 
 impl InputObjectTypeDefinition {
     fn new(kw: RHash) -> Result<Self, Error> {
-        let args = get_kwargs(
+        let args: KwArgs<(String, RArray, Option<String>, RClass), (), ()> = get_kwargs(
             kw,
             &[
                 "name",
@@ -32,14 +32,7 @@ impl InputObjectTypeDefinition {
             ],
             &[],
         )?;
-        let (name, input_field_definitions, description, ruby_class): (
-            String,
-            RArray,
-            Option<String>,
-            RClass,
-        ) = args.required;
-        let _: () = args.optional;
-        let _: () = args.splat;
+        let (name, input_field_definitions, description, ruby_class) = args.required;
         let input_fields_definition = InputFieldsDefinition::new(input_field_definitions)?;
         let input_value_definition_names = HashSet::from_iter(
             input_fields_definition
@@ -60,7 +53,7 @@ impl InputObjectTypeDefinition {
     }
 
     pub fn description(&self) -> Option<&str> {
-        self.description.as_ref().map(String::as_str)
+        self.description.as_deref()
     }
 
     pub fn input_fields_definition(&self) -> &InputFieldsDefinition {
@@ -85,7 +78,7 @@ impl bluejay_core::definition::InputObjectTypeDefinition for InputObjectTypeDefi
     type InputFieldsDefinition = InputFieldsDefinition;
 
     fn description(&self) -> Option<&str> {
-        self.description.as_ref().map(String::as_str)
+        self.description.as_deref()
     }
 
     fn name(&self) -> &str {
@@ -110,24 +103,27 @@ impl CoerceInput for InputObjectTypeDefinition {
             for ivd in self.input_fields_definition.iter() {
                 let value = hash.get(ivd.name());
                 let required = ivd.is_required();
-                let default_value: Option<Value> = ivd.default_value().map(|v| v.clone().into());
+                let default_value = ivd.default_value();
                 if required && value.is_none() {
                     errors.push(CoercionError::new(
                         format!("No value for required field {}", ivd.name()),
                         path.to_owned(),
                     ));
                 } else {
-                    if value.is_none() && default_value.is_some() {
-                        args.push(default_value.unwrap()).unwrap();
-                    } else {
-                        let mut inner_path = path.to_owned();
-                        inner_path.push(ivd.name().to_owned());
-                        match ivd.coerce_input(value.unwrap_or(*QNIL), &inner_path)? {
-                            Ok(coerced_value) => {
-                                args.push(coerced_value).unwrap();
-                            }
-                            Err(errs) => {
-                                errors.extend(errs);
+                    match default_value {
+                        Some(default_value) if value.is_none() => {
+                            args.push(default_value).unwrap();
+                        }
+                        _ => {
+                            let mut inner_path = path.to_owned();
+                            inner_path.push(ivd.name().to_owned());
+                            match ivd.coerce_input(value.unwrap_or(*QNIL), &inner_path)? {
+                                Ok(coerced_value) => {
+                                    args.push(coerced_value).unwrap();
+                                }
+                                Err(errs) => {
+                                    errors.extend(errs);
+                                }
                             }
                         }
                     }
