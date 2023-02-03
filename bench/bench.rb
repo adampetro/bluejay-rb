@@ -19,8 +19,6 @@ module Bench
   def memory(&blk)
     Benchmark.memory do |x|
       blk.call(x)
-
-      x.config(time: 0, warmup: 0) if ENV["CI"]
     end
   end
 
