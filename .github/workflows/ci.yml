@@ -33,7 +33,7 @@ jobs:
           bundler-cache: true
           cargo-cache: true
           cache-version: v3
-          cargo-components: rustfmt
+          rustup-components: rustfmt
 
       - name: Compile rust ext
         run: bundle exec rake compile
