@@ -51,29 +51,25 @@ jobs:
       - name: Lint rust
         run: cargo clippy -- -D warnings && cargo fmt --check
 
-  example-ci:
-    runs-on: ${{ matrix.os }}
-    needs: ci
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ["ubuntu-latest", "macos-latest"]
-        ruby: ["3.1", "3.2", "head"]
-    defaults:
-      run:
-        working-directory: ./example
-    steps:
-      - name: Install ruby dependencies
-        run: bundle install
+      - name: Install example ruby dependencies
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+          working-directory: example
 
-      - name: Run ruby tests
+      - name: Run example ruby tests
+        working-directory: example
         run: bundle exec rake test
 
-      - name: Run ruby typecheck
+      - name: Run example ruby typecheck
+        working-directory: example
         run: bin/typecheck
 
-      - name: Tapioca verify gem RBIs
+      - name: Tapioca verify example gem RBIs
+        working-directory: example
         run: bin/tapioca gem --verify
 
-      - name: Tapioca verify DSL RBIs
+      - name: Tapioca verify example DSL RBIs
+        working-directory: example
         run: bin/tapioca dsl --verify
