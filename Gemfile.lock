@@ -97,8 +97,6 @@ GEM
       yard (>= 0.9)
 
 PLATFORMS
-  x64-mingw-ucrt
-  x64-mswin64-140
   x86_64-darwin-19
   x86_64-darwin-20
   x86_64-darwin-21
