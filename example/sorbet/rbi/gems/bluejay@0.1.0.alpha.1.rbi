@@ -464,7 +464,7 @@ class Bluejay::Schema
     sig { overridable.returns(T.nilable(::String)) }
     def description; end
 
-    # source://bluejay//../../bluejay-rb/lib/bluejay/schema.rb#28
+    # source://bluejay//../../bluejay-rb/lib/bluejay/schema.rb#35
     sig do
       params(
         query: ::String,
@@ -485,19 +485,19 @@ class Bluejay::Schema
     sig { abstract.returns(T.class_of(Bluejay::ObjectType)) }
     def query; end
 
-    # source://bluejay//../../bluejay-rb/lib/bluejay/schema.rb#33
+    # source://bluejay//../../bluejay-rb/lib/bluejay/schema.rb#40
     sig { params(query: ::String).returns(T::Array[::Bluejay::ValidationError]) }
     def validate_query(query:); end
 
     protected
 
-    # source://bluejay//../../bluejay-rb/lib/bluejay/schema.rb#40
+    # source://bluejay//../../bluejay-rb/lib/bluejay/schema.rb#47
     sig(:final) { override.void }
     def finalize; end
 
     private
 
-    # source://bluejay//../../bluejay-rb/lib/bluejay/schema.rb#47
+    # source://bluejay//../../bluejay-rb/lib/bluejay/schema.rb#54
     sig { returns(::Bluejay::SchemaDefinition) }
     def definition; end
   end
