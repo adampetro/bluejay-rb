@@ -42,7 +42,11 @@ GEM
     sorbet (0.5.10634)
       sorbet-static (= 0.5.10634)
     sorbet-runtime (0.5.10634)
+    sorbet-static (0.5.10634-universal-darwin-19)
+    sorbet-static (0.5.10634-universal-darwin-20)
+    sorbet-static (0.5.10634-universal-darwin-21)
     sorbet-static (0.5.10634-universal-darwin-22)
+    sorbet-static (0.5.10634-x86_64-linux)
     sorbet-static-and-runtime (0.5.10634)
       sorbet (= 0.5.10634)
       sorbet-runtime (= 0.5.10634)
@@ -74,7 +78,12 @@ GEM
     zeitwerk (2.6.6)
 
 PLATFORMS
+  x64-mingw-ucrt
+  x86_64-darwin-19
+  x86_64-darwin-20
+  x86_64-darwin-21
   x86_64-darwin-22
+  x86_64-linux
 
 DEPENDENCIES
   bluejay!
@@ -89,4 +98,4 @@ DEPENDENCIES
   zeitwerk
 
 BUNDLED WITH
-   2.4.1
+   2.4.6
