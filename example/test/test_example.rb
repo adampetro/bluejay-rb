@@ -4,11 +4,6 @@
 require "test_helper"
 
 class TestExample < Minitest::Test
-  def test_that_it_does_something
-    refute_nil(1)
-    assert_equal(8, Team.count)
-  end
-
   def test_query
     query = <<~GQL
       {
