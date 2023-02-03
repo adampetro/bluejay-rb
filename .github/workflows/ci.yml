@@ -30,7 +30,7 @@ jobs:
           bundler-cache: true
           cargo-cache: true
           cache-version: v3
-          rustup-components: rustfmt
+          rustup-components: rustfmt,clippy
           rustup-toolchain: nightly
 
       - name: Compile rust ext
