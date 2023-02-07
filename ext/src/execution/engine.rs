@@ -1,19 +1,22 @@
 use crate::execution::{CoerceResult, ExecutionError, FieldError, KeyStore};
 use crate::helpers::WrappedStruct;
 use crate::ruby_api::{
-    BaseInputTypeReference, BaseOutputTypeReference, CoerceInput,
-    ExecutionError as RubyExecutionError, ExecutionResult, FieldDefinition, InputTypeReference,
-    InterfaceTypeDefinition, ObjectTypeDefinition, OutputTypeReference, SchemaDefinition,
-    TypeDefinitionReference, UnionTypeDefinition,
+    BaseInputTypeReference, CoerceInput, ExecutionError as RubyExecutionError, ExecutionResult,
+    FieldDefinition, InputTypeReference, InterfaceTypeDefinition, ObjectTypeDefinition,
+    OutputTypeReference, SchemaDefinition, TypeDefinitionReference, UnionTypeDefinition,
+};
+use bluejay_core::definition::{
+    BaseOutputTypeReference as CoreBaseOutputTypeReference,
+    OutputTypeReference as CoreOutputTypeReference,
 };
 use bluejay_core::{
-    definition::OutputTypeReference as CoreOutputTypeReference, AsIter, BooleanValue, FloatValue,
-    IntegerValue, ObjectValue, OperationType, Value as CoreValue, Variable as CoreVariable,
+    Argument as CoreArgument, AsIter, BooleanValue, FloatValue, IntegerValue, ObjectValue,
+    OperationType, Value as CoreValue, Variable as CoreVariable,
 };
 use bluejay_parser::ast::executable::{
     ExecutableDocument, Field, OperationDefinition, Selection, VariableDefinition,
 };
-use bluejay_parser::ast::{VariableArgument, VariableValue};
+use bluejay_parser::ast::VariableValue;
 use magnus::{Error, RArray, RHash, RString, Value, QNIL};
 use std::collections::{BTreeMap, HashSet};
 
@@ -38,7 +41,7 @@ impl<'a> Engine<'a> {
         variable_values: RHash,
         initial_value: Value,
     ) -> Result<ExecutionResult, Error> {
-        let (document, parse_errors) = bluejay_parser::ast::parse(query);
+        let (document, parse_errors) = ExecutableDocument::parse(query);
 
         if !parse_errors.is_empty() {
             return Ok(Self::execution_result(
@@ -415,29 +418,29 @@ impl<'a> Engine<'a> {
     ) -> Result<Vec<Value>, Vec<ExecutionError<'a>>> {
         let mut coerced_args: Vec<Value> = Vec::new();
         let mut errors: Vec<ExecutionError<'a>> = Vec::new();
-        let arguments: &[VariableArgument] =
-            field.arguments().map(AsRef::as_ref).unwrap_or_default();
         let argument_definitions = field_definition.argument_definitions();
         for argument_definition in argument_definitions.iter() {
             let argument_name = argument_definition.name();
             let argument_type = argument_definition.r#type();
             let default_value = argument_definition.default_value();
-            let argument_value: Option<Value> = arguments
-                .iter()
-                .find(|argument| argument.name() == argument_name)
-                .and_then(|argument| {
-                    let value = argument.value();
-                    match value {
-                        VariableValue::Variable(variable) => {
-                            let variable_name = variable.name();
-                            self.variable_values.get(variable_name)
+            let argument_value: Option<Value> = field.arguments().and_then(|arguments| {
+                arguments
+                    .iter()
+                    .find(|argument| argument.name() == argument_name)
+                    .and_then(|argument| {
+                        let value = argument.value();
+                        match value {
+                            VariableValue::Variable(variable) => {
+                                let variable_name = variable.name();
+                                self.variable_values.get(variable_name)
+                            }
+                            _ => Some(Self::value_from_core_variable_value(
+                                value,
+                                *self.variable_values,
+                            )),
                         }
-                        _ => Some(Self::value_from_core_variable_value(
-                            value,
-                            *self.variable_values,
-                        )),
-                    }
-                });
+                    })
+            });
             let has_value = argument_value.is_some();
             match default_value {
                 Some(default_value) if !has_value => {
@@ -531,30 +534,30 @@ impl<'a> Engine<'a> {
 
         match field_type.as_ref() {
             CoreOutputTypeReference::Base(inner, _) => {
-                match inner {
-                    BaseOutputTypeReference::BuiltinScalar(bstd) => {
+                match inner.as_ref() {
+                    CoreBaseOutputTypeReference::BuiltinScalarType(bstd) => {
                         match bstd.coerce_result(result) {
                             Ok(value) => (value, vec![]),
                             Err(error) => (*QNIL, vec![ExecutionError::FieldError(error)]),
                         }
                     }
-                    BaseOutputTypeReference::CustomScalar(_) => (result, vec![]), // TODO: see if any checks are needed here
-                    BaseOutputTypeReference::Enum(etd) => {
+                    CoreBaseOutputTypeReference::CustomScalarType(_, _) => (result, vec![]), // TODO: see if any checks are needed here
+                    CoreBaseOutputTypeReference::EnumType(etd, _) => {
                         match etd.as_ref().coerce_result(result) {
                             Ok(value) => (value, vec![]),
                             Err(error) => (*QNIL, vec![ExecutionError::FieldError(error)]),
                         }
                     }
-                    BaseOutputTypeReference::Object(otd) => {
+                    CoreBaseOutputTypeReference::ObjectType(otd, _) => {
                         let sub_selection_set = Self::merge_selection_sets(fields);
                         self.execute_selection_set(sub_selection_set, otd.as_ref(), result)
                     }
-                    BaseOutputTypeReference::Interface(itd) => {
+                    CoreBaseOutputTypeReference::InterfaceType(itd, _) => {
                         let object_type = self.resolve_interface_type(itd.as_ref(), result);
                         let sub_selection_set = Self::merge_selection_sets(fields);
                         self.execute_selection_set(sub_selection_set, object_type, result)
                     }
-                    BaseOutputTypeReference::Union(utd) => {
+                    CoreBaseOutputTypeReference::UnionType(utd, _) => {
                         let object_type = self.resolve_union_type(utd.as_ref(), result);
                         let sub_selection_set = Self::merge_selection_sets(fields);
                         self.execute_selection_set(sub_selection_set, object_type, result)

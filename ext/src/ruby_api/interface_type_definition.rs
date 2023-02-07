@@ -1,7 +1,8 @@
-use super::{
-    fields_definition::FieldsDefinition, interface_implementations::InterfaceImplementations, root,
-};
 use crate::helpers::HasDefinitionWrapper;
+use crate::ruby_api::{
+    fields_definition::FieldsDefinition, interface_implementations::InterfaceImplementations, root,
+    Directives,
+};
 use magnus::{
     function, gc, memoize, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error,
     Module, Object, RArray, RClass, RHash, TypedData,
@@ -13,28 +14,38 @@ pub struct InterfaceTypeDefinition {
     name: String,
     description: Option<String>,
     fields_definition: FieldsDefinition,
+    directives: Directives,
     interface_implementations: InterfaceImplementations,
 }
 
 impl InterfaceTypeDefinition {
     fn new(kw: RHash) -> Result<Self, Error> {
-        let args: KwArgs<(String, RArray, RArray, Option<String>), (), ()> = get_kwargs(
+        let args: KwArgs<_, (), ()> = get_kwargs(
             kw,
             &[
                 "name",
                 "field_definitions",
                 "interface_implementations",
                 "description",
+                "directives",
             ],
             &[],
         )?;
-        let (name, field_definitions, interface_implementations, description) = args.required;
+        let (name, field_definitions, interface_implementations, description, directives): (
+            String,
+            RArray,
+            RArray,
+            Option<String>,
+            RArray,
+        ) = args.required;
         let fields_definition = FieldsDefinition::new(field_definitions)?;
         let interface_implementations = InterfaceImplementations::new(interface_implementations)?;
+        let directives = directives.try_into()?;
         Ok(Self {
             name,
             description,
             fields_definition,
+            directives,
             interface_implementations,
         })
     }
@@ -54,12 +65,17 @@ impl InterfaceTypeDefinition {
     pub fn interface_implementations(&self) -> &InterfaceImplementations {
         &self.interface_implementations
     }
+
+    pub fn directives(&self) -> &Directives {
+        &self.directives
+    }
 }
 
 impl DataTypeFunctions for InterfaceTypeDefinition {
     fn mark(&self) {
         gc::mark(self.fields_definition);
         gc::mark(self.interface_implementations);
+        self.directives.mark();
     }
 }
 
@@ -72,6 +88,7 @@ impl HasDefinitionWrapper for InterfaceTypeDefinition {
 impl bluejay_core::definition::InterfaceTypeDefinition for InterfaceTypeDefinition {
     type FieldsDefinition = FieldsDefinition;
     type InterfaceImplementations = InterfaceImplementations;
+    type Directives = Directives;
 
     fn description(&self) -> Option<&str> {
         self.description.as_deref()
@@ -85,8 +102,12 @@ impl bluejay_core::definition::InterfaceTypeDefinition for InterfaceTypeDefiniti
         &self.fields_definition
     }
 
-    fn interface_impelementations(&self) -> &Self::InterfaceImplementations {
-        &self.interface_implementations
+    fn interface_impelementations(&self) -> Option<&Self::InterfaceImplementations> {
+        Some(&self.interface_implementations)
+    }
+
+    fn directives(&self) -> Option<&Self::Directives> {
+        Some(&self.directives)
     }
 }
 

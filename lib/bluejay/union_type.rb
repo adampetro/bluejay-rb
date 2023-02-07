@@ -25,6 +25,11 @@ module Bluejay
       sig { abstract.returns(T::Array[UnionMemberType]) }
       def member_types; end
 
+      sig { overridable.returns(T::Array[Directive]) }
+      def directives
+        []
+      end
+
       protected
 
       sig(:final) { override.void }
@@ -37,7 +42,7 @@ module Bluejay
       sig { returns(UnionTypeDefinition) }
       def definition
         @definition ||= T.let(
-          UnionTypeDefinition.new(name: graphql_name, description:, member_types:),
+          UnionTypeDefinition.new(name: graphql_name, description:, member_types:, directives:),
           T.nilable(UnionTypeDefinition),
         )
       end

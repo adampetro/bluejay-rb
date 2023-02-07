@@ -24,6 +24,11 @@ module Bluejay
         nil
       end
 
+      sig { overridable.returns(T::Array[Directive]) }
+      def directives
+        []
+      end
+
       sig do
         params(
           query: String,
@@ -62,7 +67,7 @@ module Bluejay
             end
           end
           const_set(:Root, interface)
-          SchemaDefinition.new(description:, query:, mutation:)
+          SchemaDefinition.new(description:, query:, mutation:, directives:)
         end
       end
     end

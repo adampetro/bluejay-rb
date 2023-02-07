@@ -1,9 +1,9 @@
-use super::{
-    coerce_input::CoerceInput, coercion_error::CoercionError,
-    enum_value_definitions::EnumValueDefinitions, root,
-};
 use crate::execution::{CoerceResult, FieldError};
 use crate::helpers::{public_name, HasDefinitionWrapper};
+use crate::ruby_api::{
+    coerce_input::CoerceInput, coercion_error::CoercionError,
+    enum_value_definitions::EnumValueDefinitions, root, Directives,
+};
 use bluejay_core::AsIter;
 use magnus::{
     function, gc, memoize, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error,
@@ -16,19 +16,29 @@ pub struct EnumTypeDefinition {
     name: String,
     description: Option<String>,
     enum_value_definitions: EnumValueDefinitions,
+    directives: Directives,
 }
 
 impl EnumTypeDefinition {
     fn new(kw: RHash) -> Result<Self, Error> {
-        let args: KwArgs<(String, RArray, Option<String>), (), ()> =
-            get_kwargs(kw, &["name", "enum_value_definitions", "description"], &[])?;
-        let (name, enum_value_definitions, description): (String, RArray, Option<String>) =
-            args.required;
+        let args: KwArgs<(String, RArray, Option<String>, RArray), (), ()> = get_kwargs(
+            kw,
+            &[
+                "name",
+                "enum_value_definitions",
+                "description",
+                "directives",
+            ],
+            &[],
+        )?;
+        let (name, enum_value_definitions, description, directives) = args.required;
         let enum_value_definitions = EnumValueDefinitions::new(enum_value_definitions)?;
+        let directives = directives.try_into()?;
         Ok(Self {
             name,
             description,
             enum_value_definitions,
+            directives,
         })
     }
 
@@ -43,11 +53,16 @@ impl EnumTypeDefinition {
     pub fn enum_value_definitions(&self) -> &EnumValueDefinitions {
         &self.enum_value_definitions
     }
+
+    pub fn directives(&self) -> &Directives {
+        &self.directives
+    }
 }
 
 impl DataTypeFunctions for EnumTypeDefinition {
     fn mark(&self) {
         gc::mark(self.enum_value_definitions);
+        self.directives.mark();
     }
 }
 
@@ -94,6 +109,7 @@ impl HasDefinitionWrapper for EnumTypeDefinition {
 
 impl bluejay_core::definition::EnumTypeDefinition for EnumTypeDefinition {
     type EnumValueDefinitions = EnumValueDefinitions;
+    type Directives = Directives;
 
     fn description(&self) -> Option<&str> {
         self.description.as_deref()
@@ -105,6 +121,10 @@ impl bluejay_core::definition::EnumTypeDefinition for EnumTypeDefinition {
 
     fn enum_value_definitions(&self) -> &Self::EnumValueDefinitions {
         &self.enum_value_definitions
+    }
+
+    fn directives(&self) -> Option<&Self::Directives> {
+        Some(&self.directives)
     }
 }
 

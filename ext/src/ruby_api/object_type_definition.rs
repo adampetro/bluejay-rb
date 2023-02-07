@@ -1,9 +1,9 @@
-use super::{
+use crate::helpers::HasDefinitionWrapper;
+use crate::ruby_api::{
     field_definition::FieldDefinition, fields_definition::FieldsDefinition,
     interface_implementations::InterfaceImplementations,
-    interface_type_definition::InterfaceTypeDefinition, root,
+    interface_type_definition::InterfaceTypeDefinition, root, Directives,
 };
-use crate::helpers::HasDefinitionWrapper;
 use bluejay_core::AsIter;
 use magnus::{
     function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions,
@@ -16,29 +16,39 @@ pub struct ObjectTypeDefinition {
     name: String,
     description: Option<String>,
     fields_definition: FieldsDefinition,
+    directives: Directives,
     interface_implementations: InterfaceImplementations,
 }
 
 impl ObjectTypeDefinition {
     fn new(kw: RHash) -> Result<Self, Error> {
-        let args: KwArgs<(String, RArray, RArray, Option<String>), (), ()> = get_kwargs(
+        let args: KwArgs<_, (), ()> = get_kwargs(
             kw,
             &[
                 "name",
                 "field_definitions",
                 "interface_implementations",
                 "description",
+                "directives",
             ],
             &[],
         )?;
-        let (name, field_definitions, interface_implementations, description) = args.required;
+        let (name, field_definitions, interface_implementations, description, directives): (
+            String,
+            RArray,
+            RArray,
+            Option<String>,
+            RArray,
+        ) = args.required;
         field_definitions.push(FieldDefinition::typename())?;
         let fields_definition = FieldsDefinition::new(field_definitions)?;
         let interface_implementations = InterfaceImplementations::new(interface_implementations)?;
+        let directives = directives.try_into()?;
         Ok(Self {
             name,
             description,
             fields_definition,
+            directives,
             interface_implementations,
         })
     }
@@ -48,6 +58,7 @@ impl DataTypeFunctions for ObjectTypeDefinition {
     fn mark(&self) {
         gc::mark(self.fields_definition);
         gc::mark(self.interface_implementations);
+        self.directives.mark();
     }
 }
 
@@ -83,11 +94,16 @@ impl ObjectTypeDefinition {
     pub fn field_definition(&self, name: &str) -> Option<&FieldDefinition> {
         self.fields_definition.iter().find(|fd| fd.name() == name)
     }
+
+    pub fn directives(&self) -> &Directives {
+        &self.directives
+    }
 }
 
 impl bluejay_core::definition::ObjectTypeDefinition for ObjectTypeDefinition {
     type FieldsDefinition = FieldsDefinition;
     type InterfaceImplementations = InterfaceImplementations;
+    type Directives = Directives;
 
     fn description(&self) -> Option<&str> {
         self.description.as_deref()
@@ -101,8 +117,12 @@ impl bluejay_core::definition::ObjectTypeDefinition for ObjectTypeDefinition {
         &self.fields_definition
     }
 
-    fn interface_impelementations(&self) -> &Self::InterfaceImplementations {
-        &self.interface_implementations
+    fn interface_impelementations(&self) -> Option<&Self::InterfaceImplementations> {
+        Some(&self.interface_implementations)
+    }
+
+    fn directives(&self) -> Option<&Self::Directives> {
+        Some(&self.directives)
     }
 }
 

@@ -5,21 +5,32 @@ use super::{
     union_type_definition::UnionTypeDefinition,
 };
 use crate::helpers::{WrappedDefinition, WrappedStruct};
-use bluejay_core::definition::OutputTypeReference as CoreOutputTypeReference;
+use bluejay_core::definition::{
+    BaseOutputTypeReference as CoreBaseOutputTypeReference,
+    OutputTypeReference as CoreOutputTypeReference,
+};
+use bluejay_core::BuiltinScalarDefinition;
 use magnus::{
     exception, function, method, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions,
     Error, Module, Object, RHash, TypedData, Value,
 };
 
-#[derive(Clone, Debug)]
-pub enum BaseOutputTypeReference {
-    BuiltinScalar(bluejay_core::BuiltinScalarDefinition),
-    Enum(WrappedDefinition<EnumTypeDefinition>),
-    Object(WrappedDefinition<ObjectTypeDefinition>),
-    Union(WrappedDefinition<UnionTypeDefinition>),
-    Interface(WrappedDefinition<InterfaceTypeDefinition>),
-    CustomScalar(WrappedDefinition<CustomScalarTypeDefinition>),
-}
+type BaseOutputTypeReferenceInner = CoreBaseOutputTypeReference<
+    CustomScalarTypeDefinition,
+    WrappedDefinition<CustomScalarTypeDefinition>,
+    EnumTypeDefinition,
+    WrappedDefinition<EnumTypeDefinition>,
+    ObjectTypeDefinition,
+    WrappedDefinition<ObjectTypeDefinition>,
+    InterfaceTypeDefinition,
+    WrappedDefinition<InterfaceTypeDefinition>,
+    UnionTypeDefinition,
+    WrappedDefinition<UnionTypeDefinition>,
+>;
+
+#[derive(Debug)]
+#[repr(transparent)]
+pub struct BaseOutputTypeReference(BaseOutputTypeReferenceInner);
 
 impl bluejay_core::definition::AbstractBaseOutputTypeReference for BaseOutputTypeReference {
     type CustomScalarTypeDefinition = CustomScalarTypeDefinition;
@@ -27,63 +38,56 @@ impl bluejay_core::definition::AbstractBaseOutputTypeReference for BaseOutputTyp
     type ObjectTypeDefinition = ObjectTypeDefinition;
     type InterfaceTypeDefinition = InterfaceTypeDefinition;
     type UnionTypeDefinition = UnionTypeDefinition;
-    type WrappedCustomScalarTypeDefinition = WrappedStruct<CustomScalarTypeDefinition>;
-    type WrappedEnumTypeDefinition = WrappedStruct<EnumTypeDefinition>;
-    type WrappedObjectTypeDefinition = WrappedStruct<ObjectTypeDefinition>;
-    type WrappedInterfaceTypeDefinition = WrappedStruct<InterfaceTypeDefinition>;
-    type WrappedUnionTypeDefinition = WrappedStruct<UnionTypeDefinition>;
+    type WrappedCustomScalarTypeDefinition = WrappedDefinition<CustomScalarTypeDefinition>;
+    type WrappedEnumTypeDefinition = WrappedDefinition<EnumTypeDefinition>;
+    type WrappedObjectTypeDefinition = WrappedDefinition<ObjectTypeDefinition>;
+    type WrappedInterfaceTypeDefinition = WrappedDefinition<InterfaceTypeDefinition>;
+    type WrappedUnionTypeDefinition = WrappedDefinition<UnionTypeDefinition>;
+}
 
-    fn to_concrete(&self) -> bluejay_core::definition::BaseOutputTypeReferenceFromAbstract<Self> {
-        match self {
-            Self::BuiltinScalar(bsd) => {
-                bluejay_core::definition::BaseOutputTypeReference::BuiltinScalarType(*bsd)
-            }
-            Self::Enum(etd) => bluejay_core::definition::BaseOutputTypeReference::EnumType(
-                *etd.get(),
-                Default::default(),
-            ),
-            Self::CustomScalar(cstd) => {
-                bluejay_core::definition::BaseOutputTypeReference::CustomScalarType(
-                    *cstd.get(),
-                    Default::default(),
-                )
-            }
-            Self::Object(otd) => bluejay_core::definition::BaseOutputTypeReference::ObjectType(
-                *otd.get(),
-                Default::default(),
-            ),
-            Self::Interface(itd) => {
-                bluejay_core::definition::BaseOutputTypeReference::InterfaceType(
-                    *itd.get(),
-                    Default::default(),
-                )
-            }
-            Self::Union(utd) => bluejay_core::definition::BaseOutputTypeReference::UnionType(
-                *utd.get(),
-                Default::default(),
-            ),
-        }
+impl AsRef<BaseOutputTypeReferenceInner> for BaseOutputTypeReference {
+    fn as_ref(&self) -> &BaseOutputTypeReferenceInner {
+        &self.0
     }
+}
 
-    fn name(&self) -> &str {
-        self.name()
+impl From<BaseOutputTypeReferenceInner> for BaseOutputTypeReference {
+    fn from(value: BaseOutputTypeReferenceInner) -> Self {
+        Self(value)
     }
 }
 
 impl BaseOutputTypeReference {
     pub fn new(value: Value) -> Result<Self, Error> {
         if let Ok(wrapped_struct) = value.try_convert::<WrappedStruct<Scalar>>() {
-            Ok(Self::BuiltinScalar(wrapped_struct.get().to_owned().into()))
+            Ok(Self(CoreBaseOutputTypeReference::BuiltinScalarType(
+                wrapped_struct.get().to_owned().into(),
+            )))
         } else if let Ok(wrapped_definition) = value.try_convert() {
-            Ok(Self::Enum(wrapped_definition))
+            Ok(Self(CoreBaseOutputTypeReference::EnumType(
+                wrapped_definition,
+                Default::default(),
+            )))
         } else if let Ok(wrapped_definition) = value.try_convert() {
-            Ok(Self::Object(wrapped_definition))
+            Ok(Self(CoreBaseOutputTypeReference::ObjectType(
+                wrapped_definition,
+                Default::default(),
+            )))
         } else if let Ok(wrapped_definition) = value.try_convert() {
-            Ok(Self::Union(wrapped_definition))
+            Ok(Self(CoreBaseOutputTypeReference::UnionType(
+                wrapped_definition,
+                Default::default(),
+            )))
         } else if let Ok(wrapped_definition) = value.try_convert() {
-            Ok(Self::Interface(wrapped_definition))
+            Ok(Self(CoreBaseOutputTypeReference::InterfaceType(
+                wrapped_definition,
+                Default::default(),
+            )))
         } else if let Ok(wrapped_definition) = value.try_convert() {
-            Ok(Self::CustomScalar(wrapped_definition))
+            Ok(Self(CoreBaseOutputTypeReference::CustomScalarType(
+                wrapped_definition,
+                Default::default(),
+            )))
         } else {
             Err(Error::new(
                 exception::type_error(),
@@ -93,42 +97,45 @@ impl BaseOutputTypeReference {
     }
 
     pub fn mark(&self) {
-        match self {
-            Self::BuiltinScalar(_) => {}
-            Self::Object(wd) => wd.mark(),
-            Self::Enum(wd) => wd.mark(),
-            Self::Union(wd) => wd.mark(),
-            Self::Interface(wd) => wd.mark(),
-            Self::CustomScalar(wd) => wd.mark(),
+        match &self.0 {
+            CoreBaseOutputTypeReference::BuiltinScalarType(_) => {}
+            CoreBaseOutputTypeReference::ObjectType(wd, _) => wd.mark(),
+            CoreBaseOutputTypeReference::EnumType(wd, _) => wd.mark(),
+            CoreBaseOutputTypeReference::UnionType(wd, _) => wd.mark(),
+            CoreBaseOutputTypeReference::InterfaceType(wd, _) => wd.mark(),
+            CoreBaseOutputTypeReference::CustomScalarType(wd, _) => wd.mark(),
         }
     }
 
     pub fn name(&self) -> &str {
-        match self {
-            Self::BuiltinScalar(bstd) => bstd.name(),
-            Self::CustomScalar(cstd) => cstd.as_ref().name(),
-            Self::Enum(etd) => etd.as_ref().name(),
-            Self::Interface(itd) => itd.as_ref().name(),
-            Self::Object(otd) => otd.as_ref().name(),
-            Self::Union(utd) => utd.as_ref().name(),
-        }
+        self.0.name()
     }
 
     fn sorbet_type(&self) -> String {
-        match self {
-            Self::BuiltinScalar(bstd) => Scalar::from(*bstd)
+        match &self.0 {
+            CoreBaseOutputTypeReference::BuiltinScalarType(bstd) => Scalar::from(*bstd)
                 .sorbet_type_fully_qualified_name()
                 .to_owned(),
-            Self::CustomScalar(_) => "T.untyped".to_string(),
-            Self::Enum(_) => "String".to_string(),
-            Self::Interface(itd) => format!("{}::Interface", itd.fully_qualified_name()),
-            Self::Object(otd) => format!("{}::Interface", otd.fully_qualified_name()),
-            Self::Union(utd) => utd.as_ref().sorbet_type(),
+            CoreBaseOutputTypeReference::CustomScalarType(_, _) => "T.untyped".to_string(),
+            CoreBaseOutputTypeReference::EnumType(_, _) => "String".to_string(),
+            CoreBaseOutputTypeReference::InterfaceType(itd, _) => {
+                format!("{}::Interface", itd.fully_qualified_name())
+            }
+            CoreBaseOutputTypeReference::ObjectType(otd, _) => {
+                format!("{}::Interface", otd.fully_qualified_name())
+            }
+            CoreBaseOutputTypeReference::UnionType(utd, _) => utd.as_ref().sorbet_type(),
         }
+    }
+
+    pub(crate) fn builtin_string() -> Self {
+        Self(CoreBaseOutputTypeReference::BuiltinScalarType(
+            BuiltinScalarDefinition::String,
+        ))
     }
 }
 
-#[derive(Clone, Debug, TypedData)]
+#[derive(Debug, TypedData)]
 #[magnus(class = "Bluejay::OutputTypeReference", mark)]
 #[repr(transparent)]
 pub struct OutputTypeReference(
@@ -220,6 +227,13 @@ impl OutputTypeReference {
             get_kwargs(kw, &["type", "required"], &[])?;
         let (r#type, required) = args.required;
         Ok(Self(CoreOutputTypeReference::List(r#type.into(), required)))
+    }
+
+    pub(crate) fn base(&self) -> &BaseOutputTypeReference {
+        match &self.0 {
+            CoreOutputTypeReference::Base(b, _) => b,
+            CoreOutputTypeReference::List(inner, _) => inner.get().base(),
+        }
     }
 
     fn is_list(&self) -> bool {

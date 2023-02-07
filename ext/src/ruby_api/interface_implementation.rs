@@ -1,5 +1,5 @@
-use super::{interface_type_definition::InterfaceTypeDefinition, root};
 use crate::helpers::{WrappedDefinition, WrappedStruct};
+use crate::ruby_api::{interface_type_definition::InterfaceTypeDefinition, root};
 use magnus::{function, method, DataTypeFunctions, Error, Module, Object, RClass, TypedData};
 
 #[derive(Clone, Debug, TypedData)]

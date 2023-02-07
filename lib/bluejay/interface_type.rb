@@ -32,6 +32,11 @@ module Bluejay
         []
       end
 
+      sig { overridable.returns(T::Array[Directive]) }
+      def directives
+        []
+      end
+
       protected
 
       sig(:final) { override.void }
@@ -52,7 +57,13 @@ module Bluejay
             end
           end
           const_set(:Interface, interface)
-          InterfaceTypeDefinition.new(name: graphql_name, description:, field_definitions:, interface_implementations:)
+          InterfaceTypeDefinition.new(
+            name: graphql_name,
+            description:,
+            field_definitions:,
+            interface_implementations:,
+            directives:,
+          )
         end
       end
     end

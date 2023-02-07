@@ -1,34 +1,49 @@
-use super::root;
-use crate::helpers::WrappedStruct;
+use crate::ruby_api::{root, Directives};
 use magnus::{
     function, method, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error, Module,
-    Object, RHash, TypedData,
+    Object, RArray, RHash, TypedData,
 };
 
-#[derive(Clone, Debug, TypedData)]
+#[derive(Debug, TypedData)]
 #[magnus(class = "Bluejay::EnumValueDefinition", mark)]
 pub struct EnumValueDefinition {
     name: String,
     description: Option<String>,
+    directives: Directives,
 }
 
 impl EnumValueDefinition {
     pub fn new(kw: RHash) -> Result<Self, Error> {
-        let args: KwArgs<(String,), (Option<String>,), ()> =
-            get_kwargs(kw, &["name"], &["description"])?;
+        let args: KwArgs<(String,), (Option<String>, Option<RArray>), ()> =
+            get_kwargs(kw, &["name"], &["description", "directives"])?;
         let (name,) = args.required;
-        let (description,) = args.optional;
-        Ok(Self { name, description })
+        let (description, directives) = args.optional;
+        let directives = directives.try_into()?;
+        Ok(Self {
+            name,
+            description,
+            directives,
+        })
     }
 
     pub fn name(&self) -> &str {
         self.name.as_str()
     }
+
+    pub fn directives(&self) -> &Directives {
+        &self.directives
+    }
 }
 
-impl DataTypeFunctions for EnumValueDefinition {}
+impl DataTypeFunctions for EnumValueDefinition {
+    fn mark(&self) {
+        self.directives.mark();
+    }
+}
 
 impl bluejay_core::definition::EnumValueDefinition for EnumValueDefinition {
+    type Directives = Directives;
+
     fn description(&self) -> Option<&str> {
         self.description.as_deref()
     }
@@ -36,15 +51,9 @@ impl bluejay_core::definition::EnumValueDefinition for EnumValueDefinition {
     fn name(&self) -> &str {
         self.name.as_str()
     }
-}
 
-impl bluejay_core::definition::EnumValueDefinition for WrappedStruct<EnumValueDefinition> {
-    fn description(&self) -> Option<&str> {
-        self.get().description()
-    }
-
-    fn name(&self) -> &str {
-        self.get().name()
+    fn directives(&self) -> Option<&Self::Directives> {
+        Some(&self.directives)
     }
 }
 

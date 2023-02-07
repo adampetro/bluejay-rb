@@ -1,15 +1,16 @@
-use super::{
+use crate::helpers::WrappedStruct;
+use crate::ruby_api::{
     coerce_input::CoerceInput,
     coercion_error::CoercionError,
     input_type_reference::InputTypeReference,
-    json_value::{JsonValue, JsonValueInner},
     root,
+    value::{Value, ValueInner},
+    Directives,
 };
-use crate::helpers::WrappedStruct;
 use convert_case::{Case, Casing};
 use magnus::{
     function, method, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error, Module,
-    Object, RHash, TypedData, Value,
+    Object, RArray, RHash, TypedData, Value as RValue,
 };
 
 #[derive(Debug, TypedData)]
@@ -18,23 +19,32 @@ pub struct InputValueDefinition {
     name: String,
     description: Option<String>,
     r#type: WrappedStruct<InputTypeReference>,
-    default_value: Option<JsonValue>,
+    directives: Directives,
+    default_value: Option<Value>,
     ruby_name: String,
 }
 
 impl InputValueDefinition {
     pub fn new(kw: RHash) -> Result<Self, Error> {
-        let args: KwArgs<_, _, ()> =
-            get_kwargs(kw, &["name", "type"], &["description", "default_value"])?;
+        let args: KwArgs<_, _, ()> = get_kwargs(
+            kw,
+            &["name", "type"],
+            &["description", "directives", "default_value"],
+        )?;
         let (name, r#type): (String, WrappedStruct<InputTypeReference>) = args.required;
-        let (description, default_value): (Option<Option<String>>, Option<JsonValue>) =
-            args.optional;
+        let (description, directives, default_value): (
+            Option<Option<String>>,
+            Option<RArray>,
+            Option<Value>,
+        ) = args.optional;
         let description = description.unwrap_or_default();
+        let directives = directives.try_into()?;
         let ruby_name = name.to_case(Case::Snake);
         Ok(Self {
             name,
             description,
             r#type,
+            directives,
             default_value,
             ruby_name,
         })
@@ -52,8 +62,8 @@ impl InputValueDefinition {
         self.r#type.get()
     }
 
-    pub fn default_value(&self) -> Option<Value> {
-        self.default_value.as_ref().map(|v| v.to_owned().into())
+    pub fn default_value(&self) -> Option<RValue> {
+        None
     }
 
     pub fn is_required(&self) -> bool {
@@ -64,30 +74,36 @@ impl InputValueDefinition {
         }
     }
 
-    fn ruby_name(&self) -> &str {
+    pub(crate) fn ruby_name(&self) -> &str {
         self.ruby_name.as_str()
+    }
+
+    pub fn directives(&self) -> &Directives {
+        &self.directives
     }
 }
 
 impl DataTypeFunctions for InputValueDefinition {
     fn mark(&self) {
         self.r#type.mark();
+        self.directives.mark();
     }
 }
 
 impl CoerceInput for InputValueDefinition {
     fn coerce_input(
         &self,
-        value: Value,
+        value: RValue,
         path: &[String],
-    ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
+    ) -> Result<Result<RValue, Vec<CoercionError>>, Error> {
         self.r#type.get().coerce_input(value, path)
     }
 }
 
 impl bluejay_core::definition::InputValueDefinition for InputValueDefinition {
     type InputTypeReference = InputTypeReference;
-    type Value = JsonValueInner;
+    type Value = ValueInner;
+    type Directives = Directives;
 
     fn name(&self) -> &str {
         self.name.as_str()
@@ -103,6 +119,10 @@ impl bluejay_core::definition::InputValueDefinition for InputValueDefinition {
 
     fn default_value(&self) -> Option<&Self::Value> {
         self.default_value.as_ref().map(AsRef::as_ref)
+    }
+
+    fn directives(&self) -> Option<&Self::Directives> {
+        Some(&self.directives)
     }
 }
 

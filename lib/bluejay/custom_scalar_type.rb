@@ -22,6 +22,11 @@ module Bluejay
         nil
       end
 
+      sig { overridable.returns(T::Array[Directive]) }
+      def directives
+        []
+      end
+
       protected
 
       sig(:final) { override.void }
@@ -34,7 +39,7 @@ module Bluejay
       sig(:final) { returns(CustomScalarTypeDefinition) }
       def definition
         @definition ||= T.let(
-          CustomScalarTypeDefinition.new(name: graphql_name, description:),
+          CustomScalarTypeDefinition.new(name: graphql_name, description:, directives:),
           T.nilable(CustomScalarTypeDefinition),
         )
       end

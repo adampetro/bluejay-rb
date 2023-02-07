@@ -25,6 +25,11 @@ module Bluejay
       sig { abstract.returns(T::Array[EnumValueDefinition]) }
       def enum_value_definitions; end
 
+      sig { overridable.returns(T::Array[Directive]) }
+      def directives
+        []
+      end
+
       protected
 
       sig(:final) { override.void }
@@ -37,7 +42,7 @@ module Bluejay
       sig(:final) { returns(EnumTypeDefinition) }
       def definition
         @definition ||= T.let(nil, T.nilable(EnumTypeDefinition))
-        @definition ||= EnumTypeDefinition.new(name: graphql_name, enum_value_definitions:, description:)
+        @definition ||= EnumTypeDefinition.new(name: graphql_name, enum_value_definitions:, description:, directives:)
       end
     end
   end

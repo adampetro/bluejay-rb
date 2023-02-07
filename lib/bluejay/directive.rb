@@ -2,7 +2,7 @@
 # frozen_string_literal: true
 
 module Bluejay
-  class InputType
+  class Directive
     extend(Finalize)
 
     class << self
@@ -24,16 +24,11 @@ module Bluejay
       end
 
       sig { abstract.returns(T::Array[InputValueDefinition]) }
-      def input_field_definitions; end
+      def argument_definitions; end
 
-      sig { overridable.returns(T::Array[Directive]) }
-      def directives
-        []
-      end
-
-      sig { params(value: T.untyped).returns(Result[T.untyped, T::Array[CoercionError]]) }
-      def coerce_input(value)
-        definition.coerce_input(value)
+      sig { overridable.returns(T::Boolean) }
+      def repeatable?
+        false
       end
 
       protected
@@ -45,28 +40,28 @@ module Bluejay
 
       private
 
-      sig(:final) { returns(InputObjectTypeDefinition) }
+      sig(:final) { returns(DirectiveDefinition) }
       def definition
-        @definition ||= T.let(nil, T.nilable(InputObjectTypeDefinition))
+        @definition ||= T.let(nil, T.nilable(DirectiveDefinition))
         @definition ||= begin
           define_method(:initialize) do |*args|
-            self.class.send(:definition).input_field_definitions.zip(args) do |ivd, arg|
+            self.class.send(:definition).argument_definitions.zip(args) do |ivd, arg|
               instance_variable_set("@#{ivd.ruby_name}", arg)
             end
             freeze
           end
           define_method(:==) do |other|
-            self.class == other.class && self.class.send(:definition).input_field_definitions.all? do |ivd|
+            self.class == other.class && self.class.send(:definition).argument_definitions.all? do |ivd|
               send(ivd.ruby_name) == other.send(ivd.ruby_name)
             end
           end
-          input_field_definitions = self.input_field_definitions
-          input_field_definitions.each { |ivd| attr_reader(ivd.ruby_name) }
-          InputObjectTypeDefinition.new(
+          argument_definitions = self.argument_definitions
+          argument_definitions.each { |ivd| attr_reader(ivd.ruby_name) }
+          DirectiveDefinition.new(
             name: graphql_name,
-            input_field_definitions:,
+            argument_definitions:,
             description:,
-            directives:,
+            is_repeatable: repeatable?,
             ruby_class: self,
           )
         end

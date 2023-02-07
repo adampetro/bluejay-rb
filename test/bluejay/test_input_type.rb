@@ -64,5 +64,17 @@ module Bluejay
         result.unwrap_err.first,
       )
     end
+
+    def test_initialize_and_accessors
+      instance = MyInputType.new(["X"], MyInputType.new(["Y"], nil, nil), "ONE")
+
+      assert_equal(["X"], instance.my_arg)
+      assert_equal(MyInputType.new(["Y"], nil, nil), instance.my_self)
+      assert_equal("ONE", instance.my_enum)
+    end
+
+    def test_initialize_freezes
+      assert_predicate(MyInputType.new(["X"], nil, nil), :frozen?)
+    end
   end
 end

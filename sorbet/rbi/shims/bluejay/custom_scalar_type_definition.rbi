@@ -2,7 +2,7 @@
 
 module Bluejay
   class CustomScalarTypeDefinition
-    sig { params(name: String, description: T.nilable(String)).void }
-    def initialize(name:, description:); end
+    sig { params(name: String, description: T.nilable(String), directives: T::Array[Directive]).void }
+    def initialize(name:, description:, directives:); end
   end
 end

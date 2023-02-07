@@ -1,8 +1,8 @@
-use super::{
-    coerce_input::CoerceInput, coercion_error::CoercionError,
-    input_fields_definition::InputFieldsDefinition, r_result::RResult, root,
-};
 use crate::helpers::{public_name, HasDefinitionWrapper};
+use crate::ruby_api::{
+    coerce_input::CoerceInput, coercion_error::CoercionError,
+    input_fields_definition::InputFieldsDefinition, r_result::RResult, root, Directives,
+};
 use bluejay_core::AsIter;
 use magnus::{
     function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions,
@@ -17,33 +17,43 @@ pub struct InputObjectTypeDefinition {
     description: Option<String>,
     input_fields_definition: InputFieldsDefinition,
     input_value_definition_names: HashSet<String>,
+    directives: Directives,
     ruby_class: RClass,
 }
 
 impl InputObjectTypeDefinition {
     fn new(kw: RHash) -> Result<Self, Error> {
-        let args: KwArgs<(String, RArray, Option<String>, RClass), (), ()> = get_kwargs(
+        let args: KwArgs<_, (), ()> = get_kwargs(
             kw,
             &[
                 "name",
                 "input_field_definitions",
                 "description",
+                "directives",
                 "ruby_class",
             ],
             &[],
         )?;
-        let (name, input_field_definitions, description, ruby_class) = args.required;
+        let (name, input_field_definitions, description, directives, ruby_class): (
+            String,
+            RArray,
+            Option<String>,
+            RArray,
+            RClass,
+        ) = args.required;
         let input_fields_definition = InputFieldsDefinition::new(input_field_definitions)?;
         let input_value_definition_names = HashSet::from_iter(
             input_fields_definition
                 .iter()
                 .map(|ivd| ivd.name().to_owned()),
         );
+        let directives = directives.try_into()?;
         Ok(Self {
             name,
             description,
             input_fields_definition,
             input_value_definition_names,
+            directives,
             ruby_class,
         })
     }
@@ -59,12 +69,17 @@ impl InputObjectTypeDefinition {
     pub fn input_fields_definition(&self) -> &InputFieldsDefinition {
         &self.input_fields_definition
     }
+
+    pub fn directives(&self) -> &Directives {
+        &self.directives
+    }
 }
 
 impl DataTypeFunctions for InputObjectTypeDefinition {
     fn mark(&self) {
         gc::mark(self.input_fields_definition);
         gc::mark(self.ruby_class);
+        self.directives.mark();
     }
 }
 
@@ -76,6 +91,7 @@ impl HasDefinitionWrapper for InputObjectTypeDefinition {
 
 impl bluejay_core::definition::InputObjectTypeDefinition for InputObjectTypeDefinition {
     type InputFieldsDefinition = InputFieldsDefinition;
+    type Directives = Directives;
 
     fn description(&self) -> Option<&str> {
         self.description.as_deref()
@@ -87,6 +103,10 @@ impl bluejay_core::definition::InputObjectTypeDefinition for InputObjectTypeDefi
 
     fn input_field_definitions(&self) -> &Self::InputFieldsDefinition {
         &self.input_fields_definition
+    }
+
+    fn directives(&self) -> Option<&Self::Directives> {
+        Some(&self.directives)
     }
 }
 

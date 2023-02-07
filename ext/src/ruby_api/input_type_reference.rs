@@ -5,7 +5,10 @@ use super::{
     input_object_type_definition::InputObjectTypeDefinition, root, scalar::Scalar,
 };
 use crate::helpers::{public_name, WrappedDefinition, WrappedStruct};
-use bluejay_core::definition::InputTypeReference as CoreInputTypeReference;
+use bluejay_core::definition::{
+    BaseInputTypeReference as CoreBaseInputTypeReference,
+    InputTypeReference as CoreInputTypeReference,
+};
 use bluejay_core::{ListTypeReference, NamedTypeReference};
 use bluejay_parser::ast::TypeReference as ParserTypeReference;
 use magnus::{
@@ -13,57 +16,61 @@ use magnus::{
     Error, Float, Integer, Module, Object, RArray, RHash, RString, TypedData, Value,
 };
 
-#[derive(Clone, Debug)]
-pub enum BaseInputTypeReference {
-    BuiltinScalar(bluejay_core::BuiltinScalarDefinition),
-    InputObject(WrappedDefinition<InputObjectTypeDefinition>),
-    Enum(WrappedDefinition<EnumTypeDefinition>),
-    CustomScalar(WrappedDefinition<CustomScalarTypeDefinition>),
-}
+type BaseInputTypeReferenceInner = CoreBaseInputTypeReference<
+    CustomScalarTypeDefinition,
+    WrappedDefinition<CustomScalarTypeDefinition>,
+    InputObjectTypeDefinition,
+    WrappedDefinition<InputObjectTypeDefinition>,
+    EnumTypeDefinition,
+    WrappedDefinition<EnumTypeDefinition>,
+>;
+
+#[derive(Debug)]
+#[repr(transparent)]
+pub struct BaseInputTypeReference(BaseInputTypeReferenceInner);
 
 impl bluejay_core::definition::AbstractBaseInputTypeReference for BaseInputTypeReference {
     type CustomScalarTypeDefinition = CustomScalarTypeDefinition;
     type InputObjectTypeDefinition = InputObjectTypeDefinition;
     type EnumTypeDefinition = EnumTypeDefinition;
-    type WrappedCustomScalarTypeDefinition = WrappedStruct<CustomScalarTypeDefinition>;
-    type WrappedInputObjectTypeDefinition = WrappedStruct<InputObjectTypeDefinition>;
-    type WrappedEnumTypeDefinition = WrappedStruct<EnumTypeDefinition>;
+    type WrappedCustomScalarTypeDefinition = WrappedDefinition<CustomScalarTypeDefinition>;
+    type WrappedInputObjectTypeDefinition = WrappedDefinition<InputObjectTypeDefinition>;
+    type WrappedEnumTypeDefinition = WrappedDefinition<EnumTypeDefinition>;
+}
 
-    fn to_concrete(&self) -> bluejay_core::definition::BaseInputTypeReferenceFromAbstract<Self> {
-        match self {
-            Self::CustomScalar(cst) => {
-                bluejay_core::definition::BaseInputTypeReference::CustomScalarType(
-                    *cst.get(),
-                    Default::default(),
-                )
-            }
-            Self::InputObject(iotd) => {
-                bluejay_core::definition::BaseInputTypeReference::InputObjectType(
-                    *iotd.get(),
-                    Default::default(),
-                )
-            }
-            Self::BuiltinScalar(bsd) => {
-                bluejay_core::definition::BaseInputTypeReference::BuiltinScalarType(*bsd)
-            }
-            Self::Enum(etd) => bluejay_core::definition::BaseInputTypeReference::EnumType(
-                *etd.get(),
-                Default::default(),
-            ),
-        }
+impl AsRef<BaseInputTypeReferenceInner> for BaseInputTypeReference {
+    fn as_ref(&self) -> &BaseInputTypeReferenceInner {
+        &self.0
+    }
+}
+
+impl From<BaseInputTypeReferenceInner> for BaseInputTypeReference {
+    fn from(value: BaseInputTypeReferenceInner) -> Self {
+        Self(value)
     }
 }
 
 impl BaseInputTypeReference {
     pub fn new(value: Value) -> Result<Self, Error> {
         if let Ok(wrapped_struct) = value.try_convert::<WrappedStruct<Scalar>>() {
-            Ok(Self::BuiltinScalar(wrapped_struct.get().to_owned().into()))
+            Ok(Self(CoreBaseInputTypeReference::BuiltinScalarType(
+                wrapped_struct.get().to_owned().into(),
+            )))
         } else if let Ok(wrapped_definition) = value.try_convert() {
-            Ok(Self::InputObject(wrapped_definition))
+            Ok(Self(CoreBaseInputTypeReference::InputObjectType(
+                wrapped_definition,
+                Default::default(),
+            )))
         } else if let Ok(wrapped_definition) = value.try_convert() {
-            Ok(Self::Enum(wrapped_definition))
+            Ok(Self(CoreBaseInputTypeReference::EnumType(
+                wrapped_definition,
+                Default::default(),
+            )))
         } else if let Ok(wrapped_definition) = value.try_convert() {
-            Ok(Self::CustomScalar(wrapped_definition))
+            Ok(Self(CoreBaseInputTypeReference::CustomScalarType(
+                wrapped_definition,
+                Default::default(),
+            )))
         } else {
             Err(Error::new(
                 exception::type_error(),
@@ -73,22 +80,22 @@ impl BaseInputTypeReference {
     }
 
     pub fn mark(&self) {
-        match self {
-            Self::BuiltinScalar(_) => {}
-            Self::InputObject(wd) => wd.mark(),
-            Self::Enum(wd) => wd.mark(),
-            Self::CustomScalar(wd) => wd.mark(),
+        match &self.0 {
+            CoreBaseInputTypeReference::BuiltinScalarType(_) => {}
+            CoreBaseInputTypeReference::InputObjectType(wd, _) => wd.mark(),
+            CoreBaseInputTypeReference::EnumType(wd, _) => wd.mark(),
+            CoreBaseInputTypeReference::CustomScalarType(wd, _) => wd.mark(),
         }
     }
 
     fn sorbet_type(&self) -> String {
-        match self {
-            Self::BuiltinScalar(bstd) => Scalar::from(*bstd)
+        match &self.0 {
+            CoreBaseInputTypeReference::BuiltinScalarType(bstd) => Scalar::from(*bstd)
                 .sorbet_type_fully_qualified_name()
                 .to_owned(),
-            Self::CustomScalar(_) => "T.untyped".to_string(),
-            Self::Enum(_) => "String".to_string(),
-            Self::InputObject(iotd) => iotd.fully_qualified_name(),
+            CoreBaseInputTypeReference::CustomScalarType(_, _) => "T.untyped".to_string(),
+            CoreBaseInputTypeReference::EnumType(_, _) => "String".to_string(),
+            CoreBaseInputTypeReference::InputObjectType(iotd, _) => iotd.fully_qualified_name(),
         }
     }
 
@@ -187,20 +194,22 @@ impl CoerceInput for BaseInputTypeReference {
         value: Value,
         path: &[String],
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
-        match self {
-            Self::BuiltinScalar(bstd) => bstd.coerce_input(value, path),
-            Self::InputObject(wrapped_definition) => {
+        match &self.0 {
+            CoreBaseInputTypeReference::BuiltinScalarType(bstd) => bstd.coerce_input(value, path),
+            CoreBaseInputTypeReference::InputObjectType(wrapped_definition, _) => {
                 wrapped_definition.as_ref().coerce_input(value, path)
             }
-            Self::Enum(wrapped_definition) => wrapped_definition.as_ref().coerce_input(value, path),
-            Self::CustomScalar(wrapped_definition) => {
+            CoreBaseInputTypeReference::EnumType(wrapped_definition, _) => {
+                wrapped_definition.as_ref().coerce_input(value, path)
+            }
+            CoreBaseInputTypeReference::CustomScalarType(wrapped_definition, _) => {
                 wrapped_definition.as_ref().coerce_input(value, path)
             }
         }
     }
 }
 
-#[derive(Clone, Debug, TypedData)]
+#[derive(Debug, TypedData)]
 #[magnus(class = "Bluejay::InputTypeReference", mark)]
 #[repr(transparent)]
 pub struct InputTypeReference(
@@ -280,6 +289,13 @@ impl InputTypeReference {
             get_kwargs(kw, &["type", "required"], &[])?;
         let (r#type, required) = args.required;
         Ok(Self(CoreInputTypeReference::List(r#type.into(), required)))
+    }
+
+    pub(crate) fn base(&self) -> &BaseInputTypeReference {
+        match &self.0 {
+            CoreInputTypeReference::Base(b, _) => b,
+            CoreInputTypeReference::List(inner, _) => inner.get().base(),
+        }
     }
 
     fn coerce_required<

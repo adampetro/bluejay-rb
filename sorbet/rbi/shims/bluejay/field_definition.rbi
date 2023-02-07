@@ -2,8 +2,8 @@
 
 module Bluejay
   class FieldDefinition
-    sig { params(name: String, type: OutputTypeReference, argument_definitions: T::Array[InputValueDefinition], description: T.nilable(String)).void }
-    def initialize(name:, type:, argument_definitions: [], description: nil); end
+    sig { params(name: String, type: OutputTypeReference, argument_definitions: T::Array[InputValueDefinition], description: T.nilable(String), directives: T::Array[Directive]).void }
+    def initialize(name:, type:, argument_definitions: [], description: nil, directives: []); end
 
     sig { returns(String) }
     def name; end
@@ -16,5 +16,8 @@ module Bluejay
 
     sig { returns(OutputTypeReference) }
     def type; end
+
+    sig { returns(T::Array[Directive]) }
+    def directives; end
   end
 end

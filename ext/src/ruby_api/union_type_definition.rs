@@ -1,7 +1,8 @@
-use super::{
-    object_type_definition::ObjectTypeDefinition, root, union_member_types::UnionMemberTypes,
-};
 use crate::helpers::HasDefinitionWrapper;
+use crate::ruby_api::{
+    object_type_definition::ObjectTypeDefinition, root, union_member_types::UnionMemberTypes,
+    Directives,
+};
 use bluejay_core::AsIter;
 use magnus::{
     function, gc, memoize, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error,
@@ -13,18 +14,24 @@ use magnus::{
 pub struct UnionTypeDefinition {
     name: String,
     description: Option<String>,
+    directives: Directives,
     member_types: UnionMemberTypes,
 }
 
 impl UnionTypeDefinition {
     fn new(kw: RHash) -> Result<Self, Error> {
-        let args: KwArgs<(String, RArray, Option<String>), (), ()> =
-            get_kwargs(kw, &["name", "member_types", "description"], &[])?;
-        let (name, member_types, description) = args.required;
+        let args: KwArgs<(String, RArray, Option<String>, RArray), (), ()> = get_kwargs(
+            kw,
+            &["name", "member_types", "description", "directives"],
+            &[],
+        )?;
+        let (name, member_types, description, directives) = args.required;
         let member_types = UnionMemberTypes::new(member_types)?;
+        let directives = directives.try_into()?;
         Ok(Self {
             name,
             description,
+            directives,
             member_types,
         })
     }
@@ -39,6 +46,10 @@ impl UnionTypeDefinition {
 
     pub fn member_types(&self) -> &UnionMemberTypes {
         &self.member_types
+    }
+
+    pub fn directives(&self) -> &Directives {
+        &self.directives
     }
 
     pub fn contains_type(&self, t: &ObjectTypeDefinition) -> bool {
@@ -63,6 +74,7 @@ impl UnionTypeDefinition {
 impl DataTypeFunctions for UnionTypeDefinition {
     fn mark(&self) {
         gc::mark(self.member_types);
+        self.directives.mark();
     }
 }
 
@@ -74,6 +86,7 @@ impl HasDefinitionWrapper for UnionTypeDefinition {
 
 impl bluejay_core::definition::UnionTypeDefinition for UnionTypeDefinition {
     type UnionMemberTypes = UnionMemberTypes;
+    type Directives = Directives;
 
     fn description(&self) -> Option<&str> {
         self.description.as_deref()
@@ -85,6 +98,10 @@ impl bluejay_core::definition::UnionTypeDefinition for UnionTypeDefinition {
 
     fn union_member_types(&self) -> &Self::UnionMemberTypes {
         &self.member_types
+    }
+
+    fn directives(&self) -> Option<&Self::Directives> {
+        Some(&self.directives)
     }
 }
 
