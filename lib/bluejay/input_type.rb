@@ -3,7 +3,7 @@
 
 module Bluejay
   class InputType
-    extend(Finalize)
+    extend(T::Sig)
 
     class << self
       extend(T::Sig)
@@ -36,30 +36,12 @@ module Bluejay
         definition.coerce_input(value)
       end
 
-      protected
-
-      sig(:final) { override.void }
-      def finalize
-        definition
-      end
-
       private
 
       sig(:final) { returns(InputObjectTypeDefinition) }
       def definition
         @definition ||= T.let(nil, T.nilable(InputObjectTypeDefinition))
         @definition ||= begin
-          define_method(:initialize) do |*args|
-            self.class.send(:definition).input_field_definitions.zip(args) do |ivd, arg|
-              instance_variable_set("@#{ivd.ruby_name}", arg)
-            end
-            freeze
-          end
-          define_method(:==) do |other|
-            self.class == other.class && self.class.send(:definition).input_field_definitions.all? do |ivd|
-              send(ivd.ruby_name) == other.send(ivd.ruby_name)
-            end
-          end
           input_field_definitions = self.input_field_definitions
           input_field_definitions.each { |ivd| attr_reader(ivd.ruby_name) }
           InputObjectTypeDefinition.new(
@@ -70,6 +52,19 @@ module Bluejay
             ruby_class: self,
           )
         end
+      end
+    end
+
+    define_method(:initialize) do |*args|
+      self.class.send(:definition).input_field_definitions.zip(args) do |ivd, arg|
+        instance_variable_set("@#{ivd.ruby_name}", arg)
+      end
+      freeze
+    end
+
+    define_method(:==) do |other|
+      self.class == other.class && self.class.send(:definition).input_field_definitions.all? do |ivd|
+        send(ivd.ruby_name) == other.send(ivd.ruby_name)
       end
     end
   end

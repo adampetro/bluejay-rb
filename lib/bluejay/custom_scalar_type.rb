@@ -3,8 +3,6 @@
 
 module Bluejay
   class CustomScalarType
-    extend(Finalize)
-
     class << self
       extend(T::Sig)
       extend(T::Helpers)
@@ -25,13 +23,6 @@ module Bluejay
       sig { overridable.returns(T::Array[Directive]) }
       def directives
         []
-      end
-
-      protected
-
-      sig(:final) { override.void }
-      def finalize
-        definition
       end
 
       private

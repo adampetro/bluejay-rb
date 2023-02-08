@@ -3,8 +3,6 @@
 
 module Bluejay
   class Directive
-    extend(Finalize)
-
     class << self
       extend(T::Sig)
       extend(T::Helpers)
@@ -31,30 +29,12 @@ module Bluejay
         false
       end
 
-      protected
-
-      sig(:final) { override.void }
-      def finalize
-        definition
-      end
-
       private
 
       sig(:final) { returns(DirectiveDefinition) }
       def definition
         @definition ||= T.let(nil, T.nilable(DirectiveDefinition))
         @definition ||= begin
-          define_method(:initialize) do |*args|
-            self.class.send(:definition).argument_definitions.zip(args) do |ivd, arg|
-              instance_variable_set("@#{ivd.ruby_name}", arg)
-            end
-            freeze
-          end
-          define_method(:==) do |other|
-            self.class == other.class && self.class.send(:definition).argument_definitions.all? do |ivd|
-              send(ivd.ruby_name) == other.send(ivd.ruby_name)
-            end
-          end
           argument_definitions = self.argument_definitions
           argument_definitions.each { |ivd| attr_reader(ivd.ruby_name) }
           DirectiveDefinition.new(
@@ -65,6 +45,19 @@ module Bluejay
             ruby_class: self,
           )
         end
+      end
+    end
+
+    define_method(:initialize) do |*args|
+      self.class.send(:definition).argument_definitions.zip(args) do |ivd, arg|
+        instance_variable_set("@#{ivd.ruby_name}", arg)
+      end
+      freeze
+    end
+
+    define_method(:==) do |other|
+      self.class == other.class && self.class.send(:definition).argument_definitions.all? do |ivd|
+        send(ivd.ruby_name) == other.send(ivd.ruby_name)
       end
     end
   end

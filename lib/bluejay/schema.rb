@@ -55,6 +55,16 @@ module Bluejay
 
       private
 
+      sig { params(name: Symbol).returns(T.untyped) }
+      def const_missing(name)
+        if name == :Root
+          definition
+          const_get(:Root)
+        else
+          super
+        end
+      end
+
       sig { returns(SchemaDefinition) }
       def definition
         @definition ||= T.let(nil, T.nilable(SchemaDefinition))

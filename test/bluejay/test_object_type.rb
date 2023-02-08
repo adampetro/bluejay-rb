@@ -20,8 +20,16 @@ module Bluejay
       end
     end
 
-    def test_foo
+    def test_definition_exists
       refute_nil(MyObjectType.send(:definition))
+    end
+
+    def test_interface_module_exists
+      assert_instance_of(Module, MyObjectType.const_get(:Interface))
+    end
+
+    def test_const_missing
+      assert_raises(NameError) { MyObjectType.const_get(:Foo) }
     end
   end
 end

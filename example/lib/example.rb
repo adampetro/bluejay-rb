@@ -12,6 +12,5 @@ loader = Zeitwerk::Loader.new
 loader.push_dir("#{__dir__}/graph", namespace: Graph)
 loader.push_dir("#{__dir__}/models")
 loader.setup
-loader.eager_load
 
 FrozenRecord::Base.base_path = "#{__dir__}/../data"

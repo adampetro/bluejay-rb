@@ -22,7 +22,11 @@ begin
   RUBY_VERSION =~ /(\d+\.\d+)/
   require "bluejay/#{Regexp.last_match(1)}/ext"
 rescue LoadError
-  require "bluejay/ext"
+  begin
+    require "bluejay/ext"
+  rescue LoadError
+    require_relative "../ext/ext"
+  end
 end
 
 module Bluejay

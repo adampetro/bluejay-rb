@@ -3,8 +3,6 @@
 
 module Bluejay
   class ObjectType
-    extend(Finalize)
-
     class << self
       extend(T::Sig)
       extend(T::Helpers)
@@ -37,14 +35,17 @@ module Bluejay
         []
       end
 
-      protected
-
-      sig(:final) { override.void }
-      def finalize
-        definition
-      end
-
       private
+
+      sig { params(name: Symbol).returns(T.untyped) }
+      def const_missing(name)
+        if name == :Interface
+          definition
+          const_get(:Interface)
+        else
+          super
+        end
+      end
 
       sig { returns(ObjectTypeDefinition) }
       def definition
@@ -59,6 +60,7 @@ module Bluejay
             end
 
             interface_implementations.each do |interface_implementation|
+              # interface_implementation.interface.send(:definition)
               mod.include(interface_implementation.interface.const_get(:Interface))
             end
 

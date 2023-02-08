@@ -118,5 +118,13 @@ module Bluejay
 
       assert_empty(MySchema.validate_query(query:))
     end
+
+    def test_interface_module_exists
+      assert_instance_of(Module, MySchema.const_get(:Root))
+    end
+
+    def test_const_missing
+      assert_raises(NameError) { MySchema.const_get(:Foo) }
+    end
   end
 end
