@@ -7,6 +7,22 @@ module Bluejay
     OkType = type_member
     ErrType = type_member
 
+    class << self
+      extend(T::Sig)
+
+      sig do
+        type_parameters(:Ok)
+          .params(value: T.type_parameter(:Ok)).returns(Result[T.type_parameter(:Ok), T.untyped])
+      end
+      def ok(value); end
+
+      sig do
+        type_parameters(:Err)
+          .params(value: T.type_parameter(:Err)).returns(Result[T.untyped, T.type_parameter(:Err)])
+      end
+      def err(value); end
+    end
+
     sig { returns(T::Boolean) }
     def ok?; end
 

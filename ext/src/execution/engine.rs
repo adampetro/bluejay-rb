@@ -533,37 +533,40 @@ impl<'a> Engine<'a> {
         }
 
         match field_type.as_ref() {
-            CoreOutputTypeReference::Base(inner, _) => {
-                match inner.as_ref() {
-                    CoreBaseOutputTypeReference::BuiltinScalarType(bstd) => {
-                        match bstd.coerce_result(result) {
-                            Ok(value) => (value, vec![]),
-                            Err(error) => (*QNIL, vec![ExecutionError::FieldError(error)]),
-                        }
-                    }
-                    CoreBaseOutputTypeReference::CustomScalarType(_, _) => (result, vec![]), // TODO: see if any checks are needed here
-                    CoreBaseOutputTypeReference::EnumType(etd, _) => {
-                        match etd.as_ref().coerce_result(result) {
-                            Ok(value) => (value, vec![]),
-                            Err(error) => (*QNIL, vec![ExecutionError::FieldError(error)]),
-                        }
-                    }
-                    CoreBaseOutputTypeReference::ObjectType(otd, _) => {
-                        let sub_selection_set = Self::merge_selection_sets(fields);
-                        self.execute_selection_set(sub_selection_set, otd.as_ref(), result)
-                    }
-                    CoreBaseOutputTypeReference::InterfaceType(itd, _) => {
-                        let object_type = self.resolve_interface_type(itd.as_ref(), result);
-                        let sub_selection_set = Self::merge_selection_sets(fields);
-                        self.execute_selection_set(sub_selection_set, object_type, result)
-                    }
-                    CoreBaseOutputTypeReference::UnionType(utd, _) => {
-                        let object_type = self.resolve_union_type(utd.as_ref(), result);
-                        let sub_selection_set = Self::merge_selection_sets(fields);
-                        self.execute_selection_set(sub_selection_set, object_type, result)
+            CoreOutputTypeReference::Base(inner, _) => match inner.as_ref() {
+                CoreBaseOutputTypeReference::BuiltinScalarType(bstd) => {
+                    match bstd.coerce_result(result) {
+                        Ok(value) => (value, vec![]),
+                        Err(error) => (*QNIL, vec![ExecutionError::FieldError(error)]),
                     }
                 }
-            }
+                CoreBaseOutputTypeReference::CustomScalarType(cstd, _) => {
+                    match cstd.as_ref().coerce_result(result) {
+                        Ok(value) => (value, vec![]),
+                        Err(error) => (*QNIL, vec![ExecutionError::FieldError(error)]),
+                    }
+                }
+                CoreBaseOutputTypeReference::EnumType(etd, _) => {
+                    match etd.as_ref().coerce_result(result) {
+                        Ok(value) => (value, vec![]),
+                        Err(error) => (*QNIL, vec![ExecutionError::FieldError(error)]),
+                    }
+                }
+                CoreBaseOutputTypeReference::ObjectType(otd, _) => {
+                    let sub_selection_set = Self::merge_selection_sets(fields);
+                    self.execute_selection_set(sub_selection_set, otd.as_ref(), result)
+                }
+                CoreBaseOutputTypeReference::InterfaceType(itd, _) => {
+                    let object_type = self.resolve_interface_type(itd.as_ref(), result);
+                    let sub_selection_set = Self::merge_selection_sets(fields);
+                    self.execute_selection_set(sub_selection_set, object_type, result)
+                }
+                CoreBaseOutputTypeReference::UnionType(utd, _) => {
+                    let object_type = self.resolve_union_type(utd.as_ref(), result);
+                    let sub_selection_set = Self::merge_selection_sets(fields);
+                    self.execute_selection_set(sub_selection_set, object_type, result)
+                }
+            },
             CoreOutputTypeReference::List(inner, _) => {
                 if let Some(arr) = RArray::from_value(result) {
                     let inner = inner.get();

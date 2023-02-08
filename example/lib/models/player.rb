@@ -1,6 +1,8 @@
 # typed: strict
 # frozen_string_literal: true
 
+require "date"
+
 class Player < FrozenRecord::Base
   extend(T::Sig)
   include(Graph::Player::Interface)
@@ -17,5 +19,10 @@ class Player < FrozenRecord::Base
   sig { override.returns(T.nilable(Graph::Team::Interface)) }
   def resolve_current_team
     Team.find_by(id: current_team)
+  end
+
+  sig { override.returns(Date) }
+  def resolve_birthday
+    birthday
   end
 end

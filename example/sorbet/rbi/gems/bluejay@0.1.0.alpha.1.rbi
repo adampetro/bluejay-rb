@@ -36,26 +36,37 @@ end
 #
 # source://bluejay//../../bluejay-rb/lib/bluejay/custom_scalar_type.rb#5
 class Bluejay::CustomScalarType
+  extend T::Generic
   extend ::Bluejay::NameFromClass
 
   abstract!
 
+  InternalRepresentation = type_template
+
   class << self
-    # source://bluejay//../../bluejay-rb/lib/bluejay/custom_scalar_type.rb#19
+    # source://bluejay//../../bluejay-rb/lib/bluejay/custom_scalar_type.rb#33
+    sig { overridable.params(value: InternalRepresentation).returns(::Bluejay::Result) }
+    def coerce_result(value); end
+
+    # source://bluejay//../../bluejay-rb/lib/bluejay/custom_scalar_type.rb#23
     sig { overridable.returns(T.nilable(::String)) }
     def description; end
 
-    # source://bluejay//../../bluejay-rb/lib/bluejay/custom_scalar_type.rb#24
+    # source://bluejay//../../bluejay-rb/lib/bluejay/custom_scalar_type.rb#28
     sig { overridable.returns(T::Array[::Bluejay::Directive]) }
     def directives; end
 
-    # source://bluejay//../../bluejay-rb/lib/bluejay/custom_scalar_type.rb#14
+    # source://bluejay//../../bluejay-rb/lib/bluejay/custom_scalar_type.rb#18
     sig { overridable.returns(::String) }
     def graphql_name; end
 
+    # source://bluejay//../../bluejay-rb/lib/bluejay/custom_scalar_type.rb#38
+    sig { overridable.returns(::String) }
+    def internal_representation_sorbet_type_name; end
+
     private
 
-    # source://bluejay//../../bluejay-rb/lib/bluejay/custom_scalar_type.rb#31
+    # source://bluejay//../../bluejay-rb/lib/bluejay/custom_scalar_type.rb#45
     sig(:final) { returns(::Bluejay::CustomScalarTypeDefinition) }
     def definition; end
   end
@@ -490,6 +501,7 @@ module Bluejay::OutputTypeReferenceShorthands
 end
 
 class Bluejay::Result
+  def ==(_arg0); end
   def err?; end
   def inspect; end
   def ok?; end
@@ -498,6 +510,8 @@ class Bluejay::Result
 
   class << self
     def [](_arg0, _arg1); end
+    def err(_arg0); end
+    def ok(_arg0); end
   end
 end
 

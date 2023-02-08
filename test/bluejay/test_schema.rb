@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "date"
 
 module Bluejay
   class TestSchema < Minitest::Test
@@ -15,6 +16,28 @@ module Bluejay
             InputValueDefinition.new(name: "first", type: it!(Scalar::String)),
             InputValueDefinition.new(name: "last", type: it(Scalar::String)),
           ]
+        end
+      end
+    end
+
+    class DateScalar < CustomScalarType
+      extend(T::Generic)
+
+      InternalRepresentation = type_template { { fixed: Date } }
+
+      class << self
+        extend(T::Sig)
+
+        sig { override.returns(String) }
+        def graphql_name = "Date"
+
+        sig { override.params(value: InternalRepresentation).returns(Result[T.untyped, String]) }
+        def coerce_result(value)
+          if value == Date.today
+            Result.ok(value.iso8601)
+          else
+            Result.err("Did not return today")
+          end
         end
       end
     end
@@ -33,6 +56,10 @@ module Bluejay
                 InputValueDefinition.new(name: "name", type: it!(NameInput)),
               ],
             ),
+            FieldDefinition.new(
+              name: "today",
+              type: ot!(DateScalar),
+            ),
           ]
         end
       end
@@ -50,27 +77,28 @@ module Bluejay
     end
 
     module Domain
-      class QueryRoot
-        class << self
-          extend(T::Sig)
-          include(TestSchema::QueryRoot::Interface)
+      class QueryRoot < T::Struct
+        extend(T::Sig)
+        include(TestSchema::QueryRoot::Interface)
 
-          sig { params(name: NameInput).returns(String) }
-          def resolve_hello(name)
-            "Hello, #{name.first} #{name.last}!"
-          end
+        const(:today, Date, factory: -> { Date.today })
+
+        sig { params(name: NameInput).returns(String) }
+        def resolve_hello(name)
+          "Hello, #{name.first} #{name.last}!"
+        end
+
+        sig { returns(Date) }
+        def resolve_today
+          today
         end
       end
 
-      class SchemaRoot
-        class << self
-          extend(T::Sig)
+      class SchemaRoot < T::Struct
+        extend(T::Sig)
+        include(MySchema::Root)
 
-          sig { returns(T.class_of(QueryRoot)) }
-          def query
-            QueryRoot
-          end
-        end
+        const(:query, QueryRoot, factory: -> { QueryRoot.new })
       end
     end
 
@@ -84,9 +112,10 @@ module Bluejay
           __typename
           hello(name: $name)
           otherHello: hello(name: { first: "John" last: "Smith" })
+          today
         }
       GQL
-      root = Domain::SchemaRoot
+      root = Domain::SchemaRoot.new
 
       result = MySchema.execute(
         query:,
@@ -100,11 +129,28 @@ module Bluejay
         {
           "__typename" => "QueryRoot",
           "hello" => "Hello, Adam Petro!",
-          "otherHello" => "Hello, John Smith!",
+          "otherHello" => "Hello, John Smith!",\
+          "today" => Date.today.iso8601,
         },
         result.value,
       )
-      puts result.errors.map(&:inspect)
+    end
+
+    def test_execute_custom_scalar_coerce_result_error
+      query = "{ today }"
+      root = Domain::SchemaRoot.new(query: Domain::QueryRoot.new(today: Date.today.next_day))
+
+      result = MySchema.execute(
+        query:,
+        operation_name: nil,
+        initial_value: root,
+      )
+
+      assert_equal(1, result.errors.length)
+      assert_equal(
+        ExecutionError.new("Field error"),
+        result.errors.first,
+      )
     end
 
     def test_validate_query

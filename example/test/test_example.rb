@@ -33,7 +33,7 @@ class TestExample < Minitest::Test
         teams(location: $location) {
           location
           name
-          players { firstName lastName }
+          players { firstName lastName birthday }
         }
       }
     GQL
@@ -51,7 +51,7 @@ class TestExample < Minitest::Test
       "teams" => [{
         "name" => "Maple Leafs",
         "location" => "Toronto",
-        "players" => [{ "firstName" => "Auston", "lastName" => "Matthews" }],
+        "players" => [{ "firstName" => "Auston", "lastName" => "Matthews", "birthday" => "1997-09-17" }],
       }],
     }
 

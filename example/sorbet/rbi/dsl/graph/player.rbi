@@ -9,6 +9,9 @@ module Graph::Player::Interface
 
   abstract!
 
+  sig { abstract.returns(Date) }
+  def resolve_birthday; end
+
   sig { abstract.returns(T.nilable(Graph::Team::Interface)) }
   def resolve_current_team; end
 

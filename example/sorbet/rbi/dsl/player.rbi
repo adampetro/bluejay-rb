@@ -9,6 +9,12 @@ class Player
 
   module FrozenRecordAttributeMethods
     sig { returns(T.untyped) }
+    def birthday; end
+
+    sig { returns(T::Boolean) }
+    def birthday?; end
+
+    sig { returns(T.untyped) }
     def current_team; end
 
     sig { returns(T::Boolean) }

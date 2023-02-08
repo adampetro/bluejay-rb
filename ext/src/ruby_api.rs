@@ -48,6 +48,7 @@ pub use input_value_definition::InputValueDefinition;
 pub use interface_type_definition::InterfaceTypeDefinition;
 pub use object_type_definition::ObjectTypeDefinition;
 pub use output_type_reference::{BaseOutputTypeReference, OutputTypeReference};
+pub use r_result::RResult;
 pub use schema_definition::{SchemaDefinition, TypeDefinitionReference};
 pub use union_type_definition::UnionTypeDefinition;
 pub use value::Value;

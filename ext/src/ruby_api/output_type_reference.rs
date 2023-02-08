@@ -116,7 +116,10 @@ impl BaseOutputTypeReference {
             CoreBaseOutputTypeReference::BuiltinScalarType(bstd) => Scalar::from(*bstd)
                 .sorbet_type_fully_qualified_name()
                 .to_owned(),
-            CoreBaseOutputTypeReference::CustomScalarType(_, _) => "T.untyped".to_string(),
+            CoreBaseOutputTypeReference::CustomScalarType(cstd, _) => cstd
+                .as_ref()
+                .internal_representation_sorbet_type_name()
+                .to_string(),
             CoreBaseOutputTypeReference::EnumType(_, _) => "String".to_string(),
             CoreBaseOutputTypeReference::InterfaceType(itd, _) => {
                 format!("{}::Interface", itd.fully_qualified_name())
