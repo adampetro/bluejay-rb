@@ -9,21 +9,18 @@ use bluejay_core::definition::{
     BaseOutputTypeReference as CoreBaseOutputTypeReference,
     OutputTypeReference as CoreOutputTypeReference,
 };
-use bluejay_core::{
-    Argument as CoreArgument, AsIter, BooleanValue, FloatValue, IntegerValue, ObjectValue,
-    OperationType, Value as CoreValue, Variable as CoreVariable,
-};
+use bluejay_core::{Argument as CoreArgument, AsIter, OperationType};
 use bluejay_parser::ast::executable::{
     ExecutableDocument, Field, OperationDefinition, Selection, VariableDefinition,
 };
 use bluejay_parser::ast::VariableValue;
-use magnus::{Error, RArray, RHash, RString, Value, QNIL};
+use magnus::{ArgList, Error, RArray, RHash, RString, Value, QNIL};
 use std::collections::{BTreeMap, HashSet};
 
 pub struct Engine<'a> {
     schema: &'a SchemaDefinition,
     document: &'a ExecutableDocument<'a>,
-    variable_values: &'a RHash, // pointer to ensure it stays on the stack somewhere
+    variables: &'a RHash,
     key_store: KeyStore<'a>,
 }
 
@@ -60,7 +57,7 @@ impl<'a> Engine<'a> {
             }
         };
 
-        let coerced_variable_values =
+        let variables =
             match Self::get_variable_values(schema, operation_definition, variable_values) {
                 Ok(cvv) => cvv,
                 Err(errors) => {
@@ -71,7 +68,7 @@ impl<'a> Engine<'a> {
         let instance = Engine {
             schema,
             document: &document,
-            variable_values: &coerced_variable_values,
+            variables: &variables,
             key_store: KeyStore::new(),
         };
 
@@ -111,7 +108,7 @@ impl<'a> Engine<'a> {
         operation: &'b OperationDefinition,
         variable_values: RHash,
     ) -> Result<RHash, Vec<ExecutionError<'b>>> {
-        let coerced_values = RHash::new();
+        let coerced_variables = RHash::new();
         let variable_definitions: &[VariableDefinition] = operation
             .variable_definitions()
             .map(AsRef::as_ref)
@@ -131,14 +128,22 @@ impl<'a> Engine<'a> {
             let default_value = variable_definition.default_value();
             let value = variable_values.get(variable_name);
             let has_value = value.is_some();
+            let path = vec![variable_name.to_owned()];
             match default_value {
                 Some(default_value) if !has_value => {
-                    coerced_values
-                        .aset(
-                            variable_name,
-                            Self::value_from_core_const_value(default_value),
-                        )
-                        .unwrap();
+                    match variable_type.coerce_parser_value(default_value, &path, &()) {
+                        Ok(Ok(coerced_value)) => {
+                            coerced_variables
+                                .aset(variable_name, coerced_value)
+                                .unwrap();
+                        }
+                        Ok(Err(coercion_errors)) => errors.extend(
+                            coercion_errors
+                                .into_iter()
+                                .map(ExecutionError::CoercionError),
+                        ),
+                        Err(error) => errors.push(ExecutionError::ApplicationError(error)),
+                    }
                 }
                 _ => {
                     if variable_type.is_required() && !has_value {
@@ -146,11 +151,12 @@ impl<'a> Engine<'a> {
                             name: variable_name,
                         });
                     } else {
-                        let path = vec![variable_name.to_owned()];
                         let value = value.unwrap_or_default();
-                        match variable_type.coerce_input(value, &path) {
+                        match variable_type.coerce_ruby_const_value(value, &path) {
                             Ok(Ok(coerced_value)) => {
-                                coerced_values.aset(variable_name, coerced_value).unwrap();
+                                coerced_variables
+                                    .aset(variable_name, coerced_value)
+                                    .unwrap();
                             }
                             Ok(Err(coercion_errors)) => {
                                 errors.extend(
@@ -167,55 +173,9 @@ impl<'a> Engine<'a> {
         }
 
         if errors.is_empty() {
-            Ok(coerced_values)
+            Ok(coerced_variables)
         } else {
             Err(errors)
-        }
-    }
-
-    fn value_from_core_const_value(value: &impl bluejay_core::AbstractConstValue) -> Value {
-        match value.as_ref() {
-            CoreValue::Boolean(b) => b.to_bool().into(),
-            CoreValue::Enum(e) => e.as_ref().into(),
-            CoreValue::Float(f) => f.to_f64().into(),
-            CoreValue::Integer(i) => i.to_i32().into(),
-            CoreValue::Null(_) => *QNIL,
-            CoreValue::String(s) => s.as_ref().into(),
-            CoreValue::Variable(_) => unreachable!(),
-            CoreValue::List(l) => {
-                *RArray::from_iter(l.as_ref().iter().map(Self::value_from_core_const_value))
-            }
-            CoreValue::Object(o) => *RHash::from_iter(
-                o.fields()
-                    .iter()
-                    .map(|(k, v)| (k.as_ref(), Self::value_from_core_const_value(v))),
-            ),
-        }
-    }
-
-    fn value_from_core_variable_value(
-        value: &impl bluejay_core::AbstractVariableValue,
-        variable_values: RHash,
-    ) -> Value {
-        match value.as_ref() {
-            CoreValue::Boolean(b) => b.to_bool().into(),
-            CoreValue::Enum(e) => e.as_ref().into(),
-            CoreValue::Float(f) => f.to_f64().into(),
-            CoreValue::Integer(i) => i.to_i32().into(),
-            CoreValue::Null(_) => *QNIL,
-            CoreValue::String(s) => s.as_ref().into(),
-            CoreValue::Variable(v) => variable_values.get(v.name()).unwrap_or(*QNIL),
-            CoreValue::List(l) => *RArray::from_iter(
-                l.as_ref()
-                    .iter()
-                    .map(|v| Self::value_from_core_variable_value(v, variable_values)),
-            ),
-            CoreValue::Object(o) => *RHash::from_iter(o.fields().iter().map(|(k, v)| {
-                (
-                    k.as_ref(),
-                    Self::value_from_core_variable_value(v, variable_values),
-                )
-            })),
         }
     }
 
@@ -389,92 +349,59 @@ impl<'a> Engine<'a> {
         fields: &[&'a Field],
     ) -> (Value, Vec<ExecutionError<'a>>) {
         let field = fields.first().unwrap();
-        let argument_values = match self.coerce_argument_values(field_definition, field) {
-            Ok(argument_values) => argument_values,
-            Err(errors) => {
-                return (*QNIL, errors);
-            }
-        };
 
-        let resolved_value = match self.resolve_field_value(
-            object_type,
-            object_value,
-            field_definition,
-            argument_values,
-        ) {
-            Ok(resolved_value) => resolved_value,
-            Err(error) => {
-                return (*QNIL, vec![error]);
-            }
-        };
-
-        self.complete_value(field_definition.r#type(), fields, resolved_value)
+        if field_definition.argument_definitions().is_empty() {
+            self.resolve_field_value(object_type, object_value, field_definition, ())
+                .map_err(|err| vec![err])
+        } else {
+            self.coerce_argument_values(field_definition, field)
+                .and_then(|argument_values| {
+                    self.resolve_field_value(object_type, object_value, field_definition, unsafe {
+                        argument_values.as_slice()
+                    })
+                    .map_err(|err| vec![err])
+                })
+        }
+        .map(|resolved_value| {
+            self.complete_value(field_definition.r#type(), fields, resolved_value)
+        })
+        .unwrap_or_else(|errors| (*QNIL, errors))
     }
 
     fn coerce_argument_values(
         &'a self,
         field_definition: &FieldDefinition,
         field: &Field,
-    ) -> Result<Vec<Value>, Vec<ExecutionError<'a>>> {
-        let mut coerced_args: Vec<Value> = Vec::new();
+    ) -> Result<RArray, Vec<ExecutionError<'a>>> {
+        let coerced_args = RArray::with_capacity(field_definition.argument_definitions().len());
         let mut errors: Vec<ExecutionError<'a>> = Vec::new();
         let argument_definitions = field_definition.argument_definitions();
         for argument_definition in argument_definitions.iter() {
             let argument_name = argument_definition.name();
             let argument_type = argument_definition.r#type();
             let default_value = argument_definition.default_value();
-            let argument_value: Option<Value> = field.arguments().and_then(|arguments| {
+            let argument_value: Option<&VariableValue> = field.arguments().and_then(|arguments| {
                 arguments
                     .iter()
                     .find(|argument| argument.name() == argument_name)
-                    .and_then(|argument| {
-                        let value = argument.value();
-                        match value {
-                            VariableValue::Variable(variable) => {
-                                let variable_name = variable.name();
-                                self.variable_values.get(variable_name)
-                            }
-                            _ => Some(Self::value_from_core_variable_value(
-                                value,
-                                *self.variable_values,
-                            )),
-                        }
-                    })
+                    .map(|argument| argument.value())
             });
             let has_value = argument_value.is_some();
             match default_value {
-                Some(default_value) if !has_value => {
-                    match argument_type.coerce_input(default_value, &[argument_name.to_owned()]) {
-                        Ok(Ok(coerced_value)) => {
-                            coerced_args.push(coerced_value);
-                        }
-                        // TODO: would be kind of bad if default value didn't coerce
-                        Ok(Err(coercion_errors)) => {
-                            errors.extend(
-                                coercion_errors
-                                    .into_iter()
-                                    .map(ExecutionError::CoercionError),
-                            );
-                        }
-                        Err(error) => {
-                            errors.push(ExecutionError::ApplicationError(error));
-                        }
-                    }
-                }
+                Some(default_value) if !has_value => coerced_args.push(default_value).unwrap(),
                 _ => {
-                    if argument_type.is_required()
-                        && (!has_value || matches!(argument_value, Some(v) if v.is_nil()))
-                    {
+                    if argument_type.is_required() && !has_value {
                         // TODO: field error
                         // shouldn't this never happen if query is validated and variables coerced to match definition in query?
-                    } else {
+                    } else if let Some(argument_value) = argument_value {
                         // TODO: see if it is possible to distinguish between null and no value being passed
-                        match argument_type.coerce_input(
-                            argument_value.unwrap_or_default(),
+                        match argument_type.coerce_parser_value(
+                            argument_value,
                             &[argument_name.to_owned()],
+                            self.variables,
                         ) {
                             Ok(Ok(coerced_value)) => {
-                                coerced_args.push(coerced_value);
+                                coerced_args.push(coerced_value).unwrap();
                             }
                             Ok(Err(coercion_errors)) => {
                                 errors.extend(
@@ -487,6 +414,8 @@ impl<'a> Engine<'a> {
                                 errors.push(ExecutionError::ApplicationError(error));
                             }
                         }
+                    } else {
+                        coerced_args.push(*QNIL).unwrap();
                     }
                 }
             }
@@ -504,13 +433,13 @@ impl<'a> Engine<'a> {
         _object_type: &ObjectTypeDefinition,
         object_value: Value,
         field_definition: &FieldDefinition,
-        argument_values: Vec<Value>,
+        argument_values: impl ArgList,
     ) -> Result<Value, ExecutionError<'a>> {
         // TODO: use object_type somehow?
         object_value
             .funcall(
                 field_definition.ruby_resolver_method_name(),
-                argument_values.as_slice(),
+                argument_values,
             )
             .map_err(ExecutionError::ApplicationError)
     }

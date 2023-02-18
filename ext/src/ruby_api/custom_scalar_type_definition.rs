@@ -1,8 +1,10 @@
 use crate::execution::{CoerceResult, FieldError};
-use crate::helpers::{HasDefinitionWrapper, WrappedStruct};
+use crate::helpers::{value_from_core_value, HasDefinitionWrapper, Variables, WrappedStruct};
 use crate::ruby_api::{
-    coerce_input::CoerceInput, coercion_error::CoercionError, root, Directives, RResult,
+    coerce_input::CoerceInput, coercion_error::CoercionError, root,
+    wrapped_value::value_inner_from_ruby_const_value, Directives, RResult, WrappedValue,
 };
+use bluejay_parser::ast::Value as ParserValue;
 use magnus::{
     function, memoize, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error, Module,
     Object, RArray, RClass, RHash, TypedData, Value,
@@ -17,8 +19,6 @@ pub struct CustomScalarTypeDefinition {
     ruby_class: RClass,
     internal_representation_sorbet_type_name: String,
 }
-
-// TODO: add ability to coerce input and possibly coerce result
 
 impl CustomScalarTypeDefinition {
     fn new(kw: RHash) -> Result<Self, Error> {
@@ -74,12 +74,50 @@ impl HasDefinitionWrapper for CustomScalarTypeDefinition {
 }
 
 impl CoerceInput for CustomScalarTypeDefinition {
-    fn coerce_input(
+    fn coerced_ruby_value_to_wrapped_value(
         &self,
         value: Value,
-        _path: &[String],
+        path: &[String],
+    ) -> Result<Result<WrappedValue, Vec<CoercionError>>, Error> {
+        let inner = value_inner_from_ruby_const_value(value)?;
+
+        let coerced_r_result: WrappedStruct<RResult> =
+            self.ruby_class.funcall("coerce_input", (value,))?;
+
+        let coerced_result: Result<Value, String> = coerced_r_result.get().try_into()?;
+
+        Ok(coerced_result
+            .map(|coerced_value| WrappedValue::from((coerced_value, inner)))
+            .map_err(|message| vec![CoercionError::new(message, path.to_vec())]))
+    }
+
+    fn coerce_parser_value<const CONST: bool>(
+        &self,
+        value: &ParserValue<CONST>,
+        path: &[String],
+        variables: &impl Variables<CONST>,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
-        Ok(Ok(value))
+        let r_value = value_from_core_value(value, variables);
+
+        let coerced_r_result: WrappedStruct<RResult> =
+            self.ruby_class.funcall("coerce_input", (r_value,))?;
+
+        let coerced_result: Result<Value, String> = coerced_r_result.get().try_into()?;
+
+        Ok(coerced_result.map_err(|message| vec![CoercionError::new(message, path.to_vec())]))
+    }
+
+    fn coerce_ruby_const_value(
+        &self,
+        value: Value,
+        path: &[String],
+    ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
+        let coerced_r_result: WrappedStruct<RResult> =
+            self.ruby_class.funcall("coerce_input", (value,))?;
+
+        let coerced_result: Result<Value, String> = coerced_r_result.get().try_into()?;
+
+        Ok(coerced_result.map_err(|message| vec![CoercionError::new(message, path.to_vec())]))
     }
 }
 

@@ -5,6 +5,7 @@ require "sorbet-runtime"
 require "frozen_record"
 require "zeitwerk"
 require "bluejay"
+require "date"
 
 require_relative "graph"
 

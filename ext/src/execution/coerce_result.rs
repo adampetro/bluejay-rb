@@ -33,10 +33,10 @@ impl CoerceResult for BuiltinScalarDefinition {
                 }
             }
             Self::ID => {
-                if value.is_kind_of(magnus::class::string()) {
+                if value.is_kind_of(magnus::class::string())
+                    || matches!(Integer::from_value(value), Some(i) if i.to_i32().is_ok())
+                {
                     Ok(value)
-                } else if value.is_kind_of(magnus::class::integer()) {
-                    Ok(value.funcall("to_s", ()).unwrap())
                 } else {
                     Err(FieldError::CannotCoerceResultToBuiltinScalar {
                         builtin_scalar: *self,

@@ -1,16 +1,12 @@
 use crate::helpers::WrappedStruct;
 use crate::ruby_api::{
-    coerce_input::CoerceInput,
-    coercion_error::CoercionError,
-    input_type_reference::InputTypeReference,
-    root,
-    value::{Value, ValueInner},
-    Directives,
+    input_type_reference::InputTypeReference, root, wrapped_value::ValueInner, Directives,
+    WrappedValue,
 };
 use convert_case::{Case, Casing};
 use magnus::{
     function, method, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error, Module,
-    Object, RArray, RHash, TypedData, Value as RValue,
+    Object, RArray, RHash, TypedData,
 };
 
 #[derive(Debug, TypedData)]
@@ -20,23 +16,16 @@ pub struct InputValueDefinition {
     description: Option<String>,
     r#type: WrappedStruct<InputTypeReference>,
     directives: Directives,
-    default_value: Option<Value>,
+    default_value: Option<WrappedValue>,
     ruby_name: String,
 }
 
 impl InputValueDefinition {
     pub fn new(kw: RHash) -> Result<Self, Error> {
-        let args: KwArgs<_, _, ()> = get_kwargs(
-            kw,
-            &["name", "type"],
-            &["description", "directives", "default_value"],
-        )?;
+        let args: KwArgs<_, _, ()> =
+            get_kwargs(kw, &["name", "type"], &["description", "directives"])?;
         let (name, r#type): (String, WrappedStruct<InputTypeReference>) = args.required;
-        let (description, directives, default_value): (
-            Option<Option<String>>,
-            Option<RArray>,
-            Option<Value>,
-        ) = args.optional;
+        let (description, directives): (Option<Option<String>>, Option<RArray>) = args.optional;
         let description = description.unwrap_or_default();
         let directives = directives.try_into()?;
         let ruby_name = name.to_case(Case::Snake);
@@ -45,7 +34,7 @@ impl InputValueDefinition {
             description,
             r#type,
             directives,
-            default_value,
+            default_value: None,
             ruby_name,
         })
     }
@@ -62,7 +51,7 @@ impl InputValueDefinition {
         self.r#type.get()
     }
 
-    pub fn default_value(&self) -> Option<RValue> {
+    pub fn default_value(&self) -> Option<WrappedValue> {
         None
     }
 
@@ -87,16 +76,6 @@ impl DataTypeFunctions for InputValueDefinition {
     fn mark(&self) {
         self.r#type.mark();
         self.directives.mark();
-    }
-}
-
-impl CoerceInput for InputValueDefinition {
-    fn coerce_input(
-        &self,
-        value: RValue,
-        path: &[String],
-    ) -> Result<Result<RValue, Vec<CoercionError>>, Error> {
-        self.r#type.get().coerce_input(value, path)
     }
 }
 

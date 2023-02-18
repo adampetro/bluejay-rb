@@ -2,7 +2,6 @@
 # frozen_string_literal: true
 
 require "test_helper"
-require "date"
 
 module Bluejay
   class TestSchema < Minitest::Test
@@ -39,6 +38,19 @@ module Bluejay
             Result.err("Did not return today")
           end
         end
+
+        sig { override.params(value: T.untyped).returns(Result[Date, String]) }
+        def coerce_input(value)
+          if value.is_a?(String)
+            begin
+              Result.ok(Date.parse(value))
+            rescue Date::Error => e
+              Result.err(e.message)
+            end
+          else
+            Result.err("Expected a date encoded as a string")
+          end
+        end
       end
     end
 
@@ -59,6 +71,13 @@ module Bluejay
             FieldDefinition.new(
               name: "today",
               type: ot!(DateScalar),
+            ),
+            FieldDefinition.new(
+              name: "isToday",
+              type: ot!(Scalar::Boolean),
+              argument_definitions: [
+                InputValueDefinition.new(name: "date", type: it!(DateScalar)),
+              ],
             ),
           ]
         end
@@ -92,6 +111,11 @@ module Bluejay
         def resolve_today
           today
         end
+
+        sig { params(date: Date).returns(T::Boolean) }
+        def resolve_is_today(date)
+          date == Date.today
+        end
       end
 
       class SchemaRoot < T::Struct
@@ -108,11 +132,12 @@ module Bluejay
 
     def test_execute
       query = <<~GQL
-        query Hello($name: NameInput!) {
+        query Hello($name: NameInput!, $date: Date!) {
           __typename
           hello(name: $name)
           otherHello: hello(name: { first: "John" last: "Smith" })
           today
+          isToday(date: $date)
         }
       GQL
       root = Domain::SchemaRoot.new
@@ -120,7 +145,7 @@ module Bluejay
       result = MySchema.execute(
         query:,
         operation_name: nil,
-        variables: { "name" => { "first" => "Adam", "last" => "Petro" } },
+        variables: { "name" => { "first" => "Adam", "last" => "Petro" }, "date" => Date.today.iso8601 },
         initial_value: root,
       )
 
@@ -131,6 +156,7 @@ module Bluejay
           "hello" => "Hello, Adam Petro!",
           "otherHello" => "Hello, John Smith!",\
           "today" => Date.today.iso8601,
+          "isToday" => true,
         },
         result.value,
       )

@@ -1,9 +1,11 @@
-use crate::helpers::{public_name, HasDefinitionWrapper};
+use crate::helpers::{public_name, HasDefinitionWrapper, Variables};
 use crate::ruby_api::{
     coerce_input::CoerceInput, coercion_error::CoercionError,
-    input_fields_definition::InputFieldsDefinition, r_result::RResult, root, Directives,
+    input_fields_definition::InputFieldsDefinition, r_result::RResult, root,
+    wrapped_value::value_inner_from_ruby_const_value, Directives, WrappedValue,
 };
 use bluejay_core::AsIter;
+use bluejay_parser::ast::Value as ParserValue;
 use magnus::{
     function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions,
     Error, Module, Object, RArray, RClass, RHash, TypedData, Value, QNIL,
@@ -111,13 +113,13 @@ impl bluejay_core::definition::InputObjectTypeDefinition for InputObjectTypeDefi
 }
 
 impl CoerceInput for InputObjectTypeDefinition {
-    fn coerce_input(
+    fn coerced_ruby_value_to_wrapped_value(
         &self,
         value: Value,
         path: &[String],
-    ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
+    ) -> Result<Result<WrappedValue, Vec<CoercionError>>, Error> {
         if let Some(hash) = RHash::from_value(value) {
-            let args = RArray::new();
+            let args = RArray::with_capacity(self.input_fields_definition.len());
             let mut errors = Vec::new();
 
             for ivd in self.input_fields_definition.iter() {
@@ -137,9 +139,13 @@ impl CoerceInput for InputObjectTypeDefinition {
                         _ => {
                             let mut inner_path = path.to_owned();
                             inner_path.push(ivd.name().to_owned());
-                            match ivd.coerce_input(value.unwrap_or(*QNIL), &inner_path)? {
+                            match ivd.r#type().coerced_ruby_value_to_wrapped_value(
+                                value.unwrap_or(*QNIL),
+                                &inner_path,
+                            )? {
                                 Ok(coerced_value) => {
-                                    args.push(coerced_value).unwrap();
+                                    let arg: magnus::Value = coerced_value.into();
+                                    args.push(arg).unwrap();
                                 }
                                 Err(errs) => {
                                     errors.extend(errs);
@@ -150,7 +156,157 @@ impl CoerceInput for InputObjectTypeDefinition {
                 }
             }
 
-            let keys: Vec<String> = hash.check_funcall("keys", ()).unwrap()?;
+            let keys: Vec<String> = hash.funcall("keys", ())?;
+
+            errors.extend(keys.iter().filter_map(|key| {
+                if !self.input_value_definition_names.contains(key) {
+                    Some(CoercionError::new(
+                        format!("No field named `{}` on {}", key, self.name),
+                        path.to_owned(),
+                    ))
+                } else {
+                    None
+                }
+            }));
+
+            if errors.is_empty() {
+                let r_value = self.ruby_class.new_instance(unsafe { args.as_slice() })?;
+
+                let inner = value_inner_from_ruby_const_value(value)?;
+
+                Ok(Ok((r_value, inner).into()))
+            } else {
+                Ok(Err(errors))
+            }
+        } else {
+            Ok(Err(vec![CoercionError::new(
+                format!(
+                    "No implicit conversion of {} to {}",
+                    public_name(value),
+                    self.name
+                ),
+                path.to_owned(),
+            )]))
+        }
+    }
+
+    fn coerce_parser_value<const CONST: bool>(
+        &self,
+        value: &ParserValue<CONST>,
+        path: &[String],
+        variables: &impl Variables<CONST>,
+    ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
+        if let ParserValue::Object(o) = value {
+            let args = RArray::with_capacity(self.input_fields_definition.len());
+            let mut errors = Vec::new();
+
+            for ivd in self.input_fields_definition.iter() {
+                let value = o
+                    .iter()
+                    .find(|(name, _)| ivd.name() == name.as_str())
+                    .map(|(_, value)| value);
+                let required = ivd.is_required();
+                let default_value = ivd.default_value();
+
+                match (value, default_value) {
+                    (None, None) => {
+                        if required {
+                            errors.push(CoercionError::new(
+                                format!("No value for required field {}", ivd.name()),
+                                path.to_owned(),
+                            ));
+                        }
+                    }
+                    (None, Some(default_value)) => {
+                        args.push(default_value).unwrap();
+                    }
+                    (Some(value), _) => {
+                        let mut inner_path = path.to_owned();
+                        inner_path.push(ivd.name().to_owned());
+                        match ivd
+                            .r#type()
+                            .coerce_parser_value(value, &inner_path, variables)?
+                        {
+                            Ok(coerced_value) => {
+                                args.push(coerced_value).unwrap();
+                            }
+                            Err(errs) => errors.extend(errs),
+                        }
+                    }
+                }
+            }
+
+            errors.extend(o.iter().filter_map(|(key, _)| {
+                let key = key.as_ref();
+                if !self.input_value_definition_names.contains(key) {
+                    Some(CoercionError::new(
+                        format!("No field named `{}` on {}", key, self.name),
+                        path.to_owned(),
+                    ))
+                } else {
+                    None
+                }
+            }));
+
+            if errors.is_empty() {
+                self.ruby_class
+                    .new_instance(unsafe { args.as_slice() })
+                    .map(Ok)
+            } else {
+                Ok(Err(errors))
+            }
+        } else {
+            Ok(Err(vec![CoercionError::new(
+                format!("No implicit conversion of {} to {}", value, self.name,),
+                path.to_owned(),
+            )]))
+        }
+    }
+
+    fn coerce_ruby_const_value(
+        &self,
+        value: Value,
+        path: &[String],
+    ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
+        if let Some(hash) = RHash::from_value(value) {
+            let args = RArray::with_capacity(self.input_fields_definition.len());
+            let mut errors = Vec::new();
+
+            for ivd in self.input_fields_definition.iter() {
+                let value = hash.get(ivd.name());
+                let required = ivd.is_required();
+                let default_value = ivd.default_value();
+                if required && value.is_none() {
+                    errors.push(CoercionError::new(
+                        format!("No value for required field {}", ivd.name()),
+                        path.to_owned(),
+                    ));
+                } else {
+                    match default_value {
+                        Some(default_value) if value.is_none() => {
+                            args.push(default_value).unwrap();
+                        }
+                        _ => {
+                            let mut inner_path = path.to_owned();
+                            inner_path.push(ivd.name().to_owned());
+                            match ivd.r#type().coerced_ruby_value_to_wrapped_value(
+                                value.unwrap_or(*QNIL),
+                                &inner_path,
+                            )? {
+                                Ok(coerced_value) => {
+                                    let arg: magnus::Value = coerced_value.into();
+                                    args.push(arg).unwrap();
+                                }
+                                Err(errs) => {
+                                    errors.extend(errs);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            let keys: Vec<String> = hash.funcall("keys", ())?;
 
             errors.extend(keys.iter().filter_map(|key| {
                 if !self.input_value_definition_names.contains(key) {
@@ -170,10 +326,6 @@ impl CoerceInput for InputObjectTypeDefinition {
             } else {
                 Ok(Err(errors))
             }
-        } else if value.is_kind_of(self.ruby_class) {
-            // TODO: this is kind of a hack for when a coerced variable value is nested in an uncoerced input
-            // see if there is a less hacky way to do this
-            Ok(Ok(value))
         } else {
             Ok(Err(vec![CoercionError::new(
                 format!(
@@ -195,7 +347,8 @@ pub fn init() -> Result<(), Error> {
         "coerce_input",
         method!(
             |itd: &InputObjectTypeDefinition, input: Value| -> Result<RResult, Error> {
-                itd.coerce_input(input, &[]).map(Into::into)
+                itd.coerced_ruby_value_to_wrapped_value(input, &[])
+                    .map(Into::into)
             },
             1
         ),

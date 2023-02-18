@@ -2,7 +2,6 @@
 # frozen_string_literal: true
 
 require "test_helper"
-require "date"
 
 module Bluejay
   class TestCustomScalarType < Minitest::Test
@@ -20,6 +19,11 @@ module Bluejay
         sig { override.params(value: InternalRepresentation).returns(Result[T.untyped, String]) }
         def coerce_result(value)
           Result.ok(value.iso8601)
+        end
+
+        sig { override.params(value: T.untyped).returns(Result[Date, String]) }
+        def coerce_input(value)
+          raise NotImplementedError
         end
       end
     end

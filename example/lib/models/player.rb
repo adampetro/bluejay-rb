@@ -1,8 +1,6 @@
 # typed: strict
 # frozen_string_literal: true
 
-require "date"
-
 class Player < FrozenRecord::Base
   extend(T::Sig)
   include(Graph::Player::Interface)

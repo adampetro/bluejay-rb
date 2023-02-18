@@ -24,8 +24,8 @@ module Tapioca
         root.create_path(constant) do |klass|
           parameters = [
             create_kw_param("query", type: "String"),
-            create_kw_param("operation_name", type: "T.nilable(String)"),
             create_kw_param("initial_value", type: "#{constant.name}::Root"),
+            create_kw_opt_param("operation_name", type: "T.nilable(String)", default: "nil"),
             create_kw_opt_param("variables", type: "T::Hash[String, T.untyped]", default: "{}"),
           ]
           klass.custom_create_method(

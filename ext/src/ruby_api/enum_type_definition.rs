@@ -1,13 +1,15 @@
 use crate::execution::{CoerceResult, FieldError};
-use crate::helpers::{public_name, HasDefinitionWrapper};
+use crate::helpers::{public_name, HasDefinitionWrapper, Variables};
 use crate::ruby_api::{
     coerce_input::CoerceInput, coercion_error::CoercionError,
-    enum_value_definitions::EnumValueDefinitions, root, Directives,
+    enum_value_definitions::EnumValueDefinitions, root, wrapped_value::ValueInner, Directives,
+    WrappedValue,
 };
 use bluejay_core::AsIter;
+use bluejay_parser::ast::Value as ParserValue;
 use magnus::{
     function, gc, memoize, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error,
-    Module, Object, RArray, RClass, RHash, TypedData, Value,
+    Module, Object, RArray, RClass, RHash, RString, TypedData, Value,
 };
 
 #[derive(Debug, TypedData)]
@@ -57,6 +59,22 @@ impl EnumTypeDefinition {
     pub fn directives(&self) -> &Directives {
         &self.directives
     }
+
+    fn coerce_from_name(&self, name: &str, path: &[String]) -> Result<Value, Vec<CoercionError>> {
+        if self
+            .enum_value_definitions
+            .iter()
+            .any(|evd| evd.name() == name)
+        {
+            let r_value = RString::from(name);
+            Ok(*r_value)
+        } else {
+            Err(vec![CoercionError::new(
+                format!("No member `{}` on {}", name, self.name.as_str()),
+                path.to_owned(),
+            )])
+        }
+    }
 }
 
 impl DataTypeFunctions for EnumTypeDefinition {
@@ -67,21 +85,21 @@ impl DataTypeFunctions for EnumTypeDefinition {
 }
 
 impl CoerceInput for EnumTypeDefinition {
-    fn coerce_input(
+    fn coerced_ruby_value_to_wrapped_value(
         &self,
         value: Value,
         path: &[String],
-    ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
+    ) -> Result<Result<WrappedValue, Vec<CoercionError>>, Error> {
         let s: Result<String, _> = value.try_convert();
         match s {
             Ok(s) => {
-                // TODO: don't use const_get
                 if self
                     .enum_value_definitions
                     .iter()
                     .any(|evd| evd.name() == s.as_str())
                 {
-                    Ok(Ok(value))
+                    let inner = ValueInner::Enum(s);
+                    Ok(Ok((value, inner).into()))
                 } else {
                     Ok(Err(vec![CoercionError::new(
                         format!("No member `{}` on {}", s.as_str(), self.name.as_str()),
@@ -89,6 +107,45 @@ impl CoerceInput for EnumTypeDefinition {
                     )]))
                 }
             }
+            Err(_) => Ok(Err(vec![CoercionError::new(
+                format!(
+                    "No implicit conversion of {} to {}",
+                    public_name(value),
+                    self.name.as_str()
+                ),
+                path.to_owned(),
+            )])),
+        }
+    }
+
+    fn coerce_parser_value<const CONST: bool>(
+        &self,
+        value: &ParserValue<CONST>,
+        path: &[String],
+        _: &impl Variables<CONST>,
+    ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
+        if let ParserValue::Enum(e) = value {
+            Ok(self.coerce_from_name(e.as_str(), path))
+        } else {
+            Ok(Err(vec![CoercionError::new(
+                format!(
+                    "No implicit conversion of {} to {}",
+                    value,
+                    self.name.as_str()
+                ),
+                path.to_owned(),
+            )]))
+        }
+    }
+
+    fn coerce_ruby_const_value(
+        &self,
+        value: Value,
+        path: &[String],
+    ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
+        let s: Result<String, _> = value.try_convert();
+        match s {
+            Ok(s) => Ok(self.coerce_from_name(s.as_str(), path)),
             Err(_) => Ok(Err(vec![CoercionError::new(
                 format!(
                     "No implicit conversion of {} to {}",

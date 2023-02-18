@@ -1,9 +1,9 @@
 use crate::helpers::WrappedDefinition;
-use crate::ruby_api::{value::ValueInner, DirectiveDefinition, Value};
+use crate::ruby_api::{wrapped_value::ValueInner, CoerceInput, DirectiveDefinition, WrappedValue};
 use bluejay_core::{
     Argument as CoreArgument, Arguments as CoreArguments, AsIter, Directive as CoreDirective,
 };
-use magnus::{gc, Error, RObject, TryConvert, Value as RValue};
+use magnus::{gc, Error, RObject, TryConvert, Value};
 
 #[derive(Debug)]
 pub struct Directive {
@@ -13,7 +13,7 @@ pub struct Directive {
 }
 
 impl TryConvert for Directive {
-    fn try_convert(val: RValue) -> Result<Self, Error> {
+    fn try_convert(val: Value) -> Result<Self, Error> {
         let definition: WrappedDefinition<DirectiveDefinition> =
             WrappedDefinition::try_convert(*val.class())?;
         let obj: RObject = val.try_convert()?;
@@ -23,8 +23,11 @@ impl TryConvert for Directive {
             .arguments_definition()
             .iter()
             .map(|ivd| -> Result<Argument, Error> {
-                let value: RValue = obj.funcall(ivd.ruby_name(), ())?;
-                let value: Value = value.try_convert()?;
+                let value: Value = obj.funcall(ivd.ruby_name(), ())?;
+                let value: WrappedValue = ivd
+                    .r#type()
+                    .coerced_ruby_value_to_wrapped_value(value, &[])?
+                    .unwrap();
                 let name = ivd.name().to_string();
                 Ok(Argument { name, value })
             })
@@ -65,7 +68,7 @@ impl CoreDirective<true> for Directive {
 #[derive(Debug)]
 pub struct Argument {
     name: String,
-    value: Value,
+    value: WrappedValue,
 }
 
 impl CoreArgument<true> for Argument {

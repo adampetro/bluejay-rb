@@ -9,12 +9,12 @@ class Graph::Schema
     sig do
       params(
         query: String,
-        operation_name: T.nilable(String),
         initial_value: Graph::Schema::Root,
+        operation_name: T.nilable(String),
         variables: T::Hash[String, T.untyped]
       ).returns(Bluejay::ExecutionResult)
     end
-    def execute(query:, operation_name:, initial_value:, variables: {}); end
+    def execute(query:, initial_value:, operation_name: nil, variables: {}); end
   end
 end
 

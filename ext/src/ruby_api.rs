@@ -15,7 +15,6 @@ mod execution_result;
 mod field_definition;
 mod fields_definition;
 mod input_fields_definition;
-mod input_object;
 mod input_object_type_definition;
 mod input_type_reference;
 mod input_value_definition;
@@ -31,7 +30,7 @@ mod union_member_type;
 mod union_member_types;
 mod union_type_definition;
 mod validation_error;
-mod value;
+mod wrapped_value;
 
 pub use coerce_input::CoerceInput;
 pub use coercion_error::CoercionError;
@@ -41,7 +40,6 @@ pub use directives::Directives;
 pub use execution_error::ExecutionError;
 pub use execution_result::ExecutionResult;
 pub use field_definition::FieldDefinition;
-pub use input_object::InputObject;
 pub use input_object_type_definition::InputObjectTypeDefinition;
 pub use input_type_reference::{BaseInputTypeReference, InputTypeReference};
 pub use input_value_definition::InputValueDefinition;
@@ -51,7 +49,7 @@ pub use output_type_reference::{BaseOutputTypeReference, OutputTypeReference};
 pub use r_result::RResult;
 pub use schema_definition::{SchemaDefinition, TypeDefinitionReference};
 pub use union_type_definition::UnionTypeDefinition;
-pub use value::Value;
+pub use wrapped_value::WrappedValue;
 
 pub fn root() -> RModule {
     *memoize!(RModule: define_module("Bluejay").unwrap())

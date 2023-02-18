@@ -32,12 +32,12 @@ module Bluejay
       sig do
         params(
           query: String,
-          operation_name: T.nilable(String),
           initial_value: Object,
+          operation_name: T.nilable(String),
           variables: T::Hash[String, T.untyped],
         ).returns(ExecutionResult)
       end
-      def execute(query:, operation_name:, initial_value:, variables: {})
+      def execute(query:, initial_value:, operation_name: nil, variables: {})
         definition.execute(query, operation_name, variables, initial_value)
       end
 
