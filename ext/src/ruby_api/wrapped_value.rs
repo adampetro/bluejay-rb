@@ -56,6 +56,12 @@ pub struct WrappedValue {
     inner: ValueInner,
 }
 
+impl WrappedValue {
+    pub fn to_value(&self) -> Value {
+        self.r_value
+    }
+}
+
 impl AsRef<ValueInner> for WrappedValue {
     fn as_ref(&self) -> &ValueInner {
         &self.inner
@@ -93,18 +99,6 @@ impl TryFrom<Value> for WrappedValue {
 impl From<WrappedValue> for (Value, ValueInner) {
     fn from(value: WrappedValue) -> Self {
         (value.r_value, value.inner)
-    }
-}
-
-impl From<WrappedValue> for Value {
-    fn from(value: WrappedValue) -> Self {
-        value.r_value
-    }
-}
-
-impl From<&WrappedValue> for Value {
-    fn from(value: &WrappedValue) -> Self {
-        value.r_value
     }
 }
 

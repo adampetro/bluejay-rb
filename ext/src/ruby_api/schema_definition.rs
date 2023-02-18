@@ -15,7 +15,7 @@ use super::union_member_types::UnionMemberTypes;
 use super::union_type_definition::UnionTypeDefinition;
 use super::validation_error::ValidationError;
 use crate::execution::Engine as ExecutionEngine;
-use crate::helpers::{WrappedDefinition, WrappedStruct};
+use crate::helpers::WrappedDefinition;
 use crate::ruby_api::{
     root, BaseInputTypeReference, BaseOutputTypeReference, DirectiveDefinition, Directives,
     ExecutionResult, InputTypeReference, OutputTypeReference,
@@ -27,8 +27,8 @@ use bluejay_core::definition::{
 use bluejay_core::validation::executable::RulesValidator;
 use bluejay_core::{AsIter, BuiltinScalarDefinition, IntoEnumIterator};
 use magnus::{
-    function, method, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error, Module,
-    Object, RArray, RHash, TypedData, Value,
+    function, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj, DataTypeFunctions,
+    Error, Module, Object, RArray, RHash, TypedData, Value,
 };
 use std::collections::{hash_map::Entry, HashMap};
 
@@ -70,7 +70,7 @@ impl SchemaDefinition {
         })
     }
 
-    pub fn query(&self) -> WrappedStruct<ObjectTypeDefinition> {
+    pub fn query(&self) -> Obj<ObjectTypeDefinition> {
         *self.query.get()
     }
 
@@ -99,9 +99,8 @@ impl SchemaDefinition {
             bluejay_parser::ast::executable::ExecutableDocument::parse(query.as_str());
 
         RArray::from_iter(
-            RulesValidator::validate(&document, self).map(
-                |error| -> WrappedStruct<ValidationError> { WrappedStruct::wrap(error.into()) },
-            ),
+            RulesValidator::validate(&document, self)
+                .map(|error| -> Obj<ValidationError> { Obj::wrap(error.into()) }),
         )
     }
 }

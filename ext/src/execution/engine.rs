@@ -1,5 +1,4 @@
 use crate::execution::{CoerceResult, ExecutionError, FieldError, KeyStore};
-use crate::helpers::WrappedStruct;
 use crate::ruby_api::{
     BaseInputTypeReference, CoerceInput, ExecutionError as RubyExecutionError, ExecutionResult,
     FieldDefinition, InputTypeReference, InterfaceTypeDefinition, ObjectTypeDefinition,
@@ -14,7 +13,7 @@ use bluejay_parser::ast::executable::{
     ExecutableDocument, Field, OperationDefinition, Selection, VariableDefinition,
 };
 use bluejay_parser::ast::VariableValue;
-use magnus::{ArgList, Error, RArray, RHash, RString, Value, QNIL};
+use magnus::{typed_data::Obj, ArgList, Error, RArray, RHash, RString, Value, QNIL};
 use std::collections::{BTreeMap, HashSet};
 
 pub struct Engine<'a> {
@@ -180,9 +179,9 @@ impl<'a> Engine<'a> {
     }
 
     fn execution_result(value: Value, errors: Vec<ExecutionError>) -> ExecutionResult {
-        let errors: Vec<WrappedStruct<RubyExecutionError>> = errors
+        let errors: Vec<Obj<RubyExecutionError>> = errors
             .into_iter()
-            .map(|error| WrappedStruct::wrap(error.into()))
+            .map(|error| Obj::wrap(error.into()))
             .collect();
         ExecutionResult::new(value, errors)
     }
@@ -388,7 +387,9 @@ impl<'a> Engine<'a> {
             });
             let has_value = argument_value.is_some();
             match default_value {
-                Some(default_value) if !has_value => coerced_args.push(default_value).unwrap(),
+                Some(default_value) if !has_value => {
+                    coerced_args.push(default_value.to_value()).unwrap()
+                }
                 _ => {
                     if argument_type.is_required() && !has_value {
                         // TODO: field error

@@ -4,15 +4,15 @@ use super::{
     object_type_definition::ObjectTypeDefinition, root, scalar::Scalar,
     union_type_definition::UnionTypeDefinition,
 };
-use crate::helpers::{WrappedDefinition, WrappedStruct};
+use crate::helpers::WrappedDefinition;
 use bluejay_core::definition::{
     BaseOutputTypeReference as CoreBaseOutputTypeReference,
     OutputTypeReference as CoreOutputTypeReference,
 };
 use bluejay_core::BuiltinScalarDefinition;
 use magnus::{
-    exception, function, method, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions,
-    Error, Module, Object, RHash, TypedData, Value,
+    exception, function, gc, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,
+    DataTypeFunctions, Error, Module, Object, RHash, TypedData, Value,
 };
 
 type BaseOutputTypeReferenceInner = CoreBaseOutputTypeReference<
@@ -59,7 +59,7 @@ impl From<BaseOutputTypeReferenceInner> for BaseOutputTypeReference {
 
 impl BaseOutputTypeReference {
     pub fn new(value: Value) -> Result<Self, Error> {
-        if let Ok(wrapped_struct) = value.try_convert::<WrappedStruct<Scalar>>() {
+        if let Ok(wrapped_struct) = value.try_convert::<Obj<Scalar>>() {
             Ok(Self(CoreBaseOutputTypeReference::BuiltinScalarType(
                 wrapped_struct.get().to_owned().into(),
             )))
@@ -181,7 +181,7 @@ impl From<CoreOutputTypeReference<BaseOutputTypeReference, WrappedOutputTypeRefe
 
 #[derive(Clone, Debug)]
 #[repr(transparent)]
-pub struct WrappedOutputTypeReference(WrappedStruct<OutputTypeReference>);
+pub struct WrappedOutputTypeReference(Obj<OutputTypeReference>);
 
 impl AsRef<CoreOutputTypeReference<BaseOutputTypeReference, Self>> for WrappedOutputTypeReference {
     fn as_ref(&self) -> &CoreOutputTypeReference<BaseOutputTypeReference, Self> {
@@ -191,7 +191,7 @@ impl AsRef<CoreOutputTypeReference<BaseOutputTypeReference, Self>> for WrappedOu
 
 impl WrappedOutputTypeReference {
     fn mark(&self) {
-        self.0.mark()
+        gc::mark(self.0)
     }
 
     pub fn get(&self) -> &OutputTypeReference {
@@ -199,20 +199,20 @@ impl WrappedOutputTypeReference {
     }
 }
 
-impl From<WrappedStruct<OutputTypeReference>> for WrappedOutputTypeReference {
-    fn from(value: WrappedStruct<OutputTypeReference>) -> Self {
+impl From<Obj<OutputTypeReference>> for WrappedOutputTypeReference {
+    fn from(value: Obj<OutputTypeReference>) -> Self {
         Self(value)
     }
 }
 
 impl From<OutputTypeReference> for WrappedOutputTypeReference {
     fn from(value: OutputTypeReference) -> Self {
-        Self(WrappedStruct::wrap(value))
+        Self(Obj::wrap(value))
     }
 }
 
-impl AsRef<WrappedStruct<OutputTypeReference>> for WrappedOutputTypeReference {
-    fn as_ref(&self) -> &WrappedStruct<OutputTypeReference> {
+impl AsRef<Obj<OutputTypeReference>> for WrappedOutputTypeReference {
+    fn as_ref(&self) -> &Obj<OutputTypeReference> {
         &self.0
     }
 }
@@ -226,7 +226,7 @@ impl OutputTypeReference {
     }
 
     pub fn list(kw: RHash) -> Result<Self, Error> {
-        let args: KwArgs<(WrappedStruct<OutputTypeReference>, bool), (), ()> =
+        let args: KwArgs<(Obj<OutputTypeReference>, bool), (), ()> =
             get_kwargs(kw, &["type", "required"], &[])?;
         let (r#type, required) = args.required;
         Ok(Self(CoreOutputTypeReference::List(r#type.into(), required)))
@@ -251,7 +251,7 @@ impl OutputTypeReference {
         self.0.is_required()
     }
 
-    fn unwrap_list(&self) -> Result<WrappedStruct<OutputTypeReference>, Error> {
+    fn unwrap_list(&self) -> Result<Obj<OutputTypeReference>, Error> {
         match &self.0 {
             CoreOutputTypeReference::List(inner, _) => Ok(*inner.as_ref()),
             CoreOutputTypeReference::Base(_, _) => Err(Error::new(

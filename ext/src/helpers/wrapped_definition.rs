@@ -1,5 +1,4 @@
-use super::WrappedStruct;
-use magnus::{exception, gc, Error, Module, RClass, TryConvert, TypedData, Value};
+use magnus::{exception, gc, typed_data::Obj, Error, Module, RClass, TryConvert, TypedData, Value};
 use once_cell::unsync::OnceCell;
 
 pub trait HasDefinitionWrapper: TypedData {
@@ -9,7 +8,7 @@ pub trait HasDefinitionWrapper: TypedData {
 #[derive(Debug)]
 pub struct WrappedDefinition<T: HasDefinitionWrapper> {
     cls: RClass,
-    memoized_definition: OnceCell<WrappedStruct<T>>,
+    memoized_definition: OnceCell<Obj<T>>,
 }
 
 impl<T: HasDefinitionWrapper> Clone for WrappedDefinition<T> {
@@ -40,15 +39,15 @@ impl<T: HasDefinitionWrapper> WrappedDefinition<T> {
         }
     }
 
-    pub fn get(&self) -> &WrappedStruct<T> {
+    pub fn get(&self) -> &Obj<T> {
         self.memoized_definition
             .get_or_init(|| self.cls.funcall("definition", ()).unwrap())
     }
 
     pub fn mark(&self) {
         gc::mark(self.cls);
-        if let Some(ws) = self.memoized_definition.get() {
-            ws.mark();
+        if let Some(obj) = self.memoized_definition.get() {
+            gc::mark(*obj);
         }
     }
 
@@ -80,6 +79,6 @@ impl<T: HasDefinitionWrapper> TryConvert for WrappedDefinition<T> {
 
 impl<T: HasDefinitionWrapper> AsRef<T> for WrappedDefinition<T> {
     fn as_ref(&self) -> &T {
-        self.get().as_ref()
+        self.get().get()
     }
 }

@@ -7,8 +7,8 @@ use crate::ruby_api::{
 use bluejay_core::AsIter;
 use bluejay_parser::ast::Value as ParserValue;
 use magnus::{
-    function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions,
-    Error, Module, Object, RArray, RClass, RHash, TypedData, Value, QNIL,
+    function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,
+    DataTypeFunctions, Error, Module, Object, RArray, RClass, RHash, TypedData, Value, QNIL,
 };
 use std::collections::HashSet;
 
@@ -134,7 +134,7 @@ impl CoerceInput for InputObjectTypeDefinition {
                 } else {
                     match default_value {
                         Some(default_value) if value.is_none() => {
-                            args.push(default_value).unwrap();
+                            args.push(default_value.to_value()).unwrap();
                         }
                         _ => {
                             let mut inner_path = path.to_owned();
@@ -144,8 +144,7 @@ impl CoerceInput for InputObjectTypeDefinition {
                                 &inner_path,
                             )? {
                                 Ok(coerced_value) => {
-                                    let arg: magnus::Value = coerced_value.into();
-                                    args.push(arg).unwrap();
+                                    args.push(coerced_value.to_value()).unwrap();
                                 }
                                 Err(errs) => {
                                     errors.extend(errs);
@@ -218,7 +217,7 @@ impl CoerceInput for InputObjectTypeDefinition {
                         }
                     }
                     (None, Some(default_value)) => {
-                        args.push(default_value).unwrap();
+                        args.push(default_value.to_value()).unwrap();
                     }
                     (Some(value), _) => {
                         let mut inner_path = path.to_owned();
@@ -284,7 +283,7 @@ impl CoerceInput for InputObjectTypeDefinition {
                 } else {
                     match default_value {
                         Some(default_value) if value.is_none() => {
-                            args.push(default_value).unwrap();
+                            args.push(default_value.to_value()).unwrap();
                         }
                         _ => {
                             let mut inner_path = path.to_owned();
@@ -294,8 +293,7 @@ impl CoerceInput for InputObjectTypeDefinition {
                                 &inner_path,
                             )? {
                                 Ok(coerced_value) => {
-                                    let arg: magnus::Value = coerced_value.into();
-                                    args.push(arg).unwrap();
+                                    args.push(coerced_value.to_value()).unwrap();
                                 }
                                 Err(errs) => {
                                     errors.extend(errs);
@@ -347,8 +345,11 @@ pub fn init() -> Result<(), Error> {
         "coerce_input",
         method!(
             |itd: &InputObjectTypeDefinition, input: Value| -> Result<RResult, Error> {
-                itd.coerced_ruby_value_to_wrapped_value(input, &[])
-                    .map(Into::into)
+                itd.coerce_ruby_const_value(input, &[]).map(|result| {
+                    result
+                        .map_err(|errors| RArray::from_iter(errors.into_iter().map(Obj::wrap)))
+                        .into()
+                })
             },
             1
         ),

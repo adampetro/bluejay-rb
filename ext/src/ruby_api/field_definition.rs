@@ -1,4 +1,3 @@
-use crate::helpers::WrappedStruct;
 use crate::ruby_api::{
     arguments_definition::ArgumentsDefinition,
     output_type_reference::{BaseOutputTypeReference, OutputTypeReference},
@@ -7,8 +6,8 @@ use crate::ruby_api::{
 use bluejay_core::definition::OutputTypeReference as CoreOutputTypeReference;
 use convert_case::{Case, Casing};
 use magnus::{
-    function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs, value::BoxValue,
-    DataTypeFunctions, Error, Module, Object, RArray, RHash, TypedData, Value,
+    function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,
+    value::BoxValue, DataTypeFunctions, Error, Module, Object, RArray, RHash, TypedData, Value,
 };
 
 #[derive(Debug, TypedData)]
@@ -17,7 +16,7 @@ pub struct FieldDefinition {
     name: String,
     description: Option<String>,
     arguments_definition: ArgumentsDefinition,
-    r#type: WrappedStruct<OutputTypeReference>,
+    r#type: Obj<OutputTypeReference>,
     directives: Directives,
     is_builtin: bool,
     ruby_resolver_method_name: String,
@@ -30,7 +29,7 @@ impl FieldDefinition {
             &["name", "type"],
             &["argument_definitions", "description", "directives"],
         )?;
-        let (name, r#type): (String, WrappedStruct<OutputTypeReference>) = args.required;
+        let (name, r#type): (String, Obj<OutputTypeReference>) = args.required;
         let (argument_definitions, description, directives): (
             Option<RArray>,
             Option<Option<String>>,
@@ -52,9 +51,9 @@ impl FieldDefinition {
         })
     }
 
-    pub(crate) fn typename() -> WrappedStruct<Self> {
-        memoize!(([BoxValue<Value>; 4], WrappedStruct<FieldDefinition>): {
-            let t = WrappedStruct::wrap(CoreOutputTypeReference::Base(BaseOutputTypeReference::builtin_string(), true).into());
+    pub(crate) fn typename() -> Obj<Self> {
+        memoize!(([BoxValue<Value>; 4], Obj<FieldDefinition>): {
+            let t = Obj::wrap(CoreOutputTypeReference::Base(BaseOutputTypeReference::builtin_string(), true).into());
             let arguments_definition = ArgumentsDefinition::empty();
             let directives = Directives::empty();
             let directives_rarray: RArray = (&directives).into();
@@ -67,8 +66,8 @@ impl FieldDefinition {
                 is_builtin: true,
                 ruby_resolver_method_name: "resolve_typename".to_string(),
             };
-            let ws = WrappedStruct::wrap(fd);
-            ([BoxValue::new(ws.to_value()), BoxValue::new(*arguments_definition), BoxValue::new(t.to_value()), BoxValue::new(*directives_rarray)], ws)
+            let obj = Obj::wrap(fd);
+            ([BoxValue::new(*obj), BoxValue::new(*arguments_definition), BoxValue::new(*t), BoxValue::new(*directives_rarray)], obj)
         }).1
     }
 
@@ -84,7 +83,7 @@ impl FieldDefinition {
 impl DataTypeFunctions for FieldDefinition {
     fn mark(&self) {
         gc::mark(self.arguments_definition);
-        self.r#type.mark();
+        gc::mark(self.r#type);
         self.directives.mark();
     }
 }

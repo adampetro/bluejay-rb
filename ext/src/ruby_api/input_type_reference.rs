@@ -5,7 +5,7 @@ use super::{
     input_object_type_definition::InputObjectTypeDefinition, root, scalar::Scalar,
     wrapped_value::ValueInner, WrappedValue,
 };
-use crate::helpers::{public_name, Variables, WrappedDefinition, WrappedStruct};
+use crate::helpers::{public_name, Variables, WrappedDefinition};
 use bluejay_core::definition::{
     BaseInputTypeReference as CoreBaseInputTypeReference,
     InputTypeReference as CoreInputTypeReference,
@@ -16,8 +16,9 @@ use bluejay_core::{
 };
 use bluejay_parser::ast::{TypeReference as ParserTypeReference, Value as ParserValue};
 use magnus::{
-    exception, function, method, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions,
-    Error, Float, Integer, Module, Object, RArray, RHash, RString, TypedData, Value, QNIL,
+    exception, function, gc, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,
+    DataTypeFunctions, Error, Float, Integer, Module, Object, RArray, RHash, RString, TypedData,
+    Value, QNIL,
 };
 
 type BaseInputTypeReferenceInner = CoreBaseInputTypeReference<
@@ -56,7 +57,7 @@ impl From<BaseInputTypeReferenceInner> for BaseInputTypeReference {
 
 impl BaseInputTypeReference {
     pub fn new(value: Value) -> Result<Self, Error> {
-        if let Ok(wrapped_struct) = value.try_convert::<WrappedStruct<Scalar>>() {
+        if let Ok(wrapped_struct) = value.try_convert::<Obj<Scalar>>() {
             Ok(Self(CoreBaseInputTypeReference::BuiltinScalarType(
                 wrapped_struct.get().to_owned().into(),
             )))
@@ -375,7 +376,7 @@ impl DataTypeFunctions for InputTypeReference {
 
 #[derive(Clone, Debug)]
 #[repr(transparent)]
-pub struct WrappedInputTypeReference(WrappedStruct<InputTypeReference>);
+pub struct WrappedInputTypeReference(Obj<InputTypeReference>);
 
 impl AsRef<CoreInputTypeReference<BaseInputTypeReference, Self>> for WrappedInputTypeReference {
     fn as_ref(&self) -> &CoreInputTypeReference<BaseInputTypeReference, Self> {
@@ -385,7 +386,7 @@ impl AsRef<CoreInputTypeReference<BaseInputTypeReference, Self>> for WrappedInpu
 
 impl WrappedInputTypeReference {
     fn mark(&self) {
-        self.0.mark()
+        gc::mark(self.0);
     }
 
     fn get(&self) -> &InputTypeReference {
@@ -393,20 +394,20 @@ impl WrappedInputTypeReference {
     }
 }
 
-impl From<WrappedStruct<InputTypeReference>> for WrappedInputTypeReference {
-    fn from(value: WrappedStruct<InputTypeReference>) -> Self {
+impl From<Obj<InputTypeReference>> for WrappedInputTypeReference {
+    fn from(value: Obj<InputTypeReference>) -> Self {
         Self(value)
     }
 }
 
 impl From<InputTypeReference> for WrappedInputTypeReference {
     fn from(value: InputTypeReference) -> Self {
-        Self(WrappedStruct::wrap(value))
+        Self(Obj::wrap(value))
     }
 }
 
-impl AsRef<WrappedStruct<InputTypeReference>> for WrappedInputTypeReference {
-    fn as_ref(&self) -> &WrappedStruct<InputTypeReference> {
+impl AsRef<Obj<InputTypeReference>> for WrappedInputTypeReference {
+    fn as_ref(&self) -> &Obj<InputTypeReference> {
         &self.0
     }
 }
@@ -420,7 +421,7 @@ impl InputTypeReference {
     }
 
     pub fn list(kw: RHash) -> Result<Self, Error> {
-        let args: KwArgs<(WrappedStruct<InputTypeReference>, bool), (), ()> =
+        let args: KwArgs<(Obj<InputTypeReference>, bool), (), ()> =
             get_kwargs(kw, &["type", "required"], &[])?;
         let (r#type, required) = args.required;
         Ok(Self(CoreInputTypeReference::List(r#type.into(), required)))
@@ -483,7 +484,7 @@ impl InputTypeReference {
         self.0.is_required()
     }
 
-    fn unwrap_list(&self) -> Result<WrappedStruct<InputTypeReference>, Error> {
+    fn unwrap_list(&self) -> Result<Obj<InputTypeReference>, Error> {
         match &self.0 {
             CoreInputTypeReference::List(inner, _) => Ok(*inner.as_ref()),
             CoreInputTypeReference::Base(_, _) => Err(Error::new(

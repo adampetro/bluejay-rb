@@ -1,6 +1,8 @@
-use crate::helpers::{WrappedDefinition, WrappedStruct};
+use crate::helpers::WrappedDefinition;
 use crate::ruby_api::{interface_type_definition::InterfaceTypeDefinition, root};
-use magnus::{function, method, DataTypeFunctions, Error, Module, Object, RClass, TypedData};
+use magnus::{
+    function, method, typed_data::Obj, DataTypeFunctions, Error, Module, Object, RClass, TypedData,
+};
 
 #[derive(Clone, Debug, TypedData)]
 #[magnus(class = "Bluejay::InterfaceImplementation", mark)]
@@ -13,7 +15,7 @@ impl InterfaceImplementation {
         WrappedDefinition::new(interface).map(|interface| Self { interface })
     }
 
-    pub fn interface(&self) -> WrappedStruct<InterfaceTypeDefinition> {
+    pub fn interface(&self) -> Obj<InterfaceTypeDefinition> {
         *self.interface.get()
     }
 }

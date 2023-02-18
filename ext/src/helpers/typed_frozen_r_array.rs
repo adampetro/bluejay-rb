@@ -1,6 +1,5 @@
-use crate::helpers::WrappedStruct;
 use bluejay_core::AsIter;
-use magnus::{Error, RArray, TryConvert, TypedData, Value};
+use magnus::{typed_data::Obj, Error, RArray, TryConvert, TypedData, Value};
 use std::{marker::PhantomData, ops::Deref};
 
 #[derive(Debug)]
@@ -65,7 +64,7 @@ impl<T: TryConvert> From<TypedFrozenRArray<T>> for RArray {
     }
 }
 
-impl<T: TypedData> AsIter for TypedFrozenRArray<WrappedStruct<T>> {
+impl<T: TypedData> AsIter for TypedFrozenRArray<Obj<T>> {
     type Item = T;
     type Iterator<'a> = std::iter::Map<std::slice::Iter<'a, Value>, fn(&'a Value) -> &'a T> where T: 'a;
 

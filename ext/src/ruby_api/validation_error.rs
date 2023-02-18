@@ -1,9 +1,8 @@
 use super::root;
-use crate::helpers::WrappedStruct;
 use crate::ruby_api::SchemaDefinition;
 use bluejay_core::validation::executable::Error as CoreError;
 use bluejay_parser::ast::executable::ExecutableDocument;
-use magnus::{function, method, rb_sys::AsRawValue, Error, Module, Object, Value};
+use magnus::{function, method, rb_sys::AsRawValue, typed_data::Obj, Error, Module, Object, Value};
 
 #[derive(Clone, Debug, PartialEq)]
 #[magnus::wrap(class = "Bluejay::ValidationError", mark)]
@@ -28,12 +27,12 @@ impl ValidationError {
         }
     }
 
-    fn inspect(rb_self: WrappedStruct<Self>) -> Result<String, Error> {
+    fn inspect(rb_self: Obj<Self>) -> Result<String, Error> {
         let rs_self = rb_self.get();
 
         Ok(format!(
             "#<Bluejay::ValidationError:0x{:016x} @message={:?}>",
-            rb_self.to_value().as_raw(),
+            rb_self.as_raw(),
             rs_self.message,
         ))
     }

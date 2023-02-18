@@ -1,13 +1,13 @@
 use crate::execution::{CoerceResult, FieldError};
-use crate::helpers::{value_from_core_value, HasDefinitionWrapper, Variables, WrappedStruct};
+use crate::helpers::{value_from_core_value, HasDefinitionWrapper, Variables};
 use crate::ruby_api::{
     coerce_input::CoerceInput, coercion_error::CoercionError, root,
     wrapped_value::value_inner_from_ruby_const_value, Directives, RResult, WrappedValue,
 };
 use bluejay_parser::ast::Value as ParserValue;
 use magnus::{
-    function, memoize, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error, Module,
-    Object, RArray, RClass, RHash, TypedData, Value,
+    function, memoize, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,
+    DataTypeFunctions, Error, Module, Object, RArray, RClass, RHash, TypedData, Value,
 };
 
 #[derive(Debug, TypedData)]
@@ -81,8 +81,7 @@ impl CoerceInput for CustomScalarTypeDefinition {
     ) -> Result<Result<WrappedValue, Vec<CoercionError>>, Error> {
         let inner = value_inner_from_ruby_const_value(value)?;
 
-        let coerced_r_result: WrappedStruct<RResult> =
-            self.ruby_class.funcall("coerce_input", (value,))?;
+        let coerced_r_result: Obj<RResult> = self.ruby_class.funcall("coerce_input", (value,))?;
 
         let coerced_result: Result<Value, String> = coerced_r_result.get().try_into()?;
 
@@ -99,8 +98,7 @@ impl CoerceInput for CustomScalarTypeDefinition {
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         let r_value = value_from_core_value(value, variables);
 
-        let coerced_r_result: WrappedStruct<RResult> =
-            self.ruby_class.funcall("coerce_input", (r_value,))?;
+        let coerced_r_result: Obj<RResult> = self.ruby_class.funcall("coerce_input", (r_value,))?;
 
         let coerced_result: Result<Value, String> = coerced_r_result.get().try_into()?;
 
@@ -112,8 +110,7 @@ impl CoerceInput for CustomScalarTypeDefinition {
         value: Value,
         path: &[String],
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
-        let coerced_r_result: WrappedStruct<RResult> =
-            self.ruby_class.funcall("coerce_input", (value,))?;
+        let coerced_r_result: Obj<RResult> = self.ruby_class.funcall("coerce_input", (value,))?;
 
         let coerced_result: Result<Value, String> = coerced_r_result.get().try_into()?;
 
@@ -123,7 +120,7 @@ impl CoerceInput for CustomScalarTypeDefinition {
 
 impl CoerceResult for CustomScalarTypeDefinition {
     fn coerce_result(&self, value: Value) -> Result<Value, FieldError> {
-        let coerced_r_result: WrappedStruct<RResult> = self
+        let coerced_r_result: Obj<RResult> = self
             .ruby_class
             .funcall("coerce_result", (value,))
             .map_err(FieldError::ApplicationError)?;

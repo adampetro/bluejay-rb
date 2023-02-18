@@ -1,12 +1,11 @@
-use crate::helpers::WrappedStruct;
 use crate::ruby_api::{
     input_type_reference::InputTypeReference, root, wrapped_value::ValueInner, Directives,
     WrappedValue,
 };
 use convert_case::{Case, Casing};
 use magnus::{
-    function, method, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error, Module,
-    Object, RArray, RHash, TypedData,
+    function, gc, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,
+    DataTypeFunctions, Error, Module, Object, RArray, RHash, TypedData,
 };
 
 #[derive(Debug, TypedData)]
@@ -14,7 +13,7 @@ use magnus::{
 pub struct InputValueDefinition {
     name: String,
     description: Option<String>,
-    r#type: WrappedStruct<InputTypeReference>,
+    r#type: Obj<InputTypeReference>,
     directives: Directives,
     default_value: Option<WrappedValue>,
     ruby_name: String,
@@ -24,7 +23,7 @@ impl InputValueDefinition {
     pub fn new(kw: RHash) -> Result<Self, Error> {
         let args: KwArgs<_, _, ()> =
             get_kwargs(kw, &["name", "type"], &["description", "directives"])?;
-        let (name, r#type): (String, WrappedStruct<InputTypeReference>) = args.required;
+        let (name, r#type): (String, Obj<InputTypeReference>) = args.required;
         let (description, directives): (Option<Option<String>>, Option<RArray>) = args.optional;
         let description = description.unwrap_or_default();
         let directives = directives.try_into()?;
@@ -74,7 +73,7 @@ impl InputValueDefinition {
 
 impl DataTypeFunctions for InputValueDefinition {
     fn mark(&self) {
-        self.r#type.mark();
+        gc::mark(self.r#type);
         self.directives.mark();
     }
 }

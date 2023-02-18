@@ -66,7 +66,7 @@ impl EnumTypeDefinition {
             .iter()
             .any(|evd| evd.name() == name)
         {
-            let r_value = RString::from(name);
+            let r_value = RString::from_slice(name.as_bytes());
             Ok(*r_value)
         } else {
             Err(vec![CoercionError::new(

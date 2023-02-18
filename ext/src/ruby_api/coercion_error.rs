@@ -1,6 +1,7 @@
 use super::{root, ExecutionError};
-use crate::helpers::WrappedStruct;
-use magnus::{function, method, rb_sys::AsRawValue, Error, Module, Object, RArray, Value};
+use magnus::{
+    function, method, rb_sys::AsRawValue, typed_data::Obj, Error, Module, Object, RArray, Value,
+};
 
 #[derive(Clone, Debug, PartialEq)]
 #[magnus::wrap(class = "Bluejay::CoercionError", mark)]
@@ -30,12 +31,12 @@ impl CoercionError {
         }
     }
 
-    fn inspect(rb_self: WrappedStruct<Self>) -> Result<String, Error> {
+    fn inspect(rb_self: Obj<Self>) -> Result<String, Error> {
         let rs_self = rb_self.get();
 
         Ok(format!(
             "#<Bluejay::CoercionError:0x{:016x} @message={:?} @path={:?}>",
-            rb_self.to_value().as_raw(),
+            rb_self.as_raw(),
             rs_self.message,
             rs_self.path,
         ))

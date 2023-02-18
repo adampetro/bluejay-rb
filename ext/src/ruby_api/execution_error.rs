@@ -1,6 +1,5 @@
 use super::root;
-use crate::helpers::WrappedStruct;
-use magnus::{function, method, rb_sys::AsRawValue, Error, Module, Object, Value};
+use magnus::{function, method, rb_sys::AsRawValue, typed_data::Obj, Error, Module, Object, Value};
 
 #[derive(Clone, Debug, PartialEq)]
 #[magnus::wrap(class = "Bluejay::ExecutionError", mark)]
@@ -25,12 +24,12 @@ impl ExecutionError {
         }
     }
 
-    fn inspect(rb_self: WrappedStruct<Self>) -> Result<String, Error> {
+    fn inspect(rb_self: Obj<Self>) -> Result<String, Error> {
         let rs_self = rb_self.get();
 
         Ok(format!(
             "#<Bluejay::ExecutionError:0x{:016x} @message={:?}>",
-            rb_self.to_value().as_raw(),
+            rb_self.as_raw(),
             rs_self.message,
         ))
     }

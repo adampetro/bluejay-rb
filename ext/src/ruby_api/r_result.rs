@@ -1,8 +1,7 @@
 use super::root;
-use crate::helpers::WrappedStruct;
 use magnus::{
-    exception, function, gc, method, rb_sys::AsRawValue, DataTypeFunctions, Error, Module, Object,
-    TryConvert, TypedData, Value,
+    exception, function, gc, method, rb_sys::AsRawValue, typed_data::Obj, DataTypeFunctions, Error,
+    Module, Object, TryConvert, TypedData, Value,
 };
 
 #[derive(Clone, Debug, TypedData)]
@@ -47,12 +46,12 @@ impl RResult {
         }
     }
 
-    fn inspect(rb_self: WrappedStruct<Self>) -> Result<String, Error> {
+    fn inspect(rb_self: Obj<Self>) -> Result<String, Error> {
         let rs_self = rb_self.get();
 
         Ok(format!(
             "#<Bluejay::Result:0x{:016x} @{}={:?}>",
-            rb_self.to_value().as_raw(),
+            rb_self.as_raw(),
             match rs_self.0 {
                 Ok(_) => "ok_value",
                 Err(_) => "error_value",
