@@ -2,9 +2,14 @@ use super::root;
 use crate::ruby_api::SchemaDefinition;
 use bluejay_core::validation::executable::Error as CoreError;
 use bluejay_parser::ast::executable::ExecutableDocument;
-use magnus::{function, method, rb_sys::AsRawValue, typed_data::Obj, Error, Module, Object, Value};
+use magnus::{
+    function, method,
+    rb_sys::AsRawValue,
+    typed_data::{self, Obj},
+    Error, Module, Object,
+};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[magnus::wrap(class = "Bluejay::ValidationError", mark)]
 pub struct ValidationError {
     message: String,
@@ -17,14 +22,6 @@ impl ValidationError {
 
     pub fn message(&self) -> &str {
         self.message.as_str()
-    }
-
-    pub fn eql(&self, other: Value) -> bool {
-        if let Ok(other) = other.try_convert::<&Self>() {
-            self == other
-        } else {
-            false
-        }
     }
 
     fn inspect(rb_self: Obj<Self>) -> Result<String, Error> {
@@ -71,7 +68,10 @@ pub fn init() -> Result<(), Error> {
 
     class.define_singleton_method("new", function!(ValidationError::new, 1))?;
     class.define_method("message", method!(ValidationError::message, 0))?;
-    class.define_method("==", method!(ValidationError::eql, 1))?;
+    class.define_method(
+        "==",
+        method!(<ValidationError as typed_data::IsEql>::is_eql, 1),
+    )?;
     class.define_method("inspect", method!(ValidationError::inspect, 0))?;
 
     Ok(())

@@ -1,9 +1,12 @@
 use super::{root, ExecutionError};
 use magnus::{
-    function, method, rb_sys::AsRawValue, typed_data::Obj, Error, Module, Object, RArray, Value,
+    function, method,
+    rb_sys::AsRawValue,
+    typed_data::{self, Obj},
+    Error, Module, Object, RArray,
 };
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[magnus::wrap(class = "Bluejay::CoercionError", mark)]
 pub struct CoercionError {
     message: String,
@@ -21,14 +24,6 @@ impl CoercionError {
 
     pub fn path(&self) -> RArray {
         RArray::from_iter(self.path.iter().map(|s| s.as_str()))
-    }
-
-    pub fn eql(&self, other: Value) -> bool {
-        if let Ok(other) = other.try_convert::<&Self>() {
-            self == other
-        } else {
-            false
-        }
     }
 
     fn inspect(rb_self: Obj<Self>) -> Result<String, Error> {
@@ -55,7 +50,10 @@ pub fn init() -> Result<(), Error> {
     class.define_singleton_method("new", function!(CoercionError::new, 2))?;
     class.define_method("message", method!(CoercionError::message, 0))?;
     class.define_method("path", method!(CoercionError::path, 0))?;
-    class.define_method("==", method!(CoercionError::eql, 1))?;
+    class.define_method(
+        "==",
+        method!(<CoercionError as typed_data::IsEql>::is_eql, 1),
+    )?;
     class.define_method("inspect", method!(CoercionError::inspect, 0))?;
 
     Ok(())

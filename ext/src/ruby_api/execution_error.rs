@@ -1,7 +1,12 @@
 use super::root;
-use magnus::{function, method, rb_sys::AsRawValue, typed_data::Obj, Error, Module, Object, Value};
+use magnus::{
+    function, method,
+    rb_sys::AsRawValue,
+    typed_data::{self, Obj},
+    Error, Module, Object,
+};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[magnus::wrap(class = "Bluejay::ExecutionError", mark)]
 pub struct ExecutionError {
     message: String,
@@ -14,14 +19,6 @@ impl ExecutionError {
 
     pub fn message(&self) -> &str {
         self.message.as_str()
-    }
-
-    pub fn eql(&self, other: Value) -> bool {
-        if let Ok(other) = other.try_convert::<&Self>() {
-            self == other
-        } else {
-            false
-        }
     }
 
     fn inspect(rb_self: Obj<Self>) -> Result<String, Error> {
@@ -40,7 +37,10 @@ pub fn init() -> Result<(), Error> {
 
     class.define_singleton_method("new", function!(ExecutionError::new, 1))?;
     class.define_method("message", method!(ExecutionError::message, 0))?;
-    class.define_method("==", method!(ExecutionError::eql, 1))?;
+    class.define_method(
+        "==",
+        method!(<ExecutionError as typed_data::IsEql>::is_eql, 1),
+    )?;
     class.define_method("inspect", method!(ExecutionError::inspect, 0))?;
 
     Ok(())
