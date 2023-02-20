@@ -1,9 +1,8 @@
 use crate::execution::{CoerceResult, ExecutionError, FieldError, KeyStore};
 use crate::ruby_api::{
-    BaseInputTypeReference, CoerceInput, ExecutionError as RubyExecutionError, ExecutionResult,
-    FieldDefinition, InputTypeReference, InputValueDefinition, InterfaceTypeDefinition,
-    ObjectTypeDefinition, OutputTypeReference, SchemaDefinition, TypeDefinitionReference,
-    UnionTypeDefinition,
+    BaseInputTypeReference, CoerceInput, ExecutionResult, FieldDefinition, InputTypeReference,
+    InputValueDefinition, InterfaceTypeDefinition, ObjectTypeDefinition, OutputTypeReference,
+    SchemaDefinition, TypeDefinitionReference, UnionTypeDefinition,
 };
 use bluejay_core::definition::{
     BaseOutputTypeReference as CoreBaseOutputTypeReference,
@@ -14,7 +13,7 @@ use bluejay_parser::ast::executable::{
     ExecutableDocument, Field, OperationDefinition, Selection, VariableDefinition,
 };
 use bluejay_parser::ast::{Directive, VariableArguments, VariableValue};
-use magnus::{typed_data::Obj, ArgList, Error, RArray, RHash, RString, Value, QNIL};
+use magnus::{ArgList, Error, RArray, RHash, RString, Value, QNIL};
 use std::collections::{BTreeMap, HashSet};
 
 pub struct Engine<'a> {
@@ -180,10 +179,6 @@ impl<'a> Engine<'a> {
     }
 
     fn execution_result(value: Value, errors: Vec<ExecutionError>) -> ExecutionResult {
-        let errors: Vec<Obj<RubyExecutionError>> = errors
-            .into_iter()
-            .map(|error| Obj::wrap(error.into()))
-            .collect();
         ExecutionResult::new(value, errors)
     }
 

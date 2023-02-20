@@ -74,3 +74,14 @@ impl<T: TypedData> AsIter for TypedFrozenRArray<Obj<T>> {
             .map(|val| val.try_convert().unwrap())
     }
 }
+
+impl<T: TypedData> FromIterator<T> for TypedFrozenRArray<Obj<T>> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        let data = RArray::from_iter(iter.into_iter().map(Obj::wrap));
+        data.freeze();
+        Self {
+            data,
+            t: Default::default(),
+        }
+    }
+}

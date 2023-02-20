@@ -6,3 +6,25 @@ require "pry"
 require "pry-nav"
 require "date"
 require "minitest/autorun"
+
+module GCStressPlugin
+  def setup
+    super
+    if ENV["GC_STRESS"]
+      GC.stress = true
+    end
+  end
+
+  def teardown
+    if ENV["GC_STRESS"]
+      GC.stress = false
+    end
+    super
+  end
+end
+
+module Minitest
+  class Test
+    include(GCStressPlugin)
+  end
+end

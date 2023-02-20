@@ -7,7 +7,7 @@ use magnus::{
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[magnus::wrap(class = "Bluejay::ExecutionError", mark)]
+#[magnus::wrap(class = "Bluejay::ExecutionError")]
 pub struct ExecutionError {
     message: String,
 }

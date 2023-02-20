@@ -1,5 +1,6 @@
 use super::root;
 use super::ExecutionError;
+use crate::helpers::TypedFrozenRArray;
 use magnus::{
     gc, method, typed_data::Obj, DataTypeFunctions, Error, Module, RArray, TypedData, Value,
 };
@@ -8,11 +9,12 @@ use magnus::{
 #[magnus(class = "Bluejay::ExecutionResult", mark)]
 pub struct ExecutionResult {
     value: Value,
-    errors: Vec<Obj<ExecutionError>>,
+    errors: TypedFrozenRArray<Obj<ExecutionError>>,
 }
 
 impl ExecutionResult {
-    pub fn new(value: Value, errors: Vec<Obj<ExecutionError>>) -> Self {
+    pub fn new(value: Value, errors: impl IntoIterator<Item = impl Into<ExecutionError>>) -> Self {
+        let errors = TypedFrozenRArray::from_iter(errors.into_iter().map(Into::into));
         Self { value, errors }
     }
 
@@ -21,14 +23,14 @@ impl ExecutionResult {
     }
 
     fn errors(&self) -> RArray {
-        RArray::from_iter(self.errors.iter().copied())
+        self.errors.into()
     }
 }
 
 impl DataTypeFunctions for ExecutionResult {
     fn mark(&self) {
         gc::mark(&self.value);
-        self.errors.iter().for_each(|obj| gc::mark(*obj));
+        gc::mark(self.errors);
     }
 }
 

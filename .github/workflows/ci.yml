@@ -36,6 +36,11 @@ jobs:
       - name: Run ruby tests
         run: bundle exec rake test
 
+      - name: Run ruby tests with GC stress
+        run: bundle exec rake test
+        env:
+          GC_STRESS: "true"
+
       - name: Run benchmarks
         run: bundle exec rake bench:all
 
