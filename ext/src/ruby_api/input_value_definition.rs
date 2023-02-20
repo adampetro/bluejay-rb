@@ -21,13 +21,20 @@ pub struct InputValueDefinition {
 
 impl InputValueDefinition {
     pub fn new(kw: RHash) -> Result<Self, Error> {
-        let args: KwArgs<_, _, ()> =
-            get_kwargs(kw, &["name", "type"], &["description", "directives"])?;
+        let args: KwArgs<_, _, ()> = get_kwargs(
+            kw,
+            &["name", "type"],
+            &["description", "directives", "ruby_name"],
+        )?;
         let (name, r#type): (String, Obj<InputTypeReference>) = args.required;
-        let (description, directives): (Option<Option<String>>, Option<RArray>) = args.optional;
+        let (description, directives, ruby_name): (
+            Option<Option<String>>,
+            Option<RArray>,
+            Option<String>,
+        ) = args.optional;
         let description = description.unwrap_or_default();
         let directives = directives.try_into()?;
-        let ruby_name = name.to_case(Case::Snake);
+        let ruby_name = ruby_name.unwrap_or_else(|| name.to_case(Case::Snake));
         Ok(Self {
             name,
             description,

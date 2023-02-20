@@ -1,18 +1,19 @@
 use crate::execution::{CoerceResult, ExecutionError, FieldError, KeyStore};
 use crate::ruby_api::{
     BaseInputTypeReference, CoerceInput, ExecutionError as RubyExecutionError, ExecutionResult,
-    FieldDefinition, InputTypeReference, InterfaceTypeDefinition, ObjectTypeDefinition,
-    OutputTypeReference, SchemaDefinition, TypeDefinitionReference, UnionTypeDefinition,
+    FieldDefinition, InputTypeReference, InputValueDefinition, InterfaceTypeDefinition,
+    ObjectTypeDefinition, OutputTypeReference, SchemaDefinition, TypeDefinitionReference,
+    UnionTypeDefinition,
 };
 use bluejay_core::definition::{
     BaseOutputTypeReference as CoreBaseOutputTypeReference,
     OutputTypeReference as CoreOutputTypeReference,
 };
-use bluejay_core::{Argument as CoreArgument, AsIter, OperationType};
+use bluejay_core::{Argument as CoreArgument, AsIter, Directive as CoreDirective, OperationType};
 use bluejay_parser::ast::executable::{
     ExecutableDocument, Field, OperationDefinition, Selection, VariableDefinition,
 };
-use bluejay_parser::ast::VariableValue;
+use bluejay_parser::ast::{Directive, VariableArguments, VariableValue};
 use magnus::{typed_data::Obj, ArgList, Error, RArray, RHash, RString, Value, QNIL};
 use std::collections::{BTreeMap, HashSet};
 
@@ -244,8 +245,34 @@ impl<'a> Engine<'a> {
         let mut grouped_fields: BTreeMap<&'a str, Vec<&'a Field>> = BTreeMap::new();
 
         for selection in selection_set {
-            // TODO: skip directive check
-            // TODO: include directive check
+            let should_skip = selection.directives().as_ref().iter().any(|directive| {
+                if directive.name() == "skip" {
+                    self.coerce_directive(directive)
+                        .map(|coerced_directive| -> bool {
+                            coerced_directive.funcall("if_arg", ()).unwrap()
+                        })
+                        .unwrap_or(false)
+                } else {
+                    false
+                }
+            });
+
+            let should_include = selection.directives().as_ref().iter().all(|directive| {
+                if directive.name() == "include" {
+                    self.coerce_directive(directive)
+                        .map(|coerced_directive| -> bool {
+                            coerced_directive.funcall("if_arg", ()).unwrap()
+                        })
+                        .unwrap_or(true)
+                } else {
+                    true
+                }
+            });
+
+            if should_skip || !should_include {
+                continue;
+            }
+
             match selection {
                 Selection::Field(field) => {
                     let response_key = field.response_key();
@@ -376,49 +403,9 @@ impl<'a> Engine<'a> {
         let mut errors: Vec<ExecutionError<'a>> = Vec::new();
         let argument_definitions = field_definition.argument_definitions();
         for argument_definition in argument_definitions.iter() {
-            let argument_name = argument_definition.name();
-            let argument_type = argument_definition.r#type();
-            let default_value = argument_definition.default_value();
-            let argument_value: Option<&VariableValue> = field.arguments().and_then(|arguments| {
-                arguments
-                    .iter()
-                    .find(|argument| argument.name() == argument_name)
-                    .map(|argument| argument.value())
-            });
-            let has_value = argument_value.is_some();
-            match default_value {
-                Some(default_value) if !has_value => {
-                    coerced_args.push(default_value.to_value()).unwrap()
-                }
-                _ => {
-                    if argument_type.is_required() && !has_value {
-                        // TODO: field error
-                        // shouldn't this never happen if query is validated and variables coerced to match definition in query?
-                    } else if let Some(argument_value) = argument_value {
-                        // TODO: see if it is possible to distinguish between null and no value being passed
-                        match argument_type.coerce_parser_value(
-                            argument_value,
-                            &[argument_name.to_owned()],
-                            self.variables,
-                        ) {
-                            Ok(Ok(coerced_value)) => {
-                                coerced_args.push(coerced_value).unwrap();
-                            }
-                            Ok(Err(coercion_errors)) => {
-                                errors.extend(
-                                    coercion_errors
-                                        .into_iter()
-                                        .map(ExecutionError::CoercionError),
-                                );
-                            }
-                            Err(error) => {
-                                errors.push(ExecutionError::ApplicationError(error));
-                            }
-                        }
-                    } else {
-                        coerced_args.push(*QNIL).unwrap();
-                    }
-                }
+            match self.coerce_argument_value(argument_definition, field.arguments()) {
+                Ok(value) => coerced_args.push(value).unwrap(),
+                Err(errs) => errors.extend(errs.into_iter()),
             }
         }
 
@@ -426,6 +413,49 @@ impl<'a> Engine<'a> {
             Ok(coerced_args)
         } else {
             Err(errors)
+        }
+    }
+
+    fn coerce_argument_value(
+        &'a self,
+        argument_definition: &InputValueDefinition,
+        arguments: Option<&VariableArguments>,
+    ) -> Result<Value, Vec<ExecutionError<'a>>> {
+        let argument_name = argument_definition.name();
+        let argument_type = argument_definition.r#type();
+        let default_value = argument_definition.default_value();
+        let argument_value: Option<&VariableValue> = arguments.and_then(|arguments| {
+            arguments
+                .iter()
+                .find(|argument| argument.name() == argument_name)
+                .map(|argument| argument.value())
+        });
+        let has_value = argument_value.is_some();
+        match default_value {
+            Some(default_value) if !has_value => Ok(default_value.to_value()),
+            _ => {
+                if argument_type.is_required() && !has_value {
+                    // TODO: field error
+                    // shouldn't this never happen if query is validated and variables coerced to match definition in query?
+                    todo!()
+                } else if let Some(argument_value) = argument_value {
+                    // TODO: see if it is possible to distinguish between null and no value being passed
+                    match argument_type.coerce_parser_value(
+                        argument_value,
+                        &[argument_name.to_owned()],
+                        self.variables,
+                    ) {
+                        Ok(Ok(coerced_value)) => Ok(coerced_value),
+                        Ok(Err(coercion_errors)) => Err(coercion_errors
+                            .into_iter()
+                            .map(ExecutionError::CoercionError)
+                            .collect()),
+                        Err(error) => Err(vec![ExecutionError::ApplicationError(error)]),
+                    }
+                } else {
+                    Ok(*QNIL)
+                }
+            }
         }
     }
 
@@ -582,5 +612,38 @@ impl<'a> Engine<'a> {
         } else {
             panic!()
         }
+    }
+
+    fn coerce_directive(
+        &'a self,
+        directive: &'a Directive<'a, false>,
+    ) -> Result<Value, Vec<ExecutionError<'a>>> {
+        let directive_definition_obj = self.schema.directive(directive.name()).unwrap();
+        let directive_definition = directive_definition_obj.get();
+
+        let directive = if directive_definition.arguments_definition().is_empty() {
+            directive_definition.ruby_class().new_instance(()).unwrap()
+        } else {
+            let coerced_args =
+                RArray::with_capacity(directive_definition.arguments_definition().len());
+            let mut errors = Vec::new();
+            for argument_definition in directive_definition.arguments_definition().iter() {
+                match self.coerce_argument_value(argument_definition, directive.arguments()) {
+                    Ok(value) => coerced_args.push(value).unwrap(),
+                    Err(errs) => errors.extend(errs.into_iter()),
+                }
+            }
+
+            if errors.is_empty() {
+                directive_definition
+                    .ruby_class()
+                    .new_instance(unsafe { coerced_args.as_slice() })
+                    .unwrap()
+            } else {
+                return Err(errors);
+            }
+        };
+
+        Ok(directive)
     }
 }

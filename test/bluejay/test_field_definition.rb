@@ -17,6 +17,11 @@ module Bluejay
             InputValueDefinition.new(name: "myArg", type: it!(Scalar::String), description: "This is my arg"),
           ]
         end
+
+        sig { override.returns(T::Array[DirectiveLocation]) }
+        def locations
+          [DirectiveLocation::FIELD_DEFINITION]
+        end
       end
     end
 

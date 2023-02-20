@@ -17,6 +17,8 @@ require_relative "bluejay/input_type"
 require_relative "bluejay/object_type"
 require_relative "bluejay/schema"
 require_relative "bluejay/union_type"
+require_relative "bluejay/builtin/directives/include"
+require_relative "bluejay/builtin/directives/skip"
 
 begin
   RUBY_VERSION =~ /(\d+\.\d+)/

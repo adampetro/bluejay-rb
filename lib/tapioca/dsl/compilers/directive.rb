@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../rbi_ext/model"
+require "bluejay"
 
 module Tapioca
   module Compilers

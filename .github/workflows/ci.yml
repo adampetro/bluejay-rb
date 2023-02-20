@@ -48,6 +48,9 @@ jobs:
       - name: Tapioca verify gem RBIs
         run: bin/tapioca gem --verify
 
+      - name: Tapioca verify DSL RBIs
+        run: bin/tapioca dsl --verify
+
       - name: Lint rust
         run: cargo clippy -- -D warnings && cargo fmt --check
 

@@ -24,6 +24,9 @@ module Bluejay
       sig { abstract.returns(T::Array[InputValueDefinition]) }
       def argument_definitions; end
 
+      sig { abstract.returns(T::Array[DirectiveLocation]) }
+      def locations; end
+
       sig { overridable.returns(T::Boolean) }
       def repeatable?
         false
@@ -41,6 +44,7 @@ module Bluejay
             name: graphql_name,
             argument_definitions:,
             description:,
+            locations:,
             is_repeatable: repeatable?,
             ruby_class: self,
           )

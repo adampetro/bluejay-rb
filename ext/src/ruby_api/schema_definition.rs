@@ -78,6 +78,10 @@ impl SchemaDefinition {
         self.contained_types.get(name)
     }
 
+    pub fn directive(&self, name: &str) -> Option<Obj<DirectiveDefinition>> {
+        self.contained_directives.get(name).map(|wd| *wd.get())
+    }
+
     fn execute(
         &self,
         query: String,
@@ -296,6 +300,7 @@ impl SchemaTypeVisitor {
         }
         type_visitor.visit_directives(schema_directives);
         type_visitor.visit_builtin_scalar_definitions();
+        type_visitor.visit_builtin_directive_definitions();
         type_visitor.into()
     }
 
@@ -407,6 +412,16 @@ impl SchemaTypeVisitor {
         BuiltinScalarDefinition::iter().for_each(|bisd| {
             self.visit_type(TypeDefinitionReference::BuiltinScalarType(bisd));
         })
+    }
+
+    fn visit_builtin_directive_definitions(&mut self) {
+        DirectiveDefinition::builtin_directive_definitions()
+            .iter()
+            .for_each(|definition| {
+                self.directives
+                    .entry(definition.as_ref().name().to_string())
+                    .or_insert_with(|| definition.clone());
+            })
     }
 }
 

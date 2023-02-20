@@ -1,9 +1,11 @@
-use super::{arguments_definition::ArgumentsDefinition, root};
-use crate::helpers::HasDefinitionWrapper;
-use bluejay_core::definition::{DirectiveDefinition as CoreDirectiveDefinition, DirectiveLocation};
+use crate::helpers::{HasDefinitionWrapper, WrappedDefinition};
+use crate::ruby_api::{root, ArgumentsDefinition, DirectiveLocation};
+use bluejay_core::definition::{
+    DirectiveDefinition as CoreDirectiveDefinition, DirectiveLocation as CoreDirectiveLocation,
+};
 use magnus::{
     function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions,
-    Error, Module, Object, RArray, RClass, RHash, TypedData,
+    Error, Module, Object, RArray, RClass, RHash, RModule, TypedData,
 };
 
 #[derive(Debug, TypedData)]
@@ -13,8 +15,9 @@ pub struct DirectiveDefinition {
     description: Option<String>,
     arguments_definition: ArgumentsDefinition,
     is_repeatable: bool,
-    locations: Vec<DirectiveLocation>,
+    locations: Vec<CoreDirectiveLocation>,
     ruby_class: RClass,
+    is_builtin: bool,
 }
 
 impl DirectiveDefinition {
@@ -26,25 +29,39 @@ impl DirectiveDefinition {
                 "argument_definitions",
                 "description",
                 "is_repeatable",
+                "locations",
                 "ruby_class",
             ],
             &[],
         )?;
-        let (name, argument_definitions, description, is_repeatable, ruby_class): (
+        let (name, argument_definitions, description, is_repeatable, locations, ruby_class): (
             String,
             RArray,
             Option<String>,
             bool,
+            RArray,
             RClass,
         ) = args.required;
         let arguments_definition = ArgumentsDefinition::new(argument_definitions)?;
+        let locations: Result<Vec<CoreDirectiveLocation>, Error> = locations
+            .each()
+            .map(|el| {
+                el.and_then(|val| {
+                    let directive_location: &DirectiveLocation = val.try_convert()?;
+                    Ok(CoreDirectiveLocation::from(directive_location))
+                })
+            })
+            .collect();
+        let is_builtin =
+            unsafe { ruby_class.classname() }.starts_with("Bluejay::Builtin::Directives");
         Ok(Self {
             name,
             description,
             arguments_definition,
             is_repeatable,
-            locations: Vec::new(),
+            locations: locations?,
             ruby_class,
+            is_builtin,
         })
     }
 
@@ -54,6 +71,24 @@ impl DirectiveDefinition {
 
     pub fn arguments_definition(&self) -> &ArgumentsDefinition {
         &self.arguments_definition
+    }
+
+    pub fn ruby_class(&self) -> RClass {
+        self.ruby_class
+    }
+
+    pub fn builtin_directive_definitions() -> &'static [WrappedDefinition<Self>] {
+        memoize!([WrappedDefinition<DirectiveDefinition>; 2]: ["Skip", "Include"].map(
+            |builtin_directive_base_name| -> WrappedDefinition<DirectiveDefinition> {
+                root()
+                    .const_get::<_, RModule>("Builtin")
+                    .unwrap()
+                    .const_get::<_, RModule>("Directives")
+                    .unwrap()
+                    .const_get(builtin_directive_base_name)
+                    .unwrap()
+            },
+        ))
     }
 }
 
@@ -72,7 +107,7 @@ impl HasDefinitionWrapper for DirectiveDefinition {
 
 impl CoreDirectiveDefinition for DirectiveDefinition {
     type ArgumentsDefinition = ArgumentsDefinition;
-    type DirectiveLocations = Vec<DirectiveLocation>;
+    type DirectiveLocations = Vec<CoreDirectiveLocation>;
 
     fn description(&self) -> Option<&str> {
         self.description.as_deref()
@@ -92,6 +127,10 @@ impl CoreDirectiveDefinition for DirectiveDefinition {
 
     fn locations(&self) -> &Self::DirectiveLocations {
         &self.locations
+    }
+
+    fn is_builtin(&self) -> bool {
+        self.is_builtin
     }
 }
 

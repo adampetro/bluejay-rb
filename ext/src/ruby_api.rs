@@ -6,6 +6,7 @@ mod coercion_error;
 mod custom_scalar_type_definition;
 mod directive;
 mod directive_definition;
+mod directive_location;
 mod directives;
 mod enum_type_definition;
 mod enum_value_definition;
@@ -32,10 +33,12 @@ mod union_type_definition;
 mod validation_error;
 mod wrapped_value;
 
+pub use arguments_definition::ArgumentsDefinition;
 pub use coerce_input::CoerceInput;
 pub use coercion_error::CoercionError;
 pub use directive::Directive;
 pub use directive_definition::DirectiveDefinition;
+pub use directive_location::DirectiveLocation;
 pub use directives::Directives;
 pub use execution_error::ExecutionError;
 pub use execution_result::ExecutionResult;
@@ -61,6 +64,7 @@ pub fn init() -> Result<(), Error> {
     coercion_error::init()?;
     custom_scalar_type_definition::init()?;
     directive_definition::init()?;
+    directive_location::init()?;
     enum_type_definition::init()?;
     enum_value_definition::init()?;
     execution_error::init()?;
