@@ -20,6 +20,7 @@ group :development do
   gem "rubocop-rake", "~> 0.6.0"
   gem "rubocop-shopify", "~> 2.12"
   gem "rubocop-sorbet", "~> 0.6.11"
+  gem "ruby-lsp", "~> 0.4.0", require: false
   gem "sorbet"
   gem "tapioca", require: false
 end
