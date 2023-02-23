@@ -13,7 +13,7 @@ use bluejay_parser::ast::executable::{
     ExecutableDocument, Field, OperationDefinition, Selection, VariableDefinition,
 };
 use bluejay_parser::ast::{Directive, VariableArguments, VariableValue};
-use magnus::{ArgList, Error, RArray, RHash, RString, Value, QNIL};
+use magnus::{ArgList, Error, RArray, RHash, Value, QNIL};
 use std::collections::{BTreeMap, HashSet};
 
 pub struct Engine<'a> {
@@ -219,7 +219,11 @@ impl<'a> Engine<'a> {
             if field_definition.r#type().as_ref().is_required() && response_value.is_nil() {
                 has_null_for_required = true;
             }
-            let key: RString = self.key_store.get(response_key);
+            let key = if response_key == field_name {
+                field_definition.name_r_string()
+            } else {
+                self.key_store.get(response_key)
+            };
             result_map.aset(key, response_value).unwrap();
             errors.append(&mut errs);
         }

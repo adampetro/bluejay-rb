@@ -7,7 +7,8 @@ use bluejay_core::definition::OutputTypeReference as CoreOutputTypeReference;
 use convert_case::{Case, Casing};
 use magnus::{
     function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,
-    value::BoxValue, DataTypeFunctions, Error, Module, Object, RArray, RHash, TypedData, Value,
+    value::BoxValue, DataTypeFunctions, Error, Module, Object, RArray, RHash, RString, TypedData,
+    Value,
 };
 
 #[derive(Debug, TypedData)]
@@ -20,6 +21,7 @@ pub struct FieldDefinition {
     directives: Directives,
     is_builtin: bool,
     ruby_resolver_method_name: String,
+    name_r_string: RString,
 }
 
 impl FieldDefinition {
@@ -29,12 +31,14 @@ impl FieldDefinition {
             &["name", "type"],
             &["argument_definitions", "description", "directives"],
         )?;
-        let (name, r#type): (String, Obj<OutputTypeReference>) = args.required;
+        let (name_r_string, r#type): (RString, Obj<OutputTypeReference>) = args.required;
         let (argument_definitions, description, directives): (
             Option<RArray>,
             Option<Option<String>>,
             Option<RArray>,
         ) = args.optional;
+        name_r_string.freeze();
+        let name = name_r_string.to_string()?;
         let arguments_definition =
             ArgumentsDefinition::new(argument_definitions.unwrap_or_else(RArray::new))?;
         let description = description.unwrap_or_default();
@@ -48,6 +52,7 @@ impl FieldDefinition {
             directives,
             is_builtin: false,
             ruby_resolver_method_name,
+            name_r_string,
         })
     }
 
@@ -57,6 +62,8 @@ impl FieldDefinition {
             let arguments_definition = ArgumentsDefinition::empty();
             let directives = Directives::empty();
             let directives_rarray: RArray = (&directives).into();
+            let name_r_string = RString::new("__typename");
+            name_r_string.freeze();
             let fd = Self {
                 name: "__typename".to_string(),
                 description: None,
@@ -65,6 +72,7 @@ impl FieldDefinition {
                 directives,
                 is_builtin: true,
                 ruby_resolver_method_name: "resolve_typename".to_string(),
+                name_r_string,
             };
             let obj = Obj::wrap(fd);
             ([BoxValue::new(*obj), BoxValue::new(*arguments_definition), BoxValue::new(*t), BoxValue::new(*directives_rarray)], obj)
@@ -73,6 +81,10 @@ impl FieldDefinition {
 
     pub(crate) fn ruby_resolver_method_name(&self) -> &str {
         self.ruby_resolver_method_name.as_str()
+    }
+
+    pub(crate) fn name_r_string(&self) -> RString {
+        self.name_r_string
     }
 
     pub fn directives(&self) -> &Directives {
@@ -85,6 +97,7 @@ impl DataTypeFunctions for FieldDefinition {
         gc::mark(self.arguments_definition);
         gc::mark(self.r#type);
         self.directives.mark();
+        gc::mark(self.name_r_string);
     }
 }
 

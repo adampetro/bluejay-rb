@@ -17,7 +17,7 @@ impl<'a> KeyStore<'a> {
 
     pub fn get(&self, s: &'a str) -> RString {
         *self.hash_map.borrow_mut().entry(s).or_insert_with(|| {
-            let s = RString::from_slice(s.as_bytes());
+            let s = RString::new(s);
             s.freeze();
             self.strings.push(s).unwrap();
             s
