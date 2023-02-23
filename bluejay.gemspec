@@ -20,6 +20,7 @@ Gem::Specification.new do |spec|
   spec.metadata["cargo_crate_name"] = "ext"
 
   spec.files = Dir["{lib,ext}/**/*", "LICENSE", "README.md", "Cargo.*", "rust-toolchain.toml"]
+  spec.files.reject! { |f| File.directory?(f) || File.extname(f) == ".bundle" }
   spec.bindir = "exe"
   spec.executables = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
