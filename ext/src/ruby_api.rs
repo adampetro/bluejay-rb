@@ -87,10 +87,11 @@ pub fn init() -> Result<(), Error> {
         "parse",
         function!(
             |s: String| {
-                let (doc, errs) =
-                    bluejay_parser::ast::executable::ExecutableDocument::parse(s.as_str());
-                (doc.operation_definitions().len() + doc.fragment_definitions().len()) > 0
-                    && errs.is_empty()
+                bluejay_parser::ast::executable::ExecutableDocument::parse(s.as_str())
+                    .map(|doc| {
+                        (doc.operation_definitions().len() + doc.fragment_definitions().len()) > 0
+                    })
+                    .unwrap_or(false)
             },
             1
         ),

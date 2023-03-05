@@ -52,8 +52,7 @@ impl DirectiveDefinition {
                 })
             })
             .collect();
-        let is_builtin =
-            unsafe { ruby_class.classname() }.starts_with("Bluejay::Builtin::Directives");
+        let is_builtin = unsafe { ruby_class.name() }.starts_with("Bluejay::Builtin::Directives");
         Ok(Self {
             name,
             description,

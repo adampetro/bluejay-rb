@@ -18,6 +18,19 @@ module Graph
         Bluejay::Result.ok(value.iso8601)
       end
 
+      sig { override.params(value: T.untyped).returns(Bluejay::Result[Date, String]) }
+      def coerce_input(value)
+        if value.is_a?(String)
+          begin
+            Bluejay::Result.ok(Date.parse(value))
+          rescue Date::Error => e
+            Bluejay::Result.err(e.message)
+          end
+        else
+          Bluejay::Result.err("Expected a date encoded as a string")
+        end
+      end
+
       sig { override.returns(String) }
       def internal_representation_sorbet_type_name
         "Date"

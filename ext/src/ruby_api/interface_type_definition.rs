@@ -102,7 +102,7 @@ impl bluejay_core::definition::InterfaceTypeDefinition for InterfaceTypeDefiniti
         &self.fields_definition
     }
 
-    fn interface_impelementations(&self) -> Option<&Self::InterfaceImplementations> {
+    fn interface_implementations(&self) -> Option<&Self::InterfaceImplementations> {
         Some(&self.interface_implementations)
     }
 

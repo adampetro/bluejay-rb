@@ -1,5 +1,5 @@
 use crate::ruby_api::Directive;
-use bluejay_core::Directives as CoreDirectives;
+use bluejay_core::{AsIter, Directives as CoreDirectives};
 use magnus::{gc, Error, RArray};
 
 #[derive(Debug)]
@@ -12,9 +12,12 @@ impl CoreDirectives<true> for Directives {
     type Directive = Directive;
 }
 
-impl AsRef<[Directive]> for Directives {
-    fn as_ref(&self) -> &[Directive] {
-        &self.directives
+impl AsIter for Directives {
+    type Item = Directive;
+    type Iterator<'a> = std::slice::Iter<'a, Directive>;
+
+    fn iter(&self) -> Self::Iterator<'_> {
+        self.directives.iter()
     }
 }
 

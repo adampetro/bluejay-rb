@@ -13,7 +13,7 @@ module Bluejay
         def input_field_definitions
           [
             InputValueDefinition.new(name: "first", type: it!(Scalar::String)),
-            InputValueDefinition.new(name: "last", type: it(Scalar::String)),
+            InputValueDefinition.new(name: "last", type: it!(Scalar::String)),
           ]
         end
       end
@@ -197,6 +197,36 @@ module Bluejay
 
     def test_const_missing
       assert_raises(NameError) { MySchema.const_get(:Foo) }
+    end
+
+    def test_to_definition
+      expected = <<~GQL
+        scalar Date
+
+        input NameInput {
+          first: String!
+
+          last: String!
+        }
+
+        type QueryRoot {
+          hello(
+            name: NameInput!
+          ): String!
+
+          today: Date!
+
+          isToday(
+            date: Date!
+          ): Boolean!
+        }
+
+        schema {
+          query: QueryRoot
+        }
+      GQL
+
+      assert_equal(expected, MySchema.to_definition)
     end
   end
 end

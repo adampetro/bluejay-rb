@@ -1,6 +1,8 @@
 use super::arguments_definition::ArgumentsDefinition;
 use super::custom_scalar_type_definition::CustomScalarTypeDefinition;
 use super::enum_type_definition::EnumTypeDefinition;
+use super::enum_value_definition::EnumValueDefinition;
+use super::enum_value_definitions::EnumValueDefinitions;
 use super::field_definition::FieldDefinition;
 use super::fields_definition::FieldsDefinition;
 use super::input_fields_definition::InputFieldsDefinition;
@@ -26,11 +28,15 @@ use bluejay_core::definition::{
 };
 use bluejay_core::validation::executable::RulesValidator;
 use bluejay_core::{AsIter, BuiltinScalarDefinition, IntoEnumIterator};
+use bluejay_printer::definition::DisplaySchemaDefinition;
 use magnus::{
     function, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj, DataTypeFunctions,
     Error, Module, Object, RArray, RHash, TypedData, Value,
 };
-use std::collections::{hash_map::Entry, HashMap};
+use std::collections::{
+    btree_map::{Entry, Values},
+    BTreeMap,
+};
 
 #[derive(Debug, TypedData)]
 #[magnus(class = "Bluejay::SchemaDefinition", mark)]
@@ -39,8 +45,8 @@ pub struct SchemaDefinition {
     query: WrappedDefinition<ObjectTypeDefinition>,
     mutation: Option<WrappedDefinition<ObjectTypeDefinition>>,
     directives: Directives,
-    contained_types: HashMap<String, TypeDefinitionReference>,
-    contained_directives: HashMap<String, WrappedDefinition<DirectiveDefinition>>,
+    contained_types: BTreeMap<String, TypeDefinitionReference>,
+    contained_directives: BTreeMap<String, WrappedDefinition<DirectiveDefinition>>,
 }
 
 impl SchemaDefinition {
@@ -99,13 +105,20 @@ impl SchemaDefinition {
     }
 
     fn validate_query(&self, query: String) -> RArray {
-        let (document, _) =
-            bluejay_parser::ast::executable::ExecutableDocument::parse(query.as_str());
+        if let Ok(document) =
+            bluejay_parser::ast::executable::ExecutableDocument::parse(query.as_str())
+        {
+            RArray::from_iter(
+                RulesValidator::validate(&document, self)
+                    .map(|error| -> Obj<ValidationError> { Obj::wrap(error.into()) }),
+            )
+        } else {
+            RArray::new()
+        }
+    }
 
-        RArray::from_iter(
-            RulesValidator::validate(&document, self)
-                .map(|error| -> Obj<ValidationError> { Obj::wrap(error.into()) }),
-        )
+    fn to_definition(&self) -> String {
+        DisplaySchemaDefinition::to_string(self)
     }
 }
 
@@ -138,6 +151,8 @@ impl<'a> bluejay_core::definition::SchemaDefinition<'a> for SchemaDefinition {
     type InputValueDefinition = InputValueDefinition;
     type InputFieldsDefinition = InputFieldsDefinition;
     type ArgumentsDefinition = ArgumentsDefinition;
+    type EnumValueDefinition = EnumValueDefinition;
+    type EnumValueDefinitions = EnumValueDefinitions;
     type FieldDefinition = FieldDefinition;
     type FieldsDefinition = FieldsDefinition;
     type InterfaceImplementation = InterfaceImplementation;
@@ -157,6 +172,11 @@ impl<'a> bluejay_core::definition::SchemaDefinition<'a> for SchemaDefinition {
     type TypeDefinitionReference = TypeDefinitionReference;
     type DirectiveDefinition = DirectiveDefinition;
     type Directives = Directives;
+    type TypeDefinitionReferences = Values<'a, String, TypeDefinitionReference>;
+    type DirectiveDefinitions = std::iter::Map<
+        Values<'a, String, WrappedDefinition<DirectiveDefinition>>,
+        fn(&'a WrappedDefinition<DirectiveDefinition>) -> &'a DirectiveDefinition,
+    >;
 
     fn description(&self) -> Option<&str> {
         self.description.as_deref()
@@ -178,12 +198,20 @@ impl<'a> bluejay_core::definition::SchemaDefinition<'a> for SchemaDefinition {
         Some(&self.directives)
     }
 
-    fn get_directive(&self, name: &str) -> Option<&Self::DirectiveDefinition> {
+    fn get_directive_definition(&self, name: &str) -> Option<&Self::DirectiveDefinition> {
         self.contained_directives.get(name).map(AsRef::as_ref)
     }
 
-    fn get_type(&self, name: &str) -> Option<&Self::TypeDefinitionReference> {
+    fn get_type_definition(&self, name: &str) -> Option<&Self::TypeDefinitionReference> {
         self.contained_types.get(name)
+    }
+
+    fn type_definitions(&'a self) -> Self::TypeDefinitionReferences {
+        self.contained_types.values()
+    }
+
+    fn directive_definitions(&'a self) -> Self::DirectiveDefinitions {
+        self.contained_directives.values().map(AsRef::as_ref)
     }
 }
 
@@ -258,21 +286,21 @@ impl TryFrom<&BaseOutputTypeReference> for TypeDefinitionReference {
 }
 
 struct SchemaTypeVisitor {
-    types: HashMap<String, TypeDefinitionReference>,
-    directives: HashMap<String, WrappedDefinition<DirectiveDefinition>>,
+    types: BTreeMap<String, TypeDefinitionReference>,
+    directives: BTreeMap<String, WrappedDefinition<DirectiveDefinition>>,
 }
 
 impl From<SchemaTypeVisitor>
     for (
-        HashMap<String, TypeDefinitionReference>,
-        HashMap<String, WrappedDefinition<DirectiveDefinition>>,
+        BTreeMap<String, TypeDefinitionReference>,
+        BTreeMap<String, WrappedDefinition<DirectiveDefinition>>,
     )
 {
     fn from(
         val: SchemaTypeVisitor,
     ) -> (
-        HashMap<String, TypeDefinitionReference>,
-        HashMap<String, WrappedDefinition<DirectiveDefinition>>,
+        BTreeMap<String, TypeDefinitionReference>,
+        BTreeMap<String, WrappedDefinition<DirectiveDefinition>>,
     ) {
         (val.types, val.directives)
     }
@@ -284,8 +312,8 @@ impl SchemaTypeVisitor {
         mutation: Option<&WrappedDefinition<ObjectTypeDefinition>>,
         schema_directives: &Directives,
     ) -> (
-        HashMap<String, TypeDefinitionReference>,
-        HashMap<String, WrappedDefinition<DirectiveDefinition>>,
+        BTreeMap<String, TypeDefinitionReference>,
+        BTreeMap<String, WrappedDefinition<DirectiveDefinition>>,
     ) {
         let mut type_visitor = Self::new();
         type_visitor.visit_type(TypeDefinitionReference::ObjectType(
@@ -306,8 +334,8 @@ impl SchemaTypeVisitor {
 
     fn new() -> Self {
         Self {
-            types: HashMap::new(),
-            directives: HashMap::new(),
+            types: BTreeMap::new(),
+            directives: BTreeMap::new(),
         }
     }
 
@@ -400,7 +428,7 @@ impl SchemaTypeVisitor {
     }
 
     fn visit_directives(&mut self, directives: &Directives) {
-        directives.as_ref().iter().for_each(|directive| {
+        directives.iter().for_each(|directive| {
             let definition = directive.definition();
             self.directives
                 .entry(definition.as_ref().name().to_string())
@@ -434,6 +462,7 @@ pub fn init() -> Result<(), Error> {
         "validate_query",
         method!(SchemaDefinition::validate_query, 1),
     )?;
+    class.define_method("to_definition", method!(SchemaDefinition::to_definition, 0))?;
 
     Ok(())
 }

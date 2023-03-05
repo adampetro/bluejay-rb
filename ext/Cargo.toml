@@ -13,5 +13,6 @@ rb-sys = "0.9.65"
 once_cell = "1.17"
 convert_case = "0.6.0"
 itertools = "0.10.5"
-bluejay-parser = { git = "https://github.com/adampetro/bluejay", rev = "dc8f479396310034fccf95b8fad86c03f1124439" }
-bluejay-core = { git = "https://github.com/adampetro/bluejay", rev = "dc8f479396310034fccf95b8fad86c03f1124439" }
+bluejay-parser = { git = "https://github.com/adampetro/bluejay", rev = "04111c823a3f8b78400c53bd6bdcc3189f6f6350" }
+bluejay-core = { git = "https://github.com/adampetro/bluejay", rev = "04111c823a3f8b78400c53bd6bdcc3189f6f6350" }
+bluejay-printer = { git = "https://github.com/adampetro/bluejay", rev = "04111c823a3f8b78400c53bd6bdcc3189f6f6350" }

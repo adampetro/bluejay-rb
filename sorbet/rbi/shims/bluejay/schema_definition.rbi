@@ -10,5 +10,8 @@ module Bluejay
 
     sig { params(query: String).returns(T::Array[ValidationError]) }
     def validate_query(query); end
+
+    sig { returns(String) }
+    def to_definition; end
   end
 end

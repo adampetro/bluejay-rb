@@ -37,17 +37,18 @@ impl<'a> Engine<'a> {
         variable_values: RHash,
         initial_value: Value,
     ) -> Result<ExecutionResult, Error> {
-        let (document, parse_errors) = ExecutableDocument::parse(query);
-
-        if !parse_errors.is_empty() {
-            return Ok(Self::execution_result(
-                Default::default(),
-                parse_errors
-                    .into_iter()
-                    .map(ExecutionError::ParseError)
-                    .collect(),
-            ));
-        }
+        let document = match ExecutableDocument::parse(query) {
+            Ok(document) => document,
+            Err(parse_errors) => {
+                return Ok(Self::execution_result(
+                    Default::default(),
+                    parse_errors
+                        .into_iter()
+                        .map(ExecutionError::ParseError)
+                        .collect(),
+                ));
+            }
+        };
 
         let operation_definition = match Self::get_operation(&document, operation_name) {
             Ok(od) => od,
@@ -244,7 +245,7 @@ impl<'a> Engine<'a> {
         let mut grouped_fields: BTreeMap<&'a str, Vec<&'a Field>> = BTreeMap::new();
 
         for selection in selection_set {
-            let should_skip = selection.directives().as_ref().iter().any(|directive| {
+            let should_skip = selection.directives().iter().any(|directive| {
                 if directive.name() == "skip" {
                     self.coerce_directive(directive)
                         .map(|coerced_directive| -> bool {
@@ -256,7 +257,7 @@ impl<'a> Engine<'a> {
                 }
             });
 
-            let should_include = selection.directives().as_ref().iter().all(|directive| {
+            let should_include = selection.directives().iter().all(|directive| {
                 if directive.name() == "include" {
                     self.coerce_directive(directive)
                         .map(|coerced_directive| -> bool {

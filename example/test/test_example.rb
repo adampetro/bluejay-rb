@@ -87,4 +87,48 @@ class TestExample < Minitest::Test
 
     assert_equal(expected_value, result.value)
   end
+
+  def test_schema_dump
+    expected = <<~GQL
+      scalar Date
+
+      interface Person {
+        firstName: String!
+
+        lastName: String!
+      }
+
+      type Player implements Person {
+        firstName: String!
+
+        lastName: String!
+
+        currentTeam: Team
+
+        birthday: Date!
+      }
+
+      type QueryRoot {
+        teams(
+          location: String
+        ): [Team!]!
+
+        people: [Person!]!
+      }
+
+      type Team {
+        name: String!
+
+        location: String!
+
+        players: [Player!]!
+      }
+
+      schema {
+        query: QueryRoot
+      }
+    GQL
+
+    assert_equal(expected, Graph::Schema.to_definition)
+  end
 end

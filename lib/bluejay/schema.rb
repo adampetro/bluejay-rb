@@ -46,6 +46,11 @@ module Bluejay
         definition.validate_query(query)
       end
 
+      sig { returns(String) }
+      def to_definition
+        definition.to_definition
+      end
+
       protected
 
       sig(:final) { override.void }

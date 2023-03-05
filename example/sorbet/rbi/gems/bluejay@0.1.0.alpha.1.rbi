@@ -21,6 +21,46 @@ Bluejay::BaseInputTypeReference = T.type_alias { T.any(::Bluejay::Scalar, T.clas
 # source://bluejay//../../bluejay-rb/lib/bluejay/base_output_type_reference.rb#5
 Bluejay::BaseOutputTypeReference = T.type_alias { T.any(::Bluejay::Scalar, T.class_of(Bluejay::CustomScalarType), T.class_of(Bluejay::EnumType), T.class_of(Bluejay::InterfaceType), T.class_of(Bluejay::ObjectType), T.class_of(Bluejay::UnionType)) }
 
+# source://bluejay//../../bluejay-rb/lib/bluejay/builtin/directives/include.rb#5
+module Bluejay::Builtin; end
+
+# source://bluejay//../../bluejay-rb/lib/bluejay/builtin/directives/include.rb#6
+module Bluejay::Builtin::Directives; end
+
+# source://bluejay//../../bluejay-rb/lib/bluejay/builtin/directives/include.rb#7
+class Bluejay::Builtin::Directives::Include < ::Bluejay::Directive
+  class << self
+    # source://bluejay//../../bluejay-rb/lib/bluejay/builtin/directives/include.rb#17
+    sig { override.returns(T::Array[::Bluejay::InputValueDefinition]) }
+    def argument_definitions; end
+
+    # source://bluejay//../../bluejay-rb/lib/bluejay/builtin/directives/include.rb#12
+    sig { override.returns(::String) }
+    def graphql_name; end
+
+    # source://bluejay//../../bluejay-rb/lib/bluejay/builtin/directives/include.rb#24
+    sig { override.returns(T::Array[::Bluejay::DirectiveLocation]) }
+    def locations; end
+  end
+end
+
+# source://bluejay//../../bluejay-rb/lib/bluejay/builtin/directives/skip.rb#7
+class Bluejay::Builtin::Directives::Skip < ::Bluejay::Directive
+  class << self
+    # source://bluejay//../../bluejay-rb/lib/bluejay/builtin/directives/skip.rb#17
+    sig { override.returns(T::Array[::Bluejay::InputValueDefinition]) }
+    def argument_definitions; end
+
+    # source://bluejay//../../bluejay-rb/lib/bluejay/builtin/directives/skip.rb#12
+    sig { override.returns(::String) }
+    def graphql_name; end
+
+    # source://bluejay//../../bluejay-rb/lib/bluejay/builtin/directives/skip.rb#24
+    sig { override.returns(T::Array[::Bluejay::DirectiveLocation]) }
+    def locations; end
+  end
+end
+
 class Bluejay::CoercionError
   def ==(_arg0); end
   def inspect; end
@@ -44,6 +84,12 @@ class Bluejay::CustomScalarType
   InternalRepresentation = type_template
 
   class << self
+    # @abstract
+    #
+    # source://bluejay//../../bluejay-rb/lib/bluejay/custom_scalar_type.rb#38
+    sig { abstract.params(value: T.untyped).returns(::Bluejay::Result) }
+    def coerce_input(value); end
+
     # source://bluejay//../../bluejay-rb/lib/bluejay/custom_scalar_type.rb#33
     sig { overridable.params(value: InternalRepresentation).returns(::Bluejay::Result) }
     def coerce_result(value); end
@@ -60,13 +106,13 @@ class Bluejay::CustomScalarType
     sig { overridable.returns(::String) }
     def graphql_name; end
 
-    # source://bluejay//../../bluejay-rb/lib/bluejay/custom_scalar_type.rb#38
+    # source://bluejay//../../bluejay-rb/lib/bluejay/custom_scalar_type.rb#41
     sig { overridable.returns(::String) }
     def internal_representation_sorbet_type_name; end
 
     private
 
-    # source://bluejay//../../bluejay-rb/lib/bluejay/custom_scalar_type.rb#45
+    # source://bluejay//../../bluejay-rb/lib/bluejay/custom_scalar_type.rb#48
     sig(:final) { returns(::Bluejay::CustomScalarTypeDefinition) }
     def definition; end
   end
@@ -87,10 +133,10 @@ class Bluejay::Directive
 
   abstract!
 
-  # source://bluejay//../../bluejay-rb/lib/bluejay/directive.rb#51
+  # source://bluejay//../../bluejay-rb/lib/bluejay/directive.rb#55
   def initialize(*args); end
 
-  # source://bluejay//../../bluejay-rb/lib/bluejay/directive.rb#58
+  # source://bluejay//../../bluejay-rb/lib/bluejay/directive.rb#62
   def ==(other); end
 
   class << self
@@ -108,13 +154,19 @@ class Bluejay::Directive
     sig { overridable.returns(::String) }
     def graphql_name; end
 
+    # @abstract
+    #
     # source://bluejay//../../bluejay-rb/lib/bluejay/directive.rb#28
+    sig { abstract.returns(T::Array[::Bluejay::DirectiveLocation]) }
+    def locations; end
+
+    # source://bluejay//../../bluejay-rb/lib/bluejay/directive.rb#31
     sig { overridable.returns(T::Boolean) }
     def repeatable?; end
 
     private
 
-    # source://bluejay//../../bluejay-rb/lib/bluejay/directive.rb#35
+    # source://bluejay//../../bluejay-rb/lib/bluejay/directive.rb#38
     sig(:final) { returns(::Bluejay::DirectiveDefinition) }
     def definition; end
   end
@@ -127,6 +179,27 @@ class Bluejay::DirectiveDefinition
     def new(_arg0); end
   end
 end
+
+class Bluejay::DirectiveLocation; end
+Bluejay::DirectiveLocation::ARGUMENT_DEFINITION = T.let(T.unsafe(nil), Bluejay::DirectiveLocation)
+Bluejay::DirectiveLocation::ENUM = T.let(T.unsafe(nil), Bluejay::DirectiveLocation)
+Bluejay::DirectiveLocation::ENUM_VALUE = T.let(T.unsafe(nil), Bluejay::DirectiveLocation)
+Bluejay::DirectiveLocation::FIELD = T.let(T.unsafe(nil), Bluejay::DirectiveLocation)
+Bluejay::DirectiveLocation::FIELD_DEFINITION = T.let(T.unsafe(nil), Bluejay::DirectiveLocation)
+Bluejay::DirectiveLocation::FRAGMENT_DEFINITION = T.let(T.unsafe(nil), Bluejay::DirectiveLocation)
+Bluejay::DirectiveLocation::FRAGMENT_SPREAD = T.let(T.unsafe(nil), Bluejay::DirectiveLocation)
+Bluejay::DirectiveLocation::INLINE_FRAGMENT = T.let(T.unsafe(nil), Bluejay::DirectiveLocation)
+Bluejay::DirectiveLocation::INPUT_FIELD_DEFINITION = T.let(T.unsafe(nil), Bluejay::DirectiveLocation)
+Bluejay::DirectiveLocation::INPUT_OBJECT = T.let(T.unsafe(nil), Bluejay::DirectiveLocation)
+Bluejay::DirectiveLocation::INTERFACE = T.let(T.unsafe(nil), Bluejay::DirectiveLocation)
+Bluejay::DirectiveLocation::MUTATION = T.let(T.unsafe(nil), Bluejay::DirectiveLocation)
+Bluejay::DirectiveLocation::OBJECT = T.let(T.unsafe(nil), Bluejay::DirectiveLocation)
+Bluejay::DirectiveLocation::QUERY = T.let(T.unsafe(nil), Bluejay::DirectiveLocation)
+Bluejay::DirectiveLocation::SCALAR = T.let(T.unsafe(nil), Bluejay::DirectiveLocation)
+Bluejay::DirectiveLocation::SCHEMA = T.let(T.unsafe(nil), Bluejay::DirectiveLocation)
+Bluejay::DirectiveLocation::SUBSCRIPTION = T.let(T.unsafe(nil), Bluejay::DirectiveLocation)
+Bluejay::DirectiveLocation::UNION = T.let(T.unsafe(nil), Bluejay::DirectiveLocation)
+Bluejay::DirectiveLocation::VARIABLE_DEFINITION = T.let(T.unsafe(nil), Bluejay::DirectiveLocation)
 
 # @abstract It cannot be directly instantiated. Subclasses must implement the `abstract` methods below.
 #
@@ -543,12 +616,12 @@ class Bluejay::Schema
     sig do
       params(
         query: ::String,
-        operation_name: T.nilable(::String),
         initial_value: ::Object,
+        operation_name: T.nilable(::String),
         variables: T::Hash[::String, T.untyped]
       ).returns(::Bluejay::ExecutionResult)
     end
-    def execute(query:, operation_name:, initial_value:, variables: T.unsafe(nil)); end
+    def execute(query:, initial_value:, operation_name: T.unsafe(nil), variables: T.unsafe(nil)); end
 
     # source://bluejay//../../bluejay-rb/lib/bluejay/schema.rb#23
     sig { overridable.returns(T.nilable(T.class_of(Bluejay::ObjectType))) }
@@ -560,23 +633,27 @@ class Bluejay::Schema
     sig { abstract.returns(T.class_of(Bluejay::ObjectType)) }
     def query; end
 
+    # source://bluejay//../../bluejay-rb/lib/bluejay/schema.rb#50
+    sig { returns(::String) }
+    def to_definition; end
+
     # source://bluejay//../../bluejay-rb/lib/bluejay/schema.rb#45
     sig { params(query: ::String).returns(T::Array[::Bluejay::ValidationError]) }
     def validate_query(query:); end
 
     protected
 
-    # source://bluejay//../../bluejay-rb/lib/bluejay/schema.rb#52
+    # source://bluejay//../../bluejay-rb/lib/bluejay/schema.rb#57
     sig(:final) { override.void }
     def finalize; end
 
     private
 
-    # source://bluejay//../../bluejay-rb/lib/bluejay/schema.rb#59
+    # source://bluejay//../../bluejay-rb/lib/bluejay/schema.rb#64
     sig { params(name: ::Symbol).returns(T.untyped) }
     def const_missing(name); end
 
-    # source://bluejay//../../bluejay-rb/lib/bluejay/schema.rb#69
+    # source://bluejay//../../bluejay-rb/lib/bluejay/schema.rb#74
     sig { returns(::Bluejay::SchemaDefinition) }
     def definition; end
   end
@@ -584,6 +661,7 @@ end
 
 class Bluejay::SchemaDefinition
   def execute(_arg0, _arg1, _arg2, _arg3); end
+  def to_definition; end
   def validate_query(_arg0); end
 
   class << self
