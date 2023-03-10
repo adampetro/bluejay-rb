@@ -18,187 +18,187 @@ Some benchmarks comparing the performance of `bluejay-rb` with `graphql-ruby` ar
 
 <details>
   <summary>Execute (Ruby 3.2, YJIT enabled)</summary>
-  
+
   ```
   Profiling IPS:
   Warming up --------------------------------------
-              graphql    80.000  i/100ms
-              bluejay   814.000  i/100ms
+              graphql   106.000  i/100ms
+              bluejay   822.000  i/100ms
   Calculating -------------------------------------
-              graphql    793.000  (± 1.5%) i/s -      4.000k in   5.045323s
-              bluejay      8.106k (± 1.7%) i/s -     40.700k in   5.022282s
+              graphql    970.223  (±11.2%) i/s -      4.876k in   5.093229s
+              bluejay      7.860k (± 9.5%) i/s -     39.456k in   5.068449s
 
   Comparison:
-              bluejay:     8106.5 i/s
-              graphql:      793.0 i/s - 10.22x  (± 0.00) slower
+              bluejay:     7860.4 i/s
+              graphql:      970.2 i/s - 8.10x  (± 0.00) slower
 
   Profiling Ruby memory allocations:
   Calculating -------------------------------------
-              graphql   107.688k memsize (   168.000  retained)
-                          1.080k objects (     1.000  retained)
-                          26.000  strings (     0.000  retained)
-              bluejay     6.400k memsize (   168.000  retained)
-                          55.000  objects (     1.000  retained)
-                          12.000  strings (     0.000  retained)
+              graphql    61.520k memsize (   168.000  retained)
+                        625.000  objects (     1.000  retained)
+                          31.000  strings (     0.000  retained)
+              bluejay     5.800k memsize (   168.000  retained)
+                          44.000  objects (     1.000  retained)
+                          0.000  strings (     0.000  retained)
 
   Comparison:
-              bluejay:       6400 allocated
-              graphql:     107688 allocated - 16.83x more
+              bluejay:       5800 allocated
+              graphql:      61520 allocated - 10.61x more
   ```
 </details>
 
 <details>
   <summary>Execute (Ruby 3.2, YJIT disabled)</summary>
-  
+
   ```
   Profiling IPS:
   Warming up --------------------------------------
-              graphql    35.000  i/100ms
-              bluejay   822.000  i/100ms
+              graphql    46.000  i/100ms
+              bluejay   867.000  i/100ms
   Calculating -------------------------------------
-              graphql    326.806  (±14.4%) i/s -      1.610k in   5.034056s
-              bluejay      7.916k (± 7.0%) i/s -     39.456k in   5.013297s
+              graphql    442.012  (± 8.8%) i/s -      2.208k in   5.038696s
+              bluejay      8.605k (± 2.2%) i/s -     43.350k in   5.040408s
 
   Comparison:
-              bluejay:     7916.4 i/s
-              graphql:      326.8 i/s - 24.22x  (± 0.00) slower
+              bluejay:     8605.1 i/s
+              graphql:      442.0 i/s - 19.47x  (± 0.00) slower
 
   Profiling Ruby memory allocations:
   Calculating -------------------------------------
-              graphql   107.688k memsize (   168.000  retained)
-                          1.080k objects (     1.000  retained)
-                          26.000  strings (     0.000  retained)
-              bluejay     6.400k memsize (   168.000  retained)
-                          55.000  objects (     1.000  retained)
-                          12.000  strings (     0.000  retained)
+              graphql    61.520k memsize (    26.496k retained)
+                        625.000  objects (   202.000  retained)
+                          31.000  strings (     1.000  retained)
+              bluejay     5.800k memsize (     5.224k retained)
+                          44.000  objects (    36.000  retained)
+                          0.000  strings (     0.000  retained)
 
   Comparison:
-              bluejay:       6400 allocated
-              graphql:     107688 allocated - 16.83x more
+              bluejay:       5800 allocated
+              graphql:      61520 allocated - 10.61x more
   ```
 </details>
 
 <details>
   <summary>Parse small (Ruby 3.2, YJIT enabled)</summary>
-  
+
   ```
   Profiling IPS:
   Warming up --------------------------------------
-              bluejay    42.616k i/100ms
-              graphql   751.000  i/100ms
+              bluejay    42.247k i/100ms
+              graphql   742.000  i/100ms
   Calculating -------------------------------------
-              bluejay    419.058k (± 1.2%) i/s -      2.131M in   5.085492s
-              graphql      7.483k (± 1.7%) i/s -     37.550k in   5.019630s
+              bluejay    397.214k (± 7.0%) i/s -      1.986M in   5.024209s
+              graphql      6.979k (±11.4%) i/s -     34.874k in   5.063675s
 
   Comparison:
-              bluejay:   419058.2 i/s
-              graphql:     7482.8 i/s - 56.00x  (± 0.00) slower
+              bluejay:   397214.2 i/s
+              graphql:     6978.5 i/s - 56.92x  (± 0.00) slower
 
   Profiling Ruby memory allocations:
   Calculating -------------------------------------
               bluejay     0.000  memsize (     0.000  retained)
                           0.000  objects (     0.000  retained)
                           0.000  strings (     0.000  retained)
-              graphql    10.576k memsize (     4.320k retained)
-                        139.000  objects (    55.000  retained)
-                          10.000  strings (     7.000  retained)
+              graphql    11.936k memsize (     4.360k retained)
+                        176.000  objects (    56.000  retained)
+                          17.000  strings (     8.000  retained)
 
   Comparison:
               bluejay:          0 allocated
-              graphql:      10576 allocated - Infx more
+              graphql:      11936 allocated - Infx more
   ```
 </details>
 
 <details>
   <summary>Parse small (Ruby 3.2, YJIT disabled)</summary>
-  
+
   ```
   Profiling IPS:
   Warming up --------------------------------------
-              bluejay    42.010k i/100ms
-              graphql   610.000  i/100ms
+              bluejay    41.719k i/100ms
+              graphql   462.000  i/100ms
   Calculating -------------------------------------
-              bluejay    412.413k (± 4.9%) i/s -      2.058M in   5.005818s
-              graphql      5.862k (± 5.5%) i/s -     29.280k in   5.010455s
+              bluejay    386.029k (± 8.2%) i/s -      1.919M in   5.005650s
+              graphql      5.840k (± 9.9%) i/s -     29.106k in   5.034106s
 
   Comparison:
-              bluejay:   412412.6 i/s
-              graphql:     5862.1 i/s - 70.35x  (± 0.00) slower
+              bluejay:   386028.7 i/s
+              graphql:     5840.1 i/s - 66.10x  (± 0.00) slower
 
   Profiling Ruby memory allocations:
   Calculating -------------------------------------
               bluejay     0.000  memsize (     0.000  retained)
                           0.000  objects (     0.000  retained)
                           0.000  strings (     0.000  retained)
-              graphql    10.576k memsize (     1.320k retained)
-                        139.000  objects (    24.000  retained)
-                          10.000  strings (     6.000  retained)
+              graphql    11.936k memsize (     1.320k retained)
+                        176.000  objects (    24.000  retained)
+                          17.000  strings (     6.000  retained)
 
   Comparison:
               bluejay:          0 allocated
-              graphql:      10576 allocated - Infx more
+              graphql:      11936 allocated - Infx more
   ```
 </details>
 
 <details>
   <summary>Parse large (Ruby 3.2, YJIT enabled)</summary>
-  
+
   ```
   Profiling IPS:
   Warming up --------------------------------------
-              bluejay   216.000  i/100ms
-              graphql     2.000  i/100ms
+              bluejay   187.000  i/100ms
+              graphql     4.000  i/100ms
   Calculating -------------------------------------
-              bluejay      2.148k (± 1.4%) i/s -     10.800k in   5.029772s
-              graphql     28.787  (± 0.0%) i/s -    144.000  in   5.003419s
+              bluejay      2.093k (± 6.0%) i/s -     10.472k in   5.023643s
+              graphql     46.307  (± 8.6%) i/s -    232.000  in   5.043557s
 
   Comparison:
-              bluejay:     2147.7 i/s
-              graphql:       28.8 i/s - 74.61x  (± 0.00) slower
+              bluejay:     2092.8 i/s
+              graphql:       46.3 i/s - 45.19x  (± 0.00) slower
 
   Profiling Ruby memory allocations:
   Calculating -------------------------------------
               bluejay     0.000  memsize (     0.000  retained)
                           0.000  objects (     0.000  retained)
                           0.000  strings (     0.000  retained)
-              graphql     1.984M memsize (   701.936k retained)
-                          31.056k objects (     8.970k retained)
+              graphql     2.025M memsize (   701.976k retained)
+                          31.999k objects (     8.971k retained)
                           50.000  strings (    50.000  retained)
 
   Comparison:
               bluejay:          0 allocated
-              graphql:    1984432 allocated - Infx more
+              graphql:    2025352 allocated - Infx more
   ```
 </details>
 
 <details>
   <summary>Parse large (Ruby 3.2, YJIT disabled)</summary>
-  
+
   ```
   Profiling IPS:
   Warming up --------------------------------------
-              bluejay   188.000  i/100ms
-              graphql     2.000  i/100ms
+              bluejay   207.000  i/100ms
+              graphql     3.000  i/100ms
   Calculating -------------------------------------
-              bluejay      2.167k (± 1.8%) i/s -     10.904k in   5.034545s
-              graphql     28.417  (± 3.5%) i/s -    144.000  in   5.069022s
+              bluejay      2.047k (± 8.8%) i/s -     10.350k in   5.102000s
+              graphql     41.996  (± 9.5%) i/s -    210.000  in   5.050012s
 
   Comparison:
-              bluejay:     2166.6 i/s
-              graphql:       28.4 i/s - 76.24x  (± 0.00) slower
+              bluejay:     2047.0 i/s
+              graphql:       42.0 i/s - 48.74x  (± 0.00) slower
 
   Profiling Ruby memory allocations:
   Calculating -------------------------------------
               bluejay     0.000  memsize (     0.000  retained)
                           0.000  objects (     0.000  retained)
                           0.000  strings (     0.000  retained)
-              graphql     1.984M memsize (   316.016k retained)
-                          31.056k objects (     4.151k retained)
+              graphql     2.025M memsize (   316.016k retained)
+                          31.999k objects (     4.151k retained)
                           50.000  strings (    50.000  retained)
 
   Comparison:
               bluejay:          0 allocated
-              graphql:    1984432 allocated - Infx more
+              graphql:    2025352 allocated - Infx more
   ```
 </details>
 
