@@ -26,9 +26,9 @@ use bluejay_core::definition::{
     BaseInputTypeReference as CoreBaseInputTypeReference,
     BaseOutputTypeReference as CoreBaseOutputTypeReference,
 };
-use bluejay_core::validation::executable::RulesValidator;
 use bluejay_core::{AsIter, BuiltinScalarDefinition, IntoEnumIterator};
 use bluejay_printer::definition::DisplaySchemaDefinition;
+use bluejay_validator::executable::RulesValidator;
 use magnus::{
     function, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj, DataTypeFunctions,
     Error, Module, Object, RArray, RHash, TypedData, Value,
@@ -147,7 +147,7 @@ pub type TypeDefinitionReference = bluejay_core::definition::TypeDefinitionRefer
     WrappedDefinition<InterfaceTypeDefinition>,
 >;
 
-impl<'a> bluejay_core::definition::SchemaDefinition<'a> for SchemaDefinition {
+impl bluejay_core::definition::SchemaDefinition for SchemaDefinition {
     type InputValueDefinition = InputValueDefinition;
     type InputFieldsDefinition = InputFieldsDefinition;
     type ArgumentsDefinition = ArgumentsDefinition;
@@ -172,8 +172,8 @@ impl<'a> bluejay_core::definition::SchemaDefinition<'a> for SchemaDefinition {
     type TypeDefinitionReference = TypeDefinitionReference;
     type DirectiveDefinition = DirectiveDefinition;
     type Directives = Directives;
-    type TypeDefinitionReferences = Values<'a, String, TypeDefinitionReference>;
-    type DirectiveDefinitions = std::iter::Map<
+    type TypeDefinitionReferences<'a> = Values<'a, String, TypeDefinitionReference>;
+    type DirectiveDefinitions<'a> = std::iter::Map<
         Values<'a, String, WrappedDefinition<DirectiveDefinition>>,
         fn(&'a WrappedDefinition<DirectiveDefinition>) -> &'a DirectiveDefinition,
     >;
@@ -206,11 +206,11 @@ impl<'a> bluejay_core::definition::SchemaDefinition<'a> for SchemaDefinition {
         self.contained_types.get(name)
     }
 
-    fn type_definitions(&'a self) -> Self::TypeDefinitionReferences {
+    fn type_definitions(&self) -> Self::TypeDefinitionReferences<'_> {
         self.contained_types.values()
     }
 
-    fn directive_definitions(&'a self) -> Self::DirectiveDefinitions {
+    fn directive_definitions(&self) -> Self::DirectiveDefinitions<'_> {
         self.contained_directives.values().map(AsRef::as_ref)
     }
 }

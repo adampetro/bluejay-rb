@@ -213,7 +213,7 @@ impl<'a> Engine<'a> {
         let mut has_null_for_required = false;
 
         for (response_key, fields) in grouped_field_set {
-            let field_name = fields.first().unwrap().name();
+            let field_name = fields.first().unwrap().name().as_ref();
             let field_definition = object_type.field_definition(field_name).unwrap();
             let (response_value, mut errs) =
                 self.execute_field(object_type, object_value, field_definition, &fields);

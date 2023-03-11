@@ -1,7 +1,8 @@
 use super::root;
 use crate::ruby_api::SchemaDefinition;
-use bluejay_core::validation::executable::Error as CoreError;
+use bluejay_core::OperationType;
 use bluejay_parser::ast::executable::ExecutableDocument;
+use bluejay_validator::executable::Error as CoreError;
 use magnus::{
     function, method,
     rb_sys::AsRawValue,
@@ -53,12 +54,27 @@ impl<'a> From<CoreError<'a, ExecutableDocument<'a>, SchemaDefinition>> for Valid
             ),
             CoreError::FieldDoesNotExistOnType { field, r#type } => Self::new(format!(
                 "Field `{}` does not exist on `{}`",
-                field.name(),
+                field.name().as_ref(),
                 r#type.name()
             )),
             CoreError::FieldSelectionsDoNotMerge { selection_set: _ } => {
                 Self::new("Field selections do not merge".to_string())
             }
+            CoreError::OperationTypeNotDefined { operation } => Self::new(format!(
+                "Schema does not define a {} root",
+                OperationType::from(operation.operation_type()),
+            )),
+            CoreError::LeafFieldSelectionNotEmpty {
+                selection_set: _,
+                r#type,
+            } => Self::new(format!(
+                "Selection on field of leaf type `{}` was not empty",
+                r#type.as_ref().display_name()
+            )),
+            CoreError::NonLeafFieldSelectionEmpty { field: _, r#type } => Self::new(format!(
+                "No selection on field of non-leaf type `{}`",
+                r#type.as_ref().display_name()
+            )),
         }
     }
 }
