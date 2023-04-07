@@ -4,6 +4,7 @@ require "benchmark/ips"
 require "benchmark/memory"
 require "bluejay"
 require "graphql"
+require "graphql/c_parser"
 
 module Bench
   extend(self)
