@@ -1,26 +1,15 @@
-use super::arguments_definition::ArgumentsDefinition;
-use super::custom_scalar_type_definition::CustomScalarTypeDefinition;
-use super::enum_type_definition::EnumTypeDefinition;
-use super::enum_value_definition::EnumValueDefinition;
-use super::enum_value_definitions::EnumValueDefinitions;
-use super::field_definition::FieldDefinition;
-use super::fields_definition::FieldsDefinition;
-use super::input_fields_definition::InputFieldsDefinition;
-use super::input_object_type_definition::InputObjectTypeDefinition;
-use super::input_value_definition::InputValueDefinition;
-use super::interface_implementation::InterfaceImplementation;
-use super::interface_implementations::InterfaceImplementations;
-use super::interface_type_definition::InterfaceTypeDefinition;
-use super::object_type_definition::ObjectTypeDefinition;
-use super::union_member_type::UnionMemberType;
-use super::union_member_types::UnionMemberTypes;
-use super::union_type_definition::UnionTypeDefinition;
-use super::validation_error::ValidationError;
 use crate::execution::Engine as ExecutionEngine;
 use crate::helpers::WrappedDefinition;
 use crate::ruby_api::{
     root, BaseInputTypeReference, BaseOutputTypeReference, DirectiveDefinition, Directives,
     ExecutionResult, InputTypeReference, OutputTypeReference,
+};
+use crate::ruby_api::{
+    ArgumentsDefinition, CustomScalarTypeDefinition, EnumTypeDefinition, EnumValueDefinition,
+    EnumValueDefinitions, FieldDefinition, FieldsDefinition, InputFieldsDefinition,
+    InputObjectTypeDefinition, InputValueDefinition, InterfaceImplementation,
+    InterfaceImplementations, InterfaceTypeDefinition, ObjectTypeDefinition, UnionMemberType,
+    UnionMemberTypes, UnionTypeDefinition, ValidationError,
 };
 use bluejay_core::definition::{
     BaseInputTypeReference as CoreBaseInputTypeReference,
@@ -35,7 +24,7 @@ use magnus::{
 };
 use std::collections::{
     btree_map::{Entry, Values},
-    BTreeMap,
+    BTreeMap, HashMap,
 };
 
 #[derive(Debug, TypedData)]
@@ -47,6 +36,7 @@ pub struct SchemaDefinition {
     directives: Directives,
     contained_types: BTreeMap<String, TypeDefinitionReference>,
     contained_directives: BTreeMap<String, WrappedDefinition<DirectiveDefinition>>,
+    interface_implementors: HashMap<String, Vec<WrappedDefinition<ObjectTypeDefinition>>>,
 }
 
 impl SchemaDefinition {
@@ -66,6 +56,7 @@ impl SchemaDefinition {
                 mutation.as_ref(),
                 &directives,
             );
+        let interface_implementors = Self::interface_implementors(&contained_types);
         Ok(Self {
             description,
             query,
@@ -73,6 +64,7 @@ impl SchemaDefinition {
             directives,
             contained_types,
             contained_directives,
+            interface_implementors,
         })
     }
 
@@ -119,6 +111,29 @@ impl SchemaDefinition {
 
     fn to_definition(&self) -> String {
         DisplaySchemaDefinition::to_string(self)
+    }
+
+    fn interface_implementors(
+        type_definitions: &BTreeMap<String, TypeDefinitionReference>,
+    ) -> HashMap<String, Vec<WrappedDefinition<ObjectTypeDefinition>>> {
+        type_definitions.values().fold(
+            HashMap::new(),
+            |mut interface_implementors, type_definition| {
+                if let TypeDefinitionReference::ObjectType(otd, _) = type_definition {
+                    otd.as_ref().interface_implementations().iter().for_each(
+                        |interface_implementation| {
+                            let itd = interface_implementation.interface();
+                            interface_implementors
+                                .entry(itd.get().name().to_owned())
+                                .or_default()
+                                .push(otd.clone());
+                        },
+                    );
+                }
+
+                interface_implementors
+            },
+        )
     }
 }
 
@@ -175,7 +190,15 @@ impl bluejay_core::definition::SchemaDefinition for SchemaDefinition {
     type TypeDefinitionReferences<'a> = Values<'a, String, TypeDefinitionReference>;
     type DirectiveDefinitions<'a> = std::iter::Map<
         Values<'a, String, WrappedDefinition<DirectiveDefinition>>,
-        fn(&'a WrappedDefinition<DirectiveDefinition>) -> &'a DirectiveDefinition,
+        fn(&WrappedDefinition<DirectiveDefinition>) -> &DirectiveDefinition,
+    >;
+    type IterfaceImplementors<'a> = std::iter::Flatten<
+        std::option::IntoIter<
+            std::iter::Map<
+                std::slice::Iter<'a, WrappedDefinition<ObjectTypeDefinition>>,
+                fn(&WrappedDefinition<ObjectTypeDefinition>) -> &ObjectTypeDefinition,
+            >,
+        >,
     >;
 
     fn description(&self) -> Option<&str> {
@@ -212,6 +235,24 @@ impl bluejay_core::definition::SchemaDefinition for SchemaDefinition {
 
     fn directive_definitions(&self) -> Self::DirectiveDefinitions<'_> {
         self.contained_directives.values().map(AsRef::as_ref)
+    }
+
+    fn get_interface_implementors(
+        &self,
+        itd: &Self::InterfaceTypeDefinition,
+    ) -> Self::IterfaceImplementors<'_> {
+        type MapFn<'a> = std::iter::Map<
+            std::slice::Iter<'a, WrappedDefinition<ObjectTypeDefinition>>,
+            fn(&WrappedDefinition<ObjectTypeDefinition>) -> &ObjectTypeDefinition,
+        >;
+
+        self.interface_implementors
+            .get(itd.name())
+            .map(|interface_implementors| -> MapFn<'_> {
+                interface_implementors.iter().map(AsRef::as_ref)
+            })
+            .into_iter()
+            .flatten()
     }
 }
 

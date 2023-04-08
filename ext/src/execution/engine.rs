@@ -8,10 +8,8 @@ use bluejay_core::definition::{
     BaseOutputTypeReference as CoreBaseOutputTypeReference,
     OutputTypeReference as CoreOutputTypeReference,
 };
-use bluejay_core::{Argument as CoreArgument, AsIter, Directive as CoreDirective, OperationType};
-use bluejay_parser::ast::executable::{
-    ExecutableDocument, Field, OperationDefinition, Selection, VariableDefinition,
-};
+use bluejay_core::{AsIter, Directive as CoreDirective, OperationType};
+use bluejay_parser::ast::executable::{ExecutableDocument, Field, OperationDefinition, Selection};
 use bluejay_parser::ast::{Directive, VariableArguments, VariableValue};
 use magnus::{ArgList, Error, RArray, RHash, Value, QNIL};
 use std::collections::{BTreeMap, HashSet};
@@ -105,67 +103,66 @@ impl<'a> Engine<'a> {
 
     fn get_variable_values<'b>(
         schema: &'b SchemaDefinition,
-        operation: &'b OperationDefinition,
+        operation: &'b OperationDefinition<'b>,
         variable_values: RHash,
     ) -> Result<RHash, Vec<ExecutionError<'b>>> {
         let coerced_variables = RHash::new();
-        let variable_definitions: &[VariableDefinition] = operation
-            .variable_definitions()
-            .map(AsRef::as_ref)
-            .unwrap_or_default();
         let mut errors: Vec<ExecutionError<'b>> = Vec::new();
 
-        for variable_definition in variable_definitions {
-            let variable_name = variable_definition.variable().name();
-            let variable_named_type_reference = variable_definition.r#type();
-            let variable_base_type = schema.r#type(variable_named_type_reference.name()).unwrap();
-            let base_input_type_reference: BaseInputTypeReference =
-                variable_base_type.try_into().unwrap();
-            let variable_type = InputTypeReference::from_parser_type_reference(
-                variable_named_type_reference,
-                base_input_type_reference,
-            );
-            let default_value = variable_definition.default_value();
-            let value = variable_values.get(variable_name);
-            let has_value = value.is_some();
-            let path = vec![variable_name.to_owned()];
-            match default_value {
-                Some(default_value) if !has_value => {
-                    match variable_type.coerce_parser_value(default_value, &path, &()) {
-                        Ok(Ok(coerced_value)) => {
-                            coerced_variables
-                                .aset(variable_name, coerced_value)
-                                .unwrap();
-                        }
-                        Ok(Err(coercion_errors)) => errors.extend(
-                            coercion_errors
-                                .into_iter()
-                                .map(ExecutionError::CoercionError),
-                        ),
-                        Err(error) => errors.push(ExecutionError::ApplicationError(error)),
-                    }
-                }
-                _ => {
-                    if variable_type.is_required() && !has_value {
-                        errors.push(ExecutionError::RequiredVariableMissingValue {
-                            name: variable_name,
-                        });
-                    } else {
-                        let value = value.unwrap_or_default();
-                        match variable_type.coerce_ruby_const_value(value, &path) {
+        if let Some(variable_definitions) = operation.variable_definitions() {
+            for variable_definition in variable_definitions.iter() {
+                let variable_name = variable_definition.variable().name();
+                let variable_named_type_reference = variable_definition.r#type();
+                let variable_base_type =
+                    schema.r#type(variable_named_type_reference.name()).unwrap();
+                let base_input_type_reference: BaseInputTypeReference =
+                    variable_base_type.try_into().unwrap();
+                let variable_type = InputTypeReference::from_parser_type_reference(
+                    variable_named_type_reference,
+                    base_input_type_reference,
+                );
+                let default_value = variable_definition.default_value();
+                let value = variable_values.get(variable_name);
+                let has_value = value.is_some();
+                let path = vec![variable_name.to_owned()];
+                match default_value {
+                    Some(default_value) if !has_value => {
+                        match variable_type.coerce_parser_value(default_value, &path, &()) {
                             Ok(Ok(coerced_value)) => {
                                 coerced_variables
                                     .aset(variable_name, coerced_value)
                                     .unwrap();
                             }
-                            Ok(Err(coercion_errors)) => {
-                                errors.extend(
-                                    coercion_errors
-                                        .into_iter()
-                                        .map(ExecutionError::CoercionError),
-                                );
-                            }
+                            Ok(Err(coercion_errors)) => errors.extend(
+                                coercion_errors
+                                    .into_iter()
+                                    .map(ExecutionError::CoercionError),
+                            ),
                             Err(error) => errors.push(ExecutionError::ApplicationError(error)),
+                        }
+                    }
+                    _ => {
+                        if variable_type.is_required() && !has_value {
+                            errors.push(ExecutionError::RequiredVariableMissingValue {
+                                name: variable_name,
+                            });
+                        } else {
+                            let value = value.unwrap_or_default();
+                            match variable_type.coerce_ruby_const_value(value, &path) {
+                                Ok(Ok(coerced_value)) => {
+                                    coerced_variables
+                                        .aset(variable_name, coerced_value)
+                                        .unwrap();
+                                }
+                                Ok(Err(coercion_errors)) => {
+                                    errors.extend(
+                                        coercion_errors
+                                            .into_iter()
+                                            .map(ExecutionError::CoercionError),
+                                    );
+                                }
+                                Err(error) => errors.push(ExecutionError::ApplicationError(error)),
+                            }
                         }
                     }
                 }
@@ -280,13 +277,13 @@ impl<'a> Engine<'a> {
                     entry_for_response_key.push(field);
                 }
                 Selection::FragmentSpread(fragment_spread) => {
-                    let fragment_spread_name = fragment_spread.name();
+                    let fragment_spread_name = fragment_spread.name().as_ref();
                     if visited_fragments.insert(fragment_spread_name) {
                         let fragment = self
                             .document
                             .fragment_definitions()
                             .iter()
-                            .find(|fd| fd.name() == fragment_spread_name);
+                            .find(|fd| fd.name().as_ref() == fragment_spread_name);
 
                         let fragment = match fragment {
                             Some(f) => f,
@@ -295,9 +292,9 @@ impl<'a> Engine<'a> {
                             }
                         };
 
-                        let fragment_type = fragment.type_condition();
+                        let fragment_type_name = fragment.type_condition().named_type().as_ref();
 
-                        if !self.does_fragment_type_apply(object_type, fragment_type) {
+                        if !self.does_fragment_type_apply(object_type, fragment_type_name) {
                             continue;
                         }
 
@@ -319,7 +316,7 @@ impl<'a> Engine<'a> {
                 Selection::InlineFragment(inline_fragment) => {
                     let fragment_type = inline_fragment.type_condition();
 
-                    if matches!(fragment_type, Some(fragment_type) if !self.does_fragment_type_apply(object_type, fragment_type))
+                    if matches!(fragment_type, Some(fragment_type) if !self.does_fragment_type_apply(object_type, fragment_type.named_type().as_ref()))
                     {
                         continue;
                     }
@@ -427,7 +424,7 @@ impl<'a> Engine<'a> {
         let argument_value: Option<&VariableValue> = arguments.and_then(|arguments| {
             arguments
                 .iter()
-                .find(|argument| argument.name() == argument_name)
+                .find(|argument| argument.name().as_ref() == argument_name)
                 .map(|argument| argument.value())
         });
         let has_value = argument_value.is_some();
