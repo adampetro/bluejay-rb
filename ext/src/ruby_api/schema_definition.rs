@@ -11,10 +11,6 @@ use crate::ruby_api::{
     InterfaceImplementations, InterfaceTypeDefinition, ObjectTypeDefinition, UnionMemberType,
     UnionMemberTypes, UnionTypeDefinition, ValidationError,
 };
-use bluejay_core::definition::{
-    BaseInputTypeReference as CoreBaseInputTypeReference,
-    BaseOutputTypeReference as CoreBaseOutputTypeReference,
-};
 use bluejay_core::{AsIter, BuiltinScalarDefinition, IntoEnumIterator};
 use bluejay_printer::definition::DisplaySchemaDefinition;
 use bluejay_validator::executable::RulesValidator;
@@ -260,15 +256,15 @@ impl TryFrom<&BaseInputTypeReference> for TypeDefinitionReference {
     type Error = ();
 
     fn try_from(value: &BaseInputTypeReference) -> Result<Self, Self::Error> {
-        match value.as_ref() {
-            CoreBaseInputTypeReference::BuiltinScalarType(_) => Err(()),
-            CoreBaseInputTypeReference::CustomScalarType(cstd, _) => {
+        match value {
+            BaseInputTypeReference::BuiltinScalar(_) => Err(()),
+            BaseInputTypeReference::CustomScalar(cstd) => {
                 Ok(Self::CustomScalarType(cstd.clone(), Default::default()))
             }
-            CoreBaseInputTypeReference::EnumType(etd, _) => {
+            BaseInputTypeReference::Enum(etd) => {
                 Ok(Self::EnumType(etd.clone(), Default::default()))
             }
-            CoreBaseInputTypeReference::InputObjectType(iotd, _) => {
+            BaseInputTypeReference::InputObject(iotd) => {
                 Ok(Self::InputObjectType(iotd.clone(), Default::default()))
             }
         }
@@ -281,19 +277,17 @@ impl TryInto<BaseInputTypeReference> for &TypeDefinitionReference {
     fn try_into(self) -> Result<BaseInputTypeReference, Self::Error> {
         match self {
             TypeDefinitionReference::BuiltinScalarType(bstd) => {
-                Ok(CoreBaseInputTypeReference::BuiltinScalarType(*bstd).into())
+                Ok(BaseInputTypeReference::BuiltinScalar(*bstd))
             }
-            TypeDefinitionReference::CustomScalarType(cstd, _) => Ok(
-                CoreBaseInputTypeReference::CustomScalarType(cstd.clone(), Default::default())
-                    .into(),
-            ),
+            TypeDefinitionReference::CustomScalarType(cstd, _) => {
+                Ok(BaseInputTypeReference::CustomScalar(cstd.clone()))
+            }
             TypeDefinitionReference::EnumType(etd, _) => {
-                Ok(CoreBaseInputTypeReference::EnumType(etd.clone(), Default::default()).into())
+                Ok(BaseInputTypeReference::Enum(etd.clone()))
             }
-            TypeDefinitionReference::InputObjectType(iotd, _) => Ok(
-                CoreBaseInputTypeReference::InputObjectType(iotd.clone(), Default::default())
-                    .into(),
-            ),
+            TypeDefinitionReference::InputObjectType(iotd, _) => {
+                Ok(BaseInputTypeReference::InputObject(iotd.clone()))
+            }
             TypeDefinitionReference::InterfaceType(_, _)
             | TypeDefinitionReference::ObjectType(_, _)
             | TypeDefinitionReference::UnionType(_, _) => Err(()),
@@ -305,21 +299,21 @@ impl TryFrom<&BaseOutputTypeReference> for TypeDefinitionReference {
     type Error = ();
 
     fn try_from(value: &BaseOutputTypeReference) -> Result<Self, Self::Error> {
-        match value.as_ref() {
-            CoreBaseOutputTypeReference::BuiltinScalarType(_) => Err(()),
-            CoreBaseOutputTypeReference::CustomScalarType(cstd, _) => {
+        match value {
+            BaseOutputTypeReference::BuiltinScalar(_) => Err(()),
+            BaseOutputTypeReference::CustomScalar(cstd) => {
                 Ok(Self::CustomScalarType(cstd.clone(), Default::default()))
             }
-            CoreBaseOutputTypeReference::EnumType(etd, _) => {
+            BaseOutputTypeReference::Enum(etd) => {
                 Ok(Self::EnumType(etd.clone(), Default::default()))
             }
-            CoreBaseOutputTypeReference::ObjectType(otd, _) => {
+            BaseOutputTypeReference::Object(otd) => {
                 Ok(Self::ObjectType(otd.clone(), Default::default()))
             }
-            CoreBaseOutputTypeReference::InterfaceType(itd, _) => {
+            BaseOutputTypeReference::Interface(itd) => {
                 Ok(Self::InterfaceType(itd.clone(), Default::default()))
             }
-            CoreBaseOutputTypeReference::UnionType(utd, _) => {
+            BaseOutputTypeReference::Union(utd) => {
                 Ok(Self::UnionType(utd.clone(), Default::default()))
             }
         }

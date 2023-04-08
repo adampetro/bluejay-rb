@@ -7,7 +7,7 @@ use super::{
 };
 use crate::helpers::{public_name, Variables, WrappedDefinition};
 use bluejay_core::definition::{
-    BaseInputTypeReference as CoreBaseInputTypeReference,
+    BaseInputTypeReference as CoreBaseInputTypeReference, BaseInputTypeReferenceFromAbstract,
     InputTypeReference as CoreInputTypeReference,
 };
 use bluejay_core::{
@@ -21,61 +21,39 @@ use magnus::{
     Value, QNIL,
 };
 
-type BaseInputTypeReferenceInner = CoreBaseInputTypeReference<
-    CustomScalarTypeDefinition,
-    WrappedDefinition<CustomScalarTypeDefinition>,
-    InputObjectTypeDefinition,
-    WrappedDefinition<InputObjectTypeDefinition>,
-    EnumTypeDefinition,
-    WrappedDefinition<EnumTypeDefinition>,
->;
-
 #[derive(Debug)]
-#[repr(transparent)]
-pub struct BaseInputTypeReference(BaseInputTypeReferenceInner);
+pub enum BaseInputTypeReference {
+    BuiltinScalar(BuiltinScalarDefinition),
+    CustomScalar(WrappedDefinition<CustomScalarTypeDefinition>),
+    InputObject(WrappedDefinition<InputObjectTypeDefinition>),
+    Enum(WrappedDefinition<EnumTypeDefinition>),
+}
 
 impl bluejay_core::definition::AbstractBaseInputTypeReference for BaseInputTypeReference {
     type CustomScalarTypeDefinition = CustomScalarTypeDefinition;
     type InputObjectTypeDefinition = InputObjectTypeDefinition;
     type EnumTypeDefinition = EnumTypeDefinition;
-    type WrappedCustomScalarTypeDefinition = WrappedDefinition<CustomScalarTypeDefinition>;
-    type WrappedInputObjectTypeDefinition = WrappedDefinition<InputObjectTypeDefinition>;
-    type WrappedEnumTypeDefinition = WrappedDefinition<EnumTypeDefinition>;
-}
 
-impl AsRef<BaseInputTypeReferenceInner> for BaseInputTypeReference {
-    fn as_ref(&self) -> &BaseInputTypeReferenceInner {
-        &self.0
-    }
-}
-
-impl From<BaseInputTypeReferenceInner> for BaseInputTypeReference {
-    fn from(value: BaseInputTypeReferenceInner) -> Self {
-        Self(value)
+    fn get(&self) -> BaseInputTypeReferenceFromAbstract<'_, Self> {
+        match self {
+            Self::BuiltinScalar(bstd) => CoreBaseInputTypeReference::BuiltinScalarType(*bstd),
+            Self::CustomScalar(cstd) => CoreBaseInputTypeReference::CustomScalarType(cstd.as_ref()),
+            Self::Enum(etd) => CoreBaseInputTypeReference::EnumType(etd.as_ref()),
+            Self::InputObject(iotd) => CoreBaseInputTypeReference::InputObjectType(iotd.as_ref()),
+        }
     }
 }
 
 impl BaseInputTypeReference {
     pub fn new(value: Value) -> Result<Self, Error> {
         if let Ok(wrapped_struct) = value.try_convert::<Obj<Scalar>>() {
-            Ok(Self(CoreBaseInputTypeReference::BuiltinScalarType(
-                wrapped_struct.get().to_owned().into(),
-            )))
+            Ok(Self::BuiltinScalar(wrapped_struct.get().to_owned().into()))
         } else if let Ok(wrapped_definition) = value.try_convert() {
-            Ok(Self(CoreBaseInputTypeReference::InputObjectType(
-                wrapped_definition,
-                Default::default(),
-            )))
+            Ok(Self::InputObject(wrapped_definition))
         } else if let Ok(wrapped_definition) = value.try_convert() {
-            Ok(Self(CoreBaseInputTypeReference::EnumType(
-                wrapped_definition,
-                Default::default(),
-            )))
+            Ok(Self::Enum(wrapped_definition))
         } else if let Ok(wrapped_definition) = value.try_convert() {
-            Ok(Self(CoreBaseInputTypeReference::CustomScalarType(
-                wrapped_definition,
-                Default::default(),
-            )))
+            Ok(Self::CustomScalar(wrapped_definition))
         } else {
             Err(Error::new(
                 exception::type_error(),
@@ -85,22 +63,22 @@ impl BaseInputTypeReference {
     }
 
     pub fn mark(&self) {
-        match &self.0 {
-            CoreBaseInputTypeReference::BuiltinScalarType(_) => {}
-            CoreBaseInputTypeReference::InputObjectType(wd, _) => wd.mark(),
-            CoreBaseInputTypeReference::EnumType(wd, _) => wd.mark(),
-            CoreBaseInputTypeReference::CustomScalarType(wd, _) => wd.mark(),
+        match self {
+            Self::BuiltinScalar(_) => {}
+            Self::InputObject(wd) => wd.mark(),
+            Self::Enum(wd) => wd.mark(),
+            Self::CustomScalar(wd) => wd.mark(),
         }
     }
 
     fn sorbet_type(&self) -> String {
-        match &self.0 {
-            CoreBaseInputTypeReference::BuiltinScalarType(bstd) => Scalar::from(*bstd)
+        match self {
+            Self::BuiltinScalar(bstd) => Scalar::from(*bstd)
                 .sorbet_type_fully_qualified_name()
                 .to_owned(),
-            CoreBaseInputTypeReference::CustomScalarType(_, _) => "T.untyped".to_string(),
-            CoreBaseInputTypeReference::EnumType(_, _) => "String".to_string(),
-            CoreBaseInputTypeReference::InputObjectType(iotd, _) => iotd.fully_qualified_name(),
+            Self::CustomScalar(_) => "T.untyped".to_string(),
+            Self::Enum(_) => "String".to_string(),
+            Self::InputObject(iotd) => iotd.fully_qualified_name(),
         }
     }
 
@@ -277,23 +255,17 @@ impl CoerceInput for BaseInputTypeReference {
         value: Value,
         path: &[String],
     ) -> Result<Result<WrappedValue, Vec<CoercionError>>, Error> {
-        match &self.0 {
-            CoreBaseInputTypeReference::BuiltinScalarType(bstd) => {
-                bstd.coerced_ruby_value_to_wrapped_value(value, path)
-            }
-            CoreBaseInputTypeReference::InputObjectType(wrapped_definition, _) => {
-                wrapped_definition
-                    .as_ref()
-                    .coerced_ruby_value_to_wrapped_value(value, path)
-            }
-            CoreBaseInputTypeReference::EnumType(wrapped_definition, _) => wrapped_definition
+        match self {
+            Self::BuiltinScalar(bstd) => bstd.coerced_ruby_value_to_wrapped_value(value, path),
+            Self::InputObject(wrapped_definition) => wrapped_definition
                 .as_ref()
                 .coerced_ruby_value_to_wrapped_value(value, path),
-            CoreBaseInputTypeReference::CustomScalarType(wrapped_definition, _) => {
-                wrapped_definition
-                    .as_ref()
-                    .coerced_ruby_value_to_wrapped_value(value, path)
-            }
+            Self::Enum(wrapped_definition) => wrapped_definition
+                .as_ref()
+                .coerced_ruby_value_to_wrapped_value(value, path),
+            Self::CustomScalar(wrapped_definition) => wrapped_definition
+                .as_ref()
+                .coerced_ruby_value_to_wrapped_value(value, path),
         }
     }
 
@@ -303,19 +275,11 @@ impl CoerceInput for BaseInputTypeReference {
         path: &[String],
         variables: &impl Variables<CONST>,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
-        match &self.0 {
-            CoreBaseInputTypeReference::BuiltinScalarType(bstd) => {
-                bstd.coerce_parser_value(value, path, variables)
-            }
-            CoreBaseInputTypeReference::CustomScalarType(cstd, _) => {
-                cstd.as_ref().coerce_parser_value(value, path, variables)
-            }
-            CoreBaseInputTypeReference::EnumType(etd, _) => {
-                etd.as_ref().coerce_parser_value(value, path, variables)
-            }
-            CoreBaseInputTypeReference::InputObjectType(iotd, _) => {
-                iotd.as_ref().coerce_parser_value(value, path, variables)
-            }
+        match self {
+            Self::BuiltinScalar(bstd) => bstd.coerce_parser_value(value, path, variables),
+            Self::CustomScalar(cstd) => cstd.as_ref().coerce_parser_value(value, path, variables),
+            Self::Enum(etd) => etd.as_ref().coerce_parser_value(value, path, variables),
+            Self::InputObject(iotd) => iotd.as_ref().coerce_parser_value(value, path, variables),
         }
     }
 
@@ -324,23 +288,17 @@ impl CoerceInput for BaseInputTypeReference {
         value: Value,
         path: &[String],
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
-        match &self.0 {
-            CoreBaseInputTypeReference::BuiltinScalarType(bstd) => {
-                bstd.coerce_ruby_const_value(value, path)
-            }
-            CoreBaseInputTypeReference::InputObjectType(wrapped_definition, _) => {
-                wrapped_definition
-                    .as_ref()
-                    .coerce_ruby_const_value(value, path)
-            }
-            CoreBaseInputTypeReference::EnumType(wrapped_definition, _) => wrapped_definition
+        match self {
+            Self::BuiltinScalar(bstd) => bstd.coerce_ruby_const_value(value, path),
+            Self::InputObject(wrapped_definition) => wrapped_definition
                 .as_ref()
                 .coerce_ruby_const_value(value, path),
-            CoreBaseInputTypeReference::CustomScalarType(wrapped_definition, _) => {
-                wrapped_definition
-                    .as_ref()
-                    .coerce_ruby_const_value(value, path)
-            }
+            Self::Enum(wrapped_definition) => wrapped_definition
+                .as_ref()
+                .coerce_ruby_const_value(value, path),
+            Self::CustomScalar(wrapped_definition) => wrapped_definition
+                .as_ref()
+                .coerce_ruby_const_value(value, path),
         }
     }
 }
