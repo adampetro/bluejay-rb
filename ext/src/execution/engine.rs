@@ -346,18 +346,18 @@ impl<'a> Engine<'a> {
         let fragment_type = self.schema.r#type(fragment_type_name).unwrap();
 
         match fragment_type {
-            TypeDefinitionReference::ObjectType(otd, _) => {
+            TypeDefinitionReference::Object(otd) => {
                 // TODO: see if there's any edge case where name equality does not work
                 otd.as_ref().name() == object_type.name()
             }
-            TypeDefinitionReference::InterfaceType(itd, _) => {
+            TypeDefinitionReference::Interface(itd) => {
                 object_type.implements_interface(itd.as_ref())
             }
-            TypeDefinitionReference::UnionType(utd, _) => utd.as_ref().contains_type(object_type),
-            TypeDefinitionReference::BuiltinScalarType(_)
-            | TypeDefinitionReference::CustomScalarType(_, _)
-            | TypeDefinitionReference::EnumType(_, _)
-            | TypeDefinitionReference::InputObjectType(_, _) => unreachable!(),
+            TypeDefinitionReference::Union(utd) => utd.as_ref().contains_type(object_type),
+            TypeDefinitionReference::BuiltinScalar(_)
+            | TypeDefinitionReference::CustomScalar(_)
+            | TypeDefinitionReference::Enum(_)
+            | TypeDefinitionReference::InputObject(_) => unreachable!(),
         }
     }
 
@@ -569,7 +569,7 @@ impl<'a> Engine<'a> {
             )
             .unwrap();
         let object_type = match self.schema.r#type(typename.as_str()) {
-            Some(TypeDefinitionReference::ObjectType(otd, _)) => otd.as_ref(),
+            Some(TypeDefinitionReference::Object(otd)) => otd.as_ref(),
             _ => panic!(),
         };
         if object_type.implements_interface(interface_type) {
@@ -594,7 +594,7 @@ impl<'a> Engine<'a> {
             )
             .unwrap();
         let object_type = match self.schema.r#type(typename.as_str()) {
-            Some(TypeDefinitionReference::ObjectType(otd, _)) => otd.as_ref(),
+            Some(TypeDefinitionReference::Object(otd)) => otd.as_ref(),
             _ => panic!(),
         };
         if union_type.contains_type(object_type) {
