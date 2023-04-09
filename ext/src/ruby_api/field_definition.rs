@@ -3,7 +3,6 @@ use crate::ruby_api::{
     output_type_reference::{BaseOutputTypeReference, OutputTypeReference},
     root, Directives,
 };
-use bluejay_core::definition::OutputTypeReference as CoreOutputTypeReference;
 use convert_case::{Case, Casing};
 use magnus::{
     function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,
@@ -58,7 +57,7 @@ impl FieldDefinition {
 
     pub(crate) fn typename() -> Obj<Self> {
         memoize!(([BoxValue<Value>; 4], Obj<FieldDefinition>): {
-            let t = Obj::wrap(CoreOutputTypeReference::Base(BaseOutputTypeReference::builtin_string(), true).into());
+            let t = Obj::wrap(OutputTypeReference::Base(BaseOutputTypeReference::builtin_string(), true));
             let arguments_definition = ArgumentsDefinition::empty();
             let directives = Directives::empty();
             let directives_rarray: RArray = (&directives).into();

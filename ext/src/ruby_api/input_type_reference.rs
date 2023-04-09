@@ -7,8 +7,9 @@ use super::{
 };
 use crate::helpers::{public_name, Variables, WrappedDefinition};
 use bluejay_core::definition::{
-    BaseInputTypeReference as CoreBaseInputTypeReference, BaseInputTypeReferenceFromAbstract,
-    InputTypeReference as CoreInputTypeReference,
+    AbstractInputTypeReference, BaseInputTypeReference as CoreBaseInputTypeReference,
+    BaseInputTypeReferenceFromAbstract, InputTypeReference as CoreInputTypeReference,
+    InputTypeReferenceFromAbstract,
 };
 use bluejay_core::{
     BooleanValue, BuiltinScalarDefinition, FloatValue, IntegerValue, ListTypeReference,
@@ -34,7 +35,7 @@ impl bluejay_core::definition::AbstractBaseInputTypeReference for BaseInputTypeR
     type InputObjectTypeDefinition = InputObjectTypeDefinition;
     type EnumTypeDefinition = EnumTypeDefinition;
 
-    fn get(&self) -> BaseInputTypeReferenceFromAbstract<'_, Self> {
+    fn as_ref(&self) -> BaseInputTypeReferenceFromAbstract<'_, Self> {
         match self {
             Self::BuiltinScalar(bstd) => CoreBaseInputTypeReference::BuiltinScalarType(*bstd),
             Self::CustomScalar(cstd) => CoreBaseInputTypeReference::CustomScalarType(cstd.as_ref()),
@@ -305,68 +306,28 @@ impl CoerceInput for BaseInputTypeReference {
 
 #[derive(Debug, TypedData)]
 #[magnus(class = "Bluejay::InputTypeReference", mark)]
-#[repr(transparent)]
-pub struct InputTypeReference(
-    CoreInputTypeReference<BaseInputTypeReference, WrappedInputTypeReference>,
-);
-
-impl AsRef<CoreInputTypeReference<BaseInputTypeReference, WrappedInputTypeReference>>
-    for InputTypeReference
-{
-    fn as_ref(&self) -> &CoreInputTypeReference<BaseInputTypeReference, WrappedInputTypeReference> {
-        &self.0
-    }
+pub enum InputTypeReference {
+    Base(BaseInputTypeReference, bool),
+    List(Obj<Self>, bool),
 }
 
-impl bluejay_core::definition::AbstractInputTypeReference for InputTypeReference {
+impl AbstractInputTypeReference for InputTypeReference {
     type BaseInputTypeReference = BaseInputTypeReference;
-    type Wrapper = WrappedInputTypeReference;
-}
 
-impl DataTypeFunctions for InputTypeReference {
-    fn mark(&self) {
-        match &self.0 {
-            CoreInputTypeReference::List(inner, _) => inner.mark(),
-            CoreInputTypeReference::Base(inner, _) => inner.mark(),
+    fn as_ref(&self) -> InputTypeReferenceFromAbstract<'_, Self> {
+        match self {
+            Self::Base(base, required) => CoreInputTypeReference::Base(base, *required),
+            Self::List(inner, required) => CoreInputTypeReference::List(inner.get(), *required),
         }
     }
 }
 
-#[derive(Clone, Debug)]
-#[repr(transparent)]
-pub struct WrappedInputTypeReference(Obj<InputTypeReference>);
-
-impl AsRef<CoreInputTypeReference<BaseInputTypeReference, Self>> for WrappedInputTypeReference {
-    fn as_ref(&self) -> &CoreInputTypeReference<BaseInputTypeReference, Self> {
-        self.0.get().as_ref()
-    }
-}
-
-impl WrappedInputTypeReference {
+impl DataTypeFunctions for InputTypeReference {
     fn mark(&self) {
-        gc::mark(self.0);
-    }
-
-    fn get(&self) -> &InputTypeReference {
-        self.0.get()
-    }
-}
-
-impl From<Obj<InputTypeReference>> for WrappedInputTypeReference {
-    fn from(value: Obj<InputTypeReference>) -> Self {
-        Self(value)
-    }
-}
-
-impl From<InputTypeReference> for WrappedInputTypeReference {
-    fn from(value: InputTypeReference) -> Self {
-        Self(Obj::wrap(value))
-    }
-}
-
-impl AsRef<Obj<InputTypeReference>> for WrappedInputTypeReference {
-    fn as_ref(&self) -> &Obj<InputTypeReference> {
-        &self.0
+        match self {
+            Self::Base(base, _) => base.mark(),
+            Self::List(inner, _) => gc::mark(*inner),
+        }
     }
 }
 
@@ -375,21 +336,14 @@ impl InputTypeReference {
         let args: KwArgs<(Value, bool), (), ()> = get_kwargs(kw, &["type", "required"], &[])?;
         let (r#type, required) = args.required;
         let base = BaseInputTypeReference::new(r#type)?;
-        Ok(Self(CoreInputTypeReference::Base(base, required)))
+        Ok(Self::Base(base, required))
     }
 
     pub fn list(kw: RHash) -> Result<Self, Error> {
         let args: KwArgs<(Obj<InputTypeReference>, bool), (), ()> =
             get_kwargs(kw, &["type", "required"], &[])?;
         let (r#type, required) = args.required;
-        Ok(Self(CoreInputTypeReference::List(r#type.into(), required)))
-    }
-
-    pub(crate) fn base(&self) -> &BaseInputTypeReference {
-        match &self.0 {
-            CoreInputTypeReference::Base(b, _) => b,
-            CoreInputTypeReference::List(inner, _) => inner.get().base(),
-        }
+        Ok(Self::List(r#type, required))
     }
 
     fn coerce_required_ruby<
@@ -420,32 +374,30 @@ impl InputTypeReference {
         base: BaseInputTypeReference,
     ) -> Self {
         match parser_type_reference {
-            ParserTypeReference::NamedType(ntr) => {
-                Self(CoreInputTypeReference::Base(base, ntr.required()))
-            }
-            ParserTypeReference::ListType(ltr) => Self(CoreInputTypeReference::List(
-                Self::from_parser_type_reference(ltr.inner(), base).into(),
+            ParserTypeReference::NamedType(ntr) => Self::Base(base, ntr.required()),
+            ParserTypeReference::ListType(ltr) => Self::List(
+                Obj::wrap(Self::from_parser_type_reference(ltr.inner(), base)),
                 ltr.required(),
-            )),
+            ),
         }
     }
 
     fn is_list(&self) -> bool {
-        matches!(&self.0, CoreInputTypeReference::List(_, _))
+        matches!(self, Self::List(_, _))
     }
 
     fn is_base(&self) -> bool {
-        matches!(&self.0, CoreInputTypeReference::Base(_, _))
+        matches!(self, Self::Base(_, _))
     }
 
     pub fn is_required(&self) -> bool {
-        self.0.is_required()
+        self.as_ref().is_required()
     }
 
     fn unwrap_list(&self) -> Result<Obj<InputTypeReference>, Error> {
-        match &self.0 {
-            CoreInputTypeReference::List(inner, _) => Ok(*inner.as_ref()),
-            CoreInputTypeReference::Base(_, _) => Err(Error::new(
+        match self {
+            Self::List(inner, _) => Ok(*inner),
+            Self::Base(_, _) => Err(Error::new(
                 exception::runtime_error(),
                 "Tried to unwrap a non-list InputTypeReference".to_owned(),
             )),
@@ -453,12 +405,12 @@ impl InputTypeReference {
     }
 
     fn sorbet_type(&self) -> String {
-        let is_required = self.0.is_required();
-        let inner = match &self.0 {
-            CoreInputTypeReference::List(inner, _) => {
+        let is_required = self.as_ref().is_required();
+        let inner = match self {
+            Self::List(inner, _) => {
                 format!("T::Array[{}]", inner.get().sorbet_type())
             }
-            CoreInputTypeReference::Base(base, _) => base.sorbet_type(),
+            Self::Base(base, _) => base.sorbet_type(),
         };
         if is_required {
             inner
@@ -488,7 +440,7 @@ impl InputTypeReference {
                         format!(
                             "Received `null` for ${}, which is invalid for {}",
                             var.name(),
-                            self.0.display_name(),
+                            self.as_ref().display_name(),
                         ),
                         path.to_owned(),
                     )])),
@@ -496,11 +448,9 @@ impl InputTypeReference {
                     None => Ok(Ok(*QNIL)),
                 }
             }
-            _ => match &self.0 {
-                CoreInputTypeReference::Base(inner, _) => {
-                    inner.coerce_parser_value(value, path, variables)
-                }
-                CoreInputTypeReference::List(inner, _) => {
+            _ => match self {
+                Self::Base(inner, _) => inner.coerce_parser_value(value, path, variables),
+                Self::List(inner, _) => {
                     let inner = inner.get();
 
                     if let ParserValue::List(l) = value {
@@ -535,7 +485,7 @@ impl InputTypeReference {
                         Ok(Err(vec![CoercionError::new(
                             format!(
                                 "No implicit conversion of {value} to {}",
-                                self.0.display_name()
+                                self.as_ref().display_name()
                             ),
                             path.to_owned(),
                         )]))
@@ -551,15 +501,15 @@ impl InputTypeReference {
         path: &[String],
         allow_implicit_list: bool,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
-        match &self.0 {
-            CoreInputTypeReference::Base(inner, required) => Self::coerce_required_ruby(
+        match self {
+            Self::Base(inner, required) => Self::coerce_required_ruby(
                 value,
                 *required,
                 path,
                 |value, path| inner.coerce_ruby_const_value(value, path),
                 || Ok(*QNIL),
             ),
-            CoreInputTypeReference::List(inner, required) => Self::coerce_required_ruby(
+            Self::List(inner, required) => Self::coerce_required_ruby(
                 value,
                 *required,
                 path,
@@ -599,7 +549,7 @@ impl InputTypeReference {
                             format!(
                                 "No implicit conversion of {} to {}",
                                 public_name(value),
-                                self.0.display_name()
+                                self.as_ref().display_name()
                             ),
                             path.to_owned(),
                         )]))
@@ -617,15 +567,15 @@ impl CoerceInput for InputTypeReference {
         value: Value,
         path: &[String],
     ) -> Result<Result<WrappedValue, Vec<CoercionError>>, Error> {
-        match &self.0 {
-            CoreInputTypeReference::Base(inner, required) => Self::coerce_required_ruby(
+        match self {
+            Self::Base(inner, required) => Self::coerce_required_ruby(
                 value,
                 *required,
                 path,
                 |value, path| inner.coerced_ruby_value_to_wrapped_value(value, path),
                 || (*QNIL).try_into(),
             ),
-            CoreInputTypeReference::List(inner, required) => Self::coerce_required_ruby(
+            Self::List(inner, required) => Self::coerce_required_ruby(
                 value,
                 *required,
                 path,

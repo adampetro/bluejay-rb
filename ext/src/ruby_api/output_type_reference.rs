@@ -6,8 +6,9 @@ use super::{
 };
 use crate::helpers::WrappedDefinition;
 use bluejay_core::definition::{
-    AbstractBaseOutputTypeReference, BaseOutputTypeReference as CoreBaseOutputTypeReference,
-    BaseOutputTypeReferenceFromAbstract, OutputTypeReference as CoreOutputTypeReference,
+    AbstractBaseOutputTypeReference, AbstractOutputTypeReference,
+    BaseOutputTypeReference as CoreBaseOutputTypeReference, BaseOutputTypeReferenceFromAbstract,
+    OutputTypeReference as CoreOutputTypeReference, OutputTypeReferenceFromAbstract,
 };
 use bluejay_core::BuiltinScalarDefinition;
 use magnus::{
@@ -32,7 +33,7 @@ impl AbstractBaseOutputTypeReference for BaseOutputTypeReference {
     type InterfaceTypeDefinition = InterfaceTypeDefinition;
     type UnionTypeDefinition = UnionTypeDefinition;
 
-    fn get(&self) -> BaseOutputTypeReferenceFromAbstract<'_, Self> {
+    fn as_ref(&self) -> BaseOutputTypeReferenceFromAbstract<'_, Self> {
         match self {
             Self::BuiltinScalar(bstd) => CoreBaseOutputTypeReference::BuiltinScalarType(*bstd),
             Self::CustomScalar(cstd) => {
@@ -117,121 +118,61 @@ impl BaseOutputTypeReference {
 
 #[derive(Debug, TypedData)]
 #[magnus(class = "Bluejay::OutputTypeReference", mark)]
-#[repr(transparent)]
-pub struct OutputTypeReference(
-    CoreOutputTypeReference<BaseOutputTypeReference, WrappedOutputTypeReference>,
-);
-
-impl AsRef<CoreOutputTypeReference<BaseOutputTypeReference, WrappedOutputTypeReference>>
-    for OutputTypeReference
-{
-    fn as_ref(
-        &self,
-    ) -> &CoreOutputTypeReference<BaseOutputTypeReference, WrappedOutputTypeReference> {
-        &self.0
-    }
+pub enum OutputTypeReference {
+    Base(BaseOutputTypeReference, bool),
+    List(Obj<Self>, bool),
 }
 
-impl bluejay_core::definition::AbstractOutputTypeReference for OutputTypeReference {
+impl AbstractOutputTypeReference for OutputTypeReference {
     type BaseOutputTypeReference = BaseOutputTypeReference;
-    type Wrapper = WrappedOutputTypeReference;
-}
 
-impl DataTypeFunctions for OutputTypeReference {
-    fn mark(&self) {
-        match &self.0 {
-            CoreOutputTypeReference::List(inner, _) => inner.mark(),
-            CoreOutputTypeReference::Base(inner, _) => inner.mark(),
+    fn as_ref(&self) -> OutputTypeReferenceFromAbstract<'_, Self> {
+        match self {
+            Self::Base(base, required) => CoreOutputTypeReference::Base(base, *required),
+            Self::List(inner, required) => CoreOutputTypeReference::List(inner.get(), *required),
         }
     }
 }
 
-impl From<CoreOutputTypeReference<BaseOutputTypeReference, WrappedOutputTypeReference>>
-    for OutputTypeReference
-{
-    fn from(
-        value: CoreOutputTypeReference<BaseOutputTypeReference, WrappedOutputTypeReference>,
-    ) -> Self {
-        Self(value)
-    }
-}
-
-#[derive(Clone, Debug)]
-#[repr(transparent)]
-pub struct WrappedOutputTypeReference(Obj<OutputTypeReference>);
-
-impl AsRef<CoreOutputTypeReference<BaseOutputTypeReference, Self>> for WrappedOutputTypeReference {
-    fn as_ref(&self) -> &CoreOutputTypeReference<BaseOutputTypeReference, Self> {
-        self.0.get().as_ref()
-    }
-}
-
-impl WrappedOutputTypeReference {
+impl DataTypeFunctions for OutputTypeReference {
     fn mark(&self) {
-        gc::mark(self.0)
-    }
-
-    pub fn get(&self) -> &OutputTypeReference {
-        self.0.get()
-    }
-}
-
-impl From<Obj<OutputTypeReference>> for WrappedOutputTypeReference {
-    fn from(value: Obj<OutputTypeReference>) -> Self {
-        Self(value)
+        match self {
+            Self::Base(base, _) => base.mark(),
+            Self::List(inner, _) => gc::mark(*inner),
+        }
     }
 }
-
-impl From<OutputTypeReference> for WrappedOutputTypeReference {
-    fn from(value: OutputTypeReference) -> Self {
-        Self(Obj::wrap(value))
-    }
-}
-
-impl AsRef<Obj<OutputTypeReference>> for WrappedOutputTypeReference {
-    fn as_ref(&self) -> &Obj<OutputTypeReference> {
-        &self.0
-    }
-}
-
 impl OutputTypeReference {
     pub fn new(kw: RHash) -> Result<Self, Error> {
         let args: KwArgs<(Value, bool), (), ()> = get_kwargs(kw, &["type", "required"], &[])?;
         let (r#type, required) = args.required;
         let base = BaseOutputTypeReference::new(r#type)?;
-        Ok(Self(CoreOutputTypeReference::Base(base, required)))
+        Ok(Self::Base(base, required))
     }
 
     pub fn list(kw: RHash) -> Result<Self, Error> {
         let args: KwArgs<(Obj<OutputTypeReference>, bool), (), ()> =
             get_kwargs(kw, &["type", "required"], &[])?;
         let (r#type, required) = args.required;
-        Ok(Self(CoreOutputTypeReference::List(r#type.into(), required)))
-    }
-
-    pub(crate) fn base(&self) -> &BaseOutputTypeReference {
-        match &self.0 {
-            CoreOutputTypeReference::Base(b, _) => b,
-            CoreOutputTypeReference::List(inner, _) => inner.get().base(),
-        }
+        Ok(Self::List(r#type, required))
     }
 
     fn is_list(&self) -> bool {
-        matches!(&self.0, CoreOutputTypeReference::List(_, _))
+        matches!(self, Self::List(_, _))
     }
 
     fn is_base(&self) -> bool {
-        matches!(&self.0, CoreOutputTypeReference::Base(_, _))
+        matches!(self, Self::Base(_, _))
     }
 
     fn is_required(&self) -> bool {
-        self.0.is_required()
+        self.as_ref().is_required()
     }
 
     fn unwrap_list(&self) -> Result<Obj<OutputTypeReference>, Error> {
-        match &self.0 {
-            CoreOutputTypeReference::List(inner, _) => Ok(*inner.as_ref()),
-            CoreOutputTypeReference::Base(_, _) => Err(Error::new(
+        match self {
+            Self::List(inner, _) => Ok(*inner),
+            Self::Base(_, _) => Err(Error::new(
                 exception::runtime_error(),
                 "Tried to unwrap a non-list OutputTypeReference".to_owned(),
             )),
@@ -239,12 +180,12 @@ impl OutputTypeReference {
     }
 
     fn sorbet_type(&self) -> String {
-        let is_required = self.0.is_required();
-        let inner = match &self.0 {
-            CoreOutputTypeReference::List(inner, _) => {
+        let is_required = self.as_ref().is_required();
+        let inner = match self {
+            Self::List(inner, _) => {
                 format!("T::Array[{}]", inner.get().sorbet_type())
             }
-            CoreOutputTypeReference::Base(base, _) => base.sorbet_type(),
+            Self::Base(base, _) => base.sorbet_type(),
         };
         if is_required {
             inner

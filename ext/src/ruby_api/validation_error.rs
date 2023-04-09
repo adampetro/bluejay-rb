@@ -1,8 +1,9 @@
 use super::root;
 use crate::ruby_api::SchemaDefinition;
 use bluejay_core::{
-    call_const_wrapper_method, definition::InputValueDefinition, ArgumentWrapper, Directive,
-    DirectiveWrapper, OperationType,
+    call_const_wrapper_method,
+    definition::{AbstractOutputTypeReference, InputValueDefinition},
+    ArgumentWrapper, Directive, DirectiveWrapper, OperationType,
 };
 use bluejay_parser::ast::executable::ExecutableDocument;
 use bluejay_validator::executable::Error as CoreError;

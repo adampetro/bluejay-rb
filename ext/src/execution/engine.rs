@@ -4,7 +4,9 @@ use crate::ruby_api::{
     InputTypeReference, InputValueDefinition, InterfaceTypeDefinition, ObjectTypeDefinition,
     OutputTypeReference, SchemaDefinition, TypeDefinitionReference, UnionTypeDefinition,
 };
-use bluejay_core::definition::OutputTypeReference as CoreOutputTypeReference;
+use bluejay_core::definition::{
+    AbstractOutputTypeReference, OutputTypeReference as CoreOutputTypeReference,
+};
 use bluejay_core::{AsIter, Directive as CoreDirective, OperationType};
 use bluejay_parser::ast::executable::{ExecutableDocument, Field, OperationDefinition, Selection};
 use bluejay_parser::ast::{Directive, VariableArguments, VariableValue};
@@ -519,7 +521,6 @@ impl<'a> Engine<'a> {
             },
             CoreOutputTypeReference::List(inner, _) => {
                 if let Some(arr) = RArray::from_value(result) {
-                    let inner = inner.get();
                     let completed = RArray::with_capacity(arr.len());
                     let mut errors: Vec<ExecutionError<'a>> = Vec::new();
                     let mut has_null = false;

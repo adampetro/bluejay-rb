@@ -12,8 +12,8 @@ use crate::ruby_api::{
     UnionMemberTypes, UnionTypeDefinition, ValidationError,
 };
 use bluejay_core::definition::{
-    AbstractTypeDefinitionReference, TypeDefinitionReference as CoreTypeDefinitionReference,
-    TypeDefinitionReferenceFromAbstract,
+    AbstractInputTypeReference, AbstractOutputTypeReference, AbstractTypeDefinitionReference,
+    TypeDefinitionReference as CoreTypeDefinitionReference, TypeDefinitionReferenceFromAbstract,
 };
 use bluejay_core::{AsIter, BuiltinScalarDefinition, IntoEnumIterator};
 use bluejay_printer::definition::DisplaySchemaDefinition;
@@ -166,7 +166,7 @@ impl AbstractTypeDefinitionReference for TypeDefinitionReference {
     type UnionTypeDefinition = UnionTypeDefinition;
     type InterfaceTypeDefinition = InterfaceTypeDefinition;
 
-    fn get(&self) -> TypeDefinitionReferenceFromAbstract<'_, Self> {
+    fn as_ref(&self) -> TypeDefinitionReferenceFromAbstract<'_, Self> {
         match self {
             Self::BuiltinScalar(bstd) => CoreTypeDefinitionReference::BuiltinScalarType(*bstd),
             Self::CustomScalar(cstd) => {
@@ -255,13 +255,13 @@ impl bluejay_core::definition::SchemaDefinition for SchemaDefinition {
     ) -> Option<TypeDefinitionReferenceFromAbstract<'_, TypeDefinitionReference>> {
         self.contained_types
             .get(name)
-            .map(AbstractTypeDefinitionReference::get)
+            .map(AbstractTypeDefinitionReference::as_ref)
     }
 
     fn type_definitions(&self) -> Self::TypeDefinitionReferences<'_> {
         self.contained_types
             .values()
-            .map(AbstractTypeDefinitionReference::get)
+            .map(AbstractTypeDefinitionReference::as_ref)
     }
 
     fn directive_definitions(&self) -> Self::DirectiveDefinitions<'_> {
@@ -420,7 +420,7 @@ impl SchemaTypeVisitor {
     }
 
     fn visit_type(&mut self, t: TypeDefinitionReference) {
-        let name = t.get().name().to_owned();
+        let name = t.as_ref().name().to_owned();
         match self.types.entry(name) {
             Entry::Occupied(_) => {}
             Entry::Vacant(entry) => {
@@ -453,7 +453,7 @@ impl SchemaTypeVisitor {
     fn visit_field_definitions(&mut self, fields_definition: &FieldsDefinition) {
         for field_definition in fields_definition.iter() {
             self.visit_input_value_definitions(field_definition.argument_definitions());
-            let base_type = field_definition.r#type().base();
+            let base_type = field_definition.r#type().as_ref().base();
             let t: Result<TypeDefinitionReference, ()> = base_type.try_into();
             if let Ok(t) = t {
                 self.visit_type(t);
@@ -464,7 +464,7 @@ impl SchemaTypeVisitor {
 
     fn visit_input_value_definitions(&mut self, input_fields_definition: &InputFieldsDefinition) {
         for input_value_definition in input_fields_definition.iter() {
-            let base_type = input_value_definition.r#type().base();
+            let base_type = input_value_definition.r#type().as_ref().base();
             let t: Result<TypeDefinitionReference, ()> = base_type.try_into();
             if let Ok(t) = t {
                 self.visit_type(t);
