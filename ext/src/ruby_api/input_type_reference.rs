@@ -12,8 +12,8 @@ use bluejay_core::definition::{
     InputTypeReferenceFromAbstract,
 };
 use bluejay_core::{
-    BooleanValue, BuiltinScalarDefinition, FloatValue, IntegerValue, ListTypeReference,
-    NamedTypeReference,
+    AbstractValue, BuiltinScalarDefinition, ListTypeReference, NamedTypeReference,
+    Value as CoreValue,
 };
 use bluejay_parser::ast::{TypeReference as ParserTypeReference, Value as ParserValue};
 use magnus::{
@@ -168,33 +168,23 @@ impl BaseInputTypeReference {
         value: &ParserValue<CONST>,
         path: &[String],
     ) -> Result<Value, Vec<CoercionError>> {
-        match (t, value) {
-            (BuiltinScalarDefinition::Boolean, ParserValue::Boolean(b)) => {
-                let b = b.to_bool();
+        match (t, value.as_ref()) {
+            (BuiltinScalarDefinition::Boolean, CoreValue::Boolean(b)) => {
                 let r_value: Value = if b { *magnus::QTRUE } else { *magnus::QFALSE };
                 Ok(r_value)
             }
-            (BuiltinScalarDefinition::Float, ParserValue::Float(f)) => {
-                let f = f.to_f64();
-                Ok(*Float::from_f64(f))
-            }
-            (BuiltinScalarDefinition::Float, ParserValue::Integer(i)) => {
-                let i = i.to_i32();
+            (BuiltinScalarDefinition::Float, CoreValue::Float(f)) => Ok(*Float::from_f64(f)),
+            (BuiltinScalarDefinition::Float, CoreValue::Integer(i)) => {
                 Ok(*Float::from_f64(i.into()))
             }
-            (BuiltinScalarDefinition::ID, ParserValue::Integer(i)) => {
-                let i = i.to_i32();
+            (BuiltinScalarDefinition::ID, CoreValue::Integer(i)) => {
                 Ok(*Integer::from_i64(i.into()))
             }
             (
                 BuiltinScalarDefinition::ID | BuiltinScalarDefinition::String,
-                ParserValue::String(s),
-            ) => {
-                let s = s.to_string();
-                Ok(*RString::new(s.as_str()))
-            }
-            (BuiltinScalarDefinition::Int, ParserValue::Integer(i)) => {
-                let i = i.to_i32();
+                CoreValue::String(s),
+            ) => Ok(*RString::new(s)),
+            (BuiltinScalarDefinition::Int, CoreValue::Integer(i)) => {
                 Ok(*Integer::from_i64(i.into()))
             }
             _ => Err(vec![CoercionError::new(

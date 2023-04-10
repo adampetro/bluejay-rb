@@ -1,7 +1,8 @@
 use bluejay_core::{
-    BooleanValue, FloatValue, IntegerValue, ListValue as CoreListValue,
-    ObjectValue as CoreObjectValue, Value as CoreValue,
+    AbstractValue, AsIter, ListValue as CoreListValue, ObjectValue as CoreObjectValue,
+    Value as CoreValue, ValueFromAbstract,
 };
+use bluejay_parser::ast::ConstValue as ParserConstValue;
 use magnus::{
     exception, gc,
     r_hash::ForEach,
@@ -10,15 +11,45 @@ use magnus::{
 };
 use std::collections::HashMap;
 
-pub type ValueInner =
-    CoreValue<true, String, i32, f64, String, bool, (), String, ListValue, ObjectValue>;
+#[derive(Debug)]
+pub enum ValueInner {
+    Integer(i32),
+    Float(f64),
+    String(String),
+    Boolean(bool),
+    Null,
+    Enum(String),
+    List(ListValue),
+    Object(ObjectValue),
+}
+
+impl AbstractValue<true> for ValueInner {
+    type List = ListValue;
+    type Object = ObjectValue;
+
+    fn as_ref(&self) -> ValueFromAbstract<'_, true, Self> {
+        match self {
+            Self::Integer(i) => CoreValue::Integer(*i),
+            Self::Float(f) => CoreValue::Float(*f),
+            Self::String(s) => CoreValue::String(s),
+            Self::Boolean(b) => CoreValue::Boolean(*b),
+            Self::Null => CoreValue::Null,
+            Self::Enum(e) => CoreValue::Enum(e),
+            Self::List(l) => CoreValue::List(l),
+            Self::Object(o) => CoreValue::Object(o),
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct ListValue(Vec<ValueInner>);
 
-impl AsRef<[ValueInner]> for ListValue {
-    fn as_ref(&self) -> &[ValueInner] {
-        &self.0
+impl AsIter for ListValue {
+    type Item = ValueInner;
+    type Iterator<'a> = std::slice::Iter<'a, Self::Item>;
+
+    fn iter(&self) -> Self::Iterator<'_> {
+        self.0.iter()
     }
 }
 
@@ -28,12 +59,15 @@ impl From<Vec<ValueInner>> for ListValue {
     }
 }
 
-impl CoreListValue<ValueInner> for ListValue {}
+impl CoreListValue<true> for ListValue {
+    type Value = ValueInner;
+}
 
 #[derive(Debug)]
 pub struct ObjectValue(HashMap<String, ValueInner>);
 
-impl CoreObjectValue<ValueInner> for ObjectValue {
+impl CoreObjectValue<true> for ObjectValue {
+    type Value = ValueInner;
     type Iterator<'a> = std::iter::Map<
         std::collections::hash_map::Iter<'a, String, ValueInner>,
         fn((&'a String, &'a ValueInner)) -> (&'a str, &'a ValueInner),
@@ -102,18 +136,18 @@ impl From<WrappedValue> for (Value, ValueInner) {
     }
 }
 
-fn value_inner_from_parser_const_value(value: &bluejay_parser::ast::ConstValue) -> ValueInner {
-    match value {
-        CoreValue::Boolean(b) => ValueInner::Boolean(b.to_bool()),
-        CoreValue::Enum(e) => ValueInner::Enum(e.as_str().to_owned()),
-        CoreValue::Float(f) => ValueInner::Float(f.to_f64()),
-        CoreValue::Integer(i) => ValueInner::Integer(i.to_i32()),
+fn value_inner_from_parser_const_value(value: &ParserConstValue) -> ValueInner {
+    match value.as_ref() {
+        CoreValue::Boolean(b) => ValueInner::Boolean(b),
+        CoreValue::Enum(e) => ValueInner::Enum(e.to_owned()),
+        CoreValue::Float(f) => ValueInner::Float(f),
+        CoreValue::Integer(i) => ValueInner::Integer(i),
         CoreValue::List(l) => ValueInner::List(ListValue(Vec::from_iter(
-            l.as_ref().iter().map(value_inner_from_parser_const_value),
+            l.iter().map(value_inner_from_parser_const_value),
         ))),
-        CoreValue::Null(_) => ValueInner::Null(()),
+        CoreValue::Null => ValueInner::Null,
         CoreValue::Object(o) => ValueInner::Object(ObjectValue(
-            o.iter()
+            CoreObjectValue::iter(o)
                 .map(|(name, value)| (name.to_string(), value_inner_from_parser_const_value(value)))
                 .collect(),
         )),
@@ -143,7 +177,7 @@ pub fn value_inner_from_ruby_const_value(val: Value) -> Result<ValueInner, Error
     } else if let Some(s) = RString::from_value(val) {
         Ok(ValueInner::String(s.to_string()?))
     } else if val.is_nil() {
-        Ok(ValueInner::Null(()))
+        Ok(ValueInner::Null)
     } else if let Some(arr) = RArray::from_value(val) {
         let v: Result<Vec<ValueInner>, Error> = arr
             .each()
