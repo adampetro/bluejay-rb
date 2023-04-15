@@ -14,17 +14,7 @@ Bench.all do |x|
       teams {
         __typename
         name
-        # name1: name
-        # name2: name
-        # name3: name
-        # name4: name
-        # name5: name
         city
-        # city1: city
-        # city2: city
-        # city3: city
-        # city4: city
-        # city5: city
         players {
           __typename
           firstName

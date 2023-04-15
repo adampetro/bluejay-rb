@@ -6,6 +6,8 @@ require "bluejay"
 require "graphql"
 require "graphql/c_parser"
 
+T::Configuration.default_checked_level = :never
+
 module Bench
   extend(self)
 

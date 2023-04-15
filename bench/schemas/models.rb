@@ -13,14 +13,9 @@ module Schemas
       const(:selection, Integer)
       const(:year, Integer)
 
-      sig { returns(Integer) }
-      def resolve_round = round
-
-      sig { returns(Integer) }
-      def resolve_selection = selection
-
-      sig { returns(Integer) }
-      def resolve_year = year
+      alias_method(:resolve_round, :round)
+      alias_method(:resolve_selection, :selection)
+      alias_method(:resolve_year, :year)
     end
 
     class Player < T::Struct
@@ -32,17 +27,10 @@ module Schemas
       const(:age, Integer)
       const(:draft_position, T.nilable(DraftPosition))
 
-      sig { returns(String) }
-      def resolve_first_name = first_name
-
-      sig { returns(String) }
-      def resolve_last_name = last_name
-
-      sig { returns(Integer) }
-      def resolve_age = age
-
-      sig { returns(T.nilable(DraftPosition)) }
-      def resolve_draft_position = draft_position
+      alias_method(:resolve_first_name, :first_name)
+      alias_method(:resolve_last_name, :last_name)
+      alias_method(:resolve_age, :age)
+      alias_method(:resolve_draft_position, :draft_position)
     end
 
     class Team < T::Struct
@@ -197,14 +185,9 @@ module Schemas
         end
       end
 
-      sig { returns(String) }
-      def resolve_name = name
-
-      sig { returns(String) }
-      def resolve_city = city
-
-      sig { returns(T::Array[Player]) }
-      def resolve_players = players
+      alias_method(:resolve_name, :name)
+      alias_method(:resolve_city, :city)
+      alias_method(:resolve_players, :players)
     end
 
     class QueryRoot < T::Struct
@@ -213,10 +196,7 @@ module Schemas
 
       const(:teams, T::Array[Team])
 
-      sig { returns(T::Array[Team]) }
-      def resolve_teams
-        teams
-      end
+      alias_method(:resolve_teams, :teams)
     end
 
     class SchemaRoot < T::Struct
