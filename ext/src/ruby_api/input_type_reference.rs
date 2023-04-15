@@ -12,8 +12,8 @@ use bluejay_core::definition::{
     InputTypeReferenceFromAbstract,
 };
 use bluejay_core::{
-    AbstractValue, BuiltinScalarDefinition, ListTypeReference, NamedTypeReference,
-    Value as CoreValue,
+    AbstractTypeReference, AbstractValue, BuiltinScalarDefinition,
+    TypeReference as CoreTypeReference, Value as CoreValue,
 };
 use bluejay_parser::ast::{TypeReference as ParserTypeReference, Value as ParserValue};
 use magnus::{
@@ -363,11 +363,11 @@ impl InputTypeReference {
         parser_type_reference: &ParserTypeReference,
         base: BaseInputTypeReference,
     ) -> Self {
-        match parser_type_reference {
-            ParserTypeReference::NamedType(ntr) => Self::Base(base, ntr.required()),
-            ParserTypeReference::ListType(ltr) => Self::List(
-                Obj::wrap(Self::from_parser_type_reference(ltr.inner(), base)),
-                ltr.required(),
+        match parser_type_reference.as_ref() {
+            CoreTypeReference::NamedType(_, required) => Self::Base(base, required),
+            CoreTypeReference::ListType(inner, required) => Self::List(
+                Obj::wrap(Self::from_parser_type_reference(inner, base)),
+                required,
             ),
         }
     }

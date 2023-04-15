@@ -7,7 +7,7 @@ use crate::ruby_api::{
 use bluejay_core::definition::{
     AbstractOutputTypeReference, OutputTypeReference as CoreOutputTypeReference,
 };
-use bluejay_core::{AsIter, Directive as CoreDirective, OperationType};
+use bluejay_core::{AbstractTypeReference, AsIter, Directive as CoreDirective, OperationType};
 use bluejay_parser::ast::executable::{ExecutableDocument, Field, OperationDefinition, Selection};
 use bluejay_parser::ast::{Directive, VariableArguments, VariableValue};
 use magnus::{ArgList, Error, RArray, RHash, Value, QNIL};
@@ -112,8 +112,9 @@ impl<'a> Engine<'a> {
             for variable_definition in variable_definitions.iter() {
                 let variable_name = variable_definition.variable().name();
                 let variable_named_type_reference = variable_definition.r#type();
-                let variable_base_type =
-                    schema.r#type(variable_named_type_reference.name()).unwrap();
+                let variable_base_type = schema
+                    .r#type(variable_named_type_reference.as_ref().name())
+                    .unwrap();
                 let base_input_type_reference: BaseInputTypeReference =
                     variable_base_type.try_into().unwrap();
                 let variable_type = InputTypeReference::from_parser_type_reference(
