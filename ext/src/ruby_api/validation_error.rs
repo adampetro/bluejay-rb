@@ -1,13 +1,17 @@
 use super::root;
 use crate::ruby_api::SchemaDefinition;
 use bluejay_core::{
-    call_const_wrapper_method,
-    definition::{AbstractOutputTypeReference, InputValueDefinition},
-    ArgumentWrapper, Directive, DirectiveWrapper, OperationType,
+    definition::{
+        AbstractInputTypeReference, AbstractOutputTypeReference, DirectiveDefinition,
+        InputValueDefinition,
+    },
+    executable::AbstractOperationDefinition,
+    AbstractTypeReference, OperationType,
 };
-use bluejay_parser::ast::executable::ExecutableDocument;
-use bluejay_validator::executable::Error as CoreError;
-use itertools::join;
+use bluejay_parser::ast::{executable::ExecutableDocument, Value as ParserValue};
+use bluejay_validator::executable::{ArgumentError, DirectiveError, Error as CoreError};
+use bluejay_validator::value::input_coercion::Error as InputCoercionError;
+use itertools::Itertools;
 use magnus::{
     function, method,
     rb_sys::AsRawValue,
@@ -53,16 +57,13 @@ impl From<String> for ValidationError {
 impl<'a> From<CoreError<'a, ExecutableDocument<'a>, SchemaDefinition>> for ValidationError {
     fn from(value: CoreError<'a, ExecutableDocument<'a>, SchemaDefinition>) -> Self {
         match value {
-            CoreError::NotLoneAnonymousOperation {
-                anonymous_operations: _,
-            } => Self::new(
+            CoreError::NotLoneAnonymousOperation { .. } => Self::new(
                 "Anonymous operations are not allowed when there is more than one operation",
             ),
-            CoreError::NonUniqueOperationNames {
-                name,
-                operations: _,
-            } => Self::new(format!("More than one operation named `{name}`")),
-            CoreError::SubscriptionRootNotSingleField { operation: _ } => {
+            CoreError::NonUniqueOperationNames { name, .. } => {
+                Self::new(format!("More than one operation named `{name}`"))
+            }
+            CoreError::SubscriptionRootNotSingleField { .. } => {
                 Self::new("Subscription operations can only select one field at the root")
             }
             CoreError::FieldDoesNotExistOnType { field, r#type } => Self::new(format!(
@@ -74,77 +75,17 @@ impl<'a> From<CoreError<'a, ExecutableDocument<'a>, SchemaDefinition>> for Valid
                 "Schema does not define a {} root",
                 OperationType::from(operation.operation_type()),
             )),
-            CoreError::LeafFieldSelectionNotEmpty {
-                selection_set: _,
-                r#type,
-            } => Self::new(format!(
+            CoreError::LeafFieldSelectionNotEmpty { r#type, .. } => Self::new(format!(
                 "Selection on field of leaf type `{}` was not empty",
                 r#type.as_ref().display_name()
             )),
-            CoreError::NonLeafFieldSelectionEmpty { field: _, r#type } => Self::new(format!(
+            CoreError::NonLeafFieldSelectionEmpty { r#type, .. } => Self::new(format!(
                 "No selection on field of non-leaf type `{}`",
                 r#type.as_ref().display_name()
             )),
-            CoreError::ArgumentDoesNotExistOnField {
-                argument,
-                field_definition,
-            } => Self::new(format!(
-                "Field `{}` does not define an argument named `{}`",
-                field_definition.name(),
-                argument.name().as_ref(),
-            )),
-            CoreError::ArgumentDoesNotExistOnDirective {
-                argument,
-                directive_definition,
-            } => {
-                let name = call_const_wrapper_method!(ArgumentWrapper, argument, name);
-                Self::new(format!(
-                    "Directive `{}` does not define an argument named `{}`",
-                    directive_definition.name(),
-                    name.as_ref(),
-                ))
+            CoreError::NonUniqueFragmentDefinitionNames { name, .. } => {
+                Self::new(format!("Multiple fragment definitions named `{name}`"))
             }
-            CoreError::NonUniqueArgumentNames { arguments: _, name } => {
-                Self::new(format!("Multiple arguments with name `{name}`"))
-            }
-            CoreError::FieldMissingRequiredArguments {
-                field,
-                field_definition: _,
-                missing_argument_definitions,
-                arguments_with_null_values: _,
-            } => {
-                let missing_argument_names = join(
-                    missing_argument_definitions
-                        .into_iter()
-                        .map(InputValueDefinition::name),
-                    ", ",
-                );
-                Self::new(format!(
-                    "Field `{}` missing argument(s): {missing_argument_names}",
-                    field.response_key()
-                ))
-            }
-            CoreError::DirectiveMissingRequiredArguments {
-                directive,
-                directive_definition: _,
-                missing_argument_definitions,
-                arguments_with_null_values: _,
-            } => {
-                let missing_argument_names = join(
-                    missing_argument_definitions
-                        .into_iter()
-                        .map(InputValueDefinition::name),
-                    ", ",
-                );
-                let directive_name = call_const_wrapper_method!(DirectiveWrapper, directive, name);
-                Self::new(format!(
-                    "Directive `{directive_name}` missing argument(s): {missing_argument_names}",
-                ))
-            }
-            CoreError::NonUniqueFragmentDefinitionNames {
-                name,
-                fragment_definitions: _,
-            } => Self::new(format!("Multiple fragment definitions named `{name}`")),
             CoreError::FragmentDefinitionTargetTypeDoesNotExist {
                 fragment_definition,
             } => Self::new(format!(
@@ -187,7 +128,7 @@ impl<'a> From<CoreError<'a, ExecutableDocument<'a>, SchemaDefinition>> for Valid
             )),
             CoreError::FragmentSpreadCycle {
                 fragment_definition,
-                fragment_spread: _,
+                ..
             } => Self::new(format!(
                 "Cycle detected in fragment `{}`",
                 fragment_definition.name().as_ref()
@@ -220,6 +161,188 @@ impl<'a> From<CoreError<'a, ExecutableDocument<'a>, SchemaDefinition>> for Valid
                     .unwrap_or_else(|| parent_type.name()),
                 parent_type.name(),
             )),
+            CoreError::InvalidConstValue(error) => Self::from(error),
+            CoreError::InvalidVariableValue(error) => Self::from(error),
+            CoreError::InvalidConstArgument(error) => Self::from(error),
+            CoreError::InvalidVariableArgument(error) => Self::from(error),
+            CoreError::InvalidConstDirective(error) => Self::from(error),
+            CoreError::InvalidVariableDirective(error) => Self::from(error),
+            CoreError::NonUniqueVariableDefinitionNames { name, .. } => {
+                Self::new(format!("Multiple variable definitions named ${name}"))
+            }
+            CoreError::VariableDefinitionTypeNotInput {
+                variable_definition,
+            } => Self::new(format!(
+                "Type of variable ${}, {}, is not an input type",
+                variable_definition.variable().name(),
+                variable_definition.r#type().as_ref().name()
+            )),
+            CoreError::VariableNotDefined {
+                variable,
+                operation_definition,
+            } => {
+                let operation_name = match operation_definition.as_ref().name() {
+                    Some(name) => Cow::Owned(format!("operation {name}")),
+                    None => Cow::Borrowed("anonymous operation"),
+                };
+                Self::new(format!(
+                    "Variable ${} not defined in {operation_name}",
+                    variable.name(),
+                ))
+            }
+            CoreError::VariableDefinitionUnused {
+                variable_definition,
+            } => Self::new(format!(
+                "Variable definition ${} not used",
+                variable_definition.variable().name(),
+            )),
+            CoreError::InvalidVariableUsage {
+                variable,
+                variable_type,
+                location_type,
+            } => Self::new(format!(
+                "Variable ${} of type {} cannot be used here, where {} is expected",
+                variable.name(),
+                variable_type.as_ref().display_name(),
+                location_type.as_ref().display_name(),
+            )),
+        }
+    }
+}
+
+impl<'a, const CONST: bool> From<InputCoercionError<'a, CONST, ParserValue<'a, CONST>>>
+    for ValidationError
+{
+    fn from(value: InputCoercionError<'a, CONST, ParserValue<'a, CONST>>) -> Self {
+        match value {
+            InputCoercionError::NullValueForRequiredType {
+                input_type_name, ..
+            } => Self::new(format!(
+                "Got null when non-null value of type {input_type_name} was expected"
+            )),
+            InputCoercionError::NoImplicitConversion {
+                value,
+                input_type_name,
+                ..
+            } => Self::new(format!(
+                "No implicit conversion of {value} to {input_type_name}"
+            )),
+            InputCoercionError::NoEnumMemberWithName {
+                name,
+                enum_type_name,
+                ..
+            } => Self::new(format!("No member `{name}` on enum {enum_type_name}")),
+            InputCoercionError::NoValueForRequiredFields {
+                field_names,
+                input_object_type_name,
+                ..
+            } => Self::new(format!(
+                "No value for required fields on input type {input_object_type_name}: {}",
+                field_names.into_iter().join(", "),
+            )),
+            InputCoercionError::NonUniqueFieldNames { field_name, .. } => Self::new(format!(
+                "Object with multiple entries for field {field_name}"
+            )),
+            InputCoercionError::NoInputFieldWithName {
+                field,
+                input_object_type_name,
+                ..
+            } => Self::new(format!(
+                "No field with name {} on input type {input_object_type_name}",
+                field.as_ref()
+            )),
+            InputCoercionError::CustomScalarInvalidValue { message, .. } => Self::new(message),
+            InputCoercionError::OneOfInputNullValues {
+                input_object_type_name,
+                ..
+            } => Self::new(format!(
+                "Multiple entries with null values for oneOf input object {input_object_type_name}"
+            )),
+            InputCoercionError::OneOfInputNotSingleNonNullValue { input_object_type_name, non_null_entries, .. } => Self::new(
+                format!("Got {} entries with non-null values for oneOf input object {input_object_type_name}", non_null_entries.len())
+            )
+        }
+    }
+}
+
+impl<'a, const CONST: bool>
+    From<DirectiveError<'a, CONST, ExecutableDocument<'a>, SchemaDefinition>> for ValidationError
+{
+    fn from(value: DirectiveError<'a, CONST, ExecutableDocument<'a>, SchemaDefinition>) -> Self {
+        match value {
+            DirectiveError::DirectiveDoesNotExist { directive } => Self::new(format!(
+                "No directive definition with name `@{}`",
+                directive.name().as_ref()
+            )),
+            DirectiveError::DirectivesNotUniquePerLocation { directive_definition, .. } => Self::new(
+                format!(
+                    "Directive @{} is not repeatable but was used multiple times in the same location",
+                    directive_definition.name(),
+                )
+            ),
+            DirectiveError::DirectiveInInvalidLocation { directive, directive_definition, location } => Self::new(
+                format!(
+                    "Directive @{} cannot be used at location {location}. It is only allowed at the following locations: {}",
+                    directive.name().as_ref(),
+                    directive_definition.locations().iter().join(", "),
+                )
+            )
+        }
+    }
+}
+
+impl<'a, const CONST: bool> From<ArgumentError<'a, CONST, ExecutableDocument<'a>, SchemaDefinition>>
+    for ValidationError
+{
+    fn from(value: ArgumentError<'a, CONST, ExecutableDocument<'a>, SchemaDefinition>) -> Self {
+        match value {
+            ArgumentError::DirectiveMissingRequiredArguments {
+                directive,
+                missing_argument_definitions,
+                ..
+            } => {
+                let missing_argument_names = missing_argument_definitions
+                    .into_iter()
+                    .map(InputValueDefinition::name)
+                    .join(", ");
+                Self::new(format!(
+                    "Directive `{}` missing argument(s): {missing_argument_names}",
+                    directive.name().as_ref(),
+                ))
+            }
+            ArgumentError::ArgumentDoesNotExistOnDirective {
+                argument,
+                directive_definition,
+            } => Self::new(format!(
+                "Directive `{}` does not define an argument named `{}`",
+                directive_definition.name(),
+                argument.name().as_ref(),
+            )),
+            ArgumentError::ArgumentDoesNotExistOnField {
+                argument,
+                field_definition,
+            } => Self::new(format!(
+                "Field `{}` does not define an argument named `{}`",
+                field_definition.name(),
+                argument.name().as_ref(),
+            )),
+            ArgumentError::NonUniqueArgumentNames { name, .. } => {
+                Self::new(format!("Multiple arguments with name `{name}`"))
+            }
+            ArgumentError::FieldMissingRequiredArguments {
+                field,
+                missing_argument_definitions,
+                ..
+            } => {
+                let missing_argument_names = missing_argument_definitions
+                    .into_iter()
+                    .map(InputValueDefinition::name)
+                    .join(", ");
+                Self::new(format!(
+                    "Field `{}` missing argument(s): {missing_argument_names}",
+                    field.response_key()
+                ))
+            }
         }
     }
 }

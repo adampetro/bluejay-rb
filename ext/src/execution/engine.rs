@@ -7,6 +7,7 @@ use crate::ruby_api::{
 use bluejay_core::definition::{
     AbstractOutputTypeReference, OutputTypeReference as CoreOutputTypeReference,
 };
+use bluejay_core::executable::AbstractOperationDefinition;
 use bluejay_core::{AbstractTypeReference, AsIter, Directive as CoreDirective, OperationType};
 use bluejay_parser::ast::executable::{ExecutableDocument, Field, OperationDefinition, Selection};
 use bluejay_parser::ast::{Directive, VariableArguments, VariableValue};
@@ -69,7 +70,7 @@ impl<'a> Engine<'a> {
             key_store: KeyStore::new(),
         };
 
-        match operation_definition.operation_type() {
+        match operation_definition.as_ref().operation_type() {
             OperationType::Query => {
                 let query_root = initial_value.funcall("query", ())?;
                 Ok(instance.execute_query(operation_definition, query_root))
@@ -89,7 +90,7 @@ impl<'a> Engine<'a> {
             document
                 .operation_definitions()
                 .iter()
-                .find(|od| matches!(od.name(), Some(n) if n == operation_name))
+                .find(|od| matches!(od.as_ref().name(), Some(n) if n == operation_name))
                 .ok_or(ExecutionError::NoOperationWithName {
                     name: operation_name,
                 })
@@ -108,7 +109,7 @@ impl<'a> Engine<'a> {
         let coerced_variables = RHash::new();
         let mut errors: Vec<ExecutionError<'b>> = Vec::new();
 
-        if let Some(variable_definitions) = operation.variable_definitions() {
+        if let Some(variable_definitions) = operation.as_ref().variable_definitions() {
             for variable_definition in variable_definitions.iter() {
                 let variable_name = variable_definition.variable().name();
                 let variable_named_type_reference = variable_definition.r#type();
@@ -187,7 +188,7 @@ impl<'a> Engine<'a> {
     ) -> ExecutionResult {
         let query_type = self.schema.query();
         let query_type = query_type.get();
-        let selection_set = query.selection_set();
+        let selection_set = query.as_ref().selection_set();
 
         let (value, errors) =
             self.execute_selection_set(selection_set.as_ref().iter(), query_type, initial_value);
@@ -243,7 +244,7 @@ impl<'a> Engine<'a> {
 
         for selection in selection_set {
             let should_skip = selection.directives().iter().any(|directive| {
-                if directive.name() == "skip" {
+                if directive.name().as_ref() == "skip" {
                     self.coerce_directive(directive)
                         .map(|coerced_directive| -> bool {
                             coerced_directive.funcall("if_arg", ()).unwrap()
@@ -255,7 +256,7 @@ impl<'a> Engine<'a> {
             });
 
             let should_include = selection.directives().iter().all(|directive| {
-                if directive.name() == "include" {
+                if directive.name().as_ref() == "include" {
                     self.coerce_directive(directive)
                         .map(|coerced_directive| -> bool {
                             coerced_directive.funcall("if_arg", ()).unwrap()
@@ -610,7 +611,7 @@ impl<'a> Engine<'a> {
         &'a self,
         directive: &'a Directive<'a, false>,
     ) -> Result<Value, Vec<ExecutionError<'a>>> {
-        let directive_definition_obj = self.schema.directive(directive.name()).unwrap();
+        let directive_definition_obj = self.schema.directive(directive.name().as_ref()).unwrap();
         let directive_definition = directive_definition_obj.get();
 
         let directive = if directive_definition.arguments_definition().is_empty() {

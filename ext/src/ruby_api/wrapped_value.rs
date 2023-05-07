@@ -23,9 +23,18 @@ pub enum ValueInner {
     Object(ObjectValue),
 }
 
+pub enum Never {}
+
+impl bluejay_core::Variable for Never {
+    fn name(&self) -> &str {
+        unreachable!()
+    }
+}
+
 impl AbstractValue<true> for ValueInner {
     type List = ListValue;
     type Object = ObjectValue;
+    type Variable = Never;
 
     fn as_ref(&self) -> ValueFromAbstract<'_, true, Self> {
         match self {
@@ -67,14 +76,12 @@ impl CoreListValue<true> for ListValue {
 pub struct ObjectValue(HashMap<String, ValueInner>);
 
 impl CoreObjectValue<true> for ObjectValue {
+    type Key = String;
     type Value = ValueInner;
-    type Iterator<'a> = std::iter::Map<
-        std::collections::hash_map::Iter<'a, String, ValueInner>,
-        fn((&'a String, &'a ValueInner)) -> (&'a str, &'a ValueInner),
-    >;
+    type Iterator<'a> = std::collections::hash_map::Iter<'a, String, ValueInner>;
 
     fn iter(&self) -> Self::Iterator<'_> {
-        self.0.iter().map(|(key, value)| (key.as_str(), value))
+        self.0.iter()
     }
 }
 
@@ -148,7 +155,12 @@ fn value_inner_from_parser_const_value(value: &ParserConstValue) -> ValueInner {
         CoreValue::Null => ValueInner::Null,
         CoreValue::Object(o) => ValueInner::Object(ObjectValue(
             CoreObjectValue::iter(o)
-                .map(|(name, value)| (name.to_string(), value_inner_from_parser_const_value(value)))
+                .map(|(name, value)| {
+                    (
+                        name.as_ref().to_string(),
+                        value_inner_from_parser_const_value(value),
+                    )
+                })
                 .collect(),
         )),
         CoreValue::String(s) => ValueInner::String(s.to_string()),

@@ -17,7 +17,7 @@ use bluejay_core::definition::{
 };
 use bluejay_core::{AsIter, BuiltinScalarDefinition, IntoEnumIterator};
 use bluejay_printer::definition::DisplaySchemaDefinition;
-use bluejay_validator::executable::RulesValidator;
+use bluejay_validator::executable::{Cache as ValidationCache, RulesValidator};
 use magnus::{
     function, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj, DataTypeFunctions,
     Error, Module, Object, RArray, RHash, TypedData, Value,
@@ -101,7 +101,7 @@ impl SchemaDefinition {
             bluejay_parser::ast::executable::ExecutableDocument::parse(query.as_str())
         {
             RArray::from_iter(
-                RulesValidator::validate(&document, self)
+                RulesValidator::validate(&document, self, &ValidationCache::new(&document, self))
                     .map(|error| -> Obj<ValidationError> { Obj::wrap(error.into()) }),
             )
         } else {

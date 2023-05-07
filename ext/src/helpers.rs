@@ -7,7 +7,7 @@ pub use typed_frozen_r_array::TypedFrozenRArray;
 mod variables;
 pub use variables::Variables;
 
-use bluejay_core::{AsIter, ObjectValue, Value as CoreValue};
+use bluejay_core::{AsIter, ObjectValue, Value as CoreValue, Variable};
 use magnus::{RArray, RHash, Value, QNIL};
 
 pub fn value_from_core_value<const CONST: bool>(
@@ -25,7 +25,7 @@ pub fn value_from_core_value<const CONST: bool>(
             if CONST {
                 unreachable!()
             } else {
-                variables.get(var).unwrap_or(*QNIL)
+                variables.get(var.name()).unwrap_or(*QNIL)
             }
         }
         CoreValue::List(l) => {
@@ -33,7 +33,7 @@ pub fn value_from_core_value<const CONST: bool>(
         }
         CoreValue::Object(o) => *RHash::from_iter(
             o.iter()
-                .map(|(k, v)| (k, value_from_core_value(v, variables))),
+                .map(|(k, v)| (k.as_ref(), value_from_core_value(v, variables))),
         ),
     }
 }
