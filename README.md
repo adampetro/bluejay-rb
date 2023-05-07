@@ -17,7 +17,7 @@
 Some benchmarks comparing the performance of `bluejay-rb` against `graphql-ruby` (with C parser) are located at [`/bench`](/bench). The results of some of these benchmarks are included below.
 
 <details>
-  <summary>Execute (Ruby 3.2, YJIT enabled)</summary>
+  <summary>Parse + Execute (Ruby 3.2, YJIT enabled)</summary>
 
   ```
   Profiling IPS:
@@ -48,7 +48,7 @@ Some benchmarks comparing the performance of `bluejay-rb` against `graphql-ruby`
 </details>
 
 <details>
-  <summary>Execute (Ruby 3.2, YJIT disabled)</summary>
+  <summary>Parse + Execute (Ruby 3.2, YJIT disabled)</summary>
 
   ```
   Profiling IPS:
@@ -199,6 +199,68 @@ Some benchmarks comparing the performance of `bluejay-rb` against `graphql-ruby`
   Comparison:
               bluejay:          0 allocated
               graphql:    1425400 allocated - Infx more
+  ```
+</details>
+
+<details>
+  <summary>Parse + Validate (Ruby 3.2, YJIT enabled)</summary>
+
+  ```
+  Profiling IPS:
+  Warming up --------------------------------------
+              graphql   443.000  i/100ms
+              bluejay     6.333k i/100ms
+  Calculating -------------------------------------
+              graphql      4.447k (± 2.2%) i/s -     22.593k in   5.083426s
+              bluejay     62.372k (± 2.1%) i/s -    316.650k in   5.079131s
+
+  Comparison:
+              bluejay:    62372.2 i/s
+              graphql:     4446.7 i/s - 14.03x  (± 0.00) slower
+
+  Profiling Ruby memory allocations:
+  Calculating -------------------------------------
+              graphql    34.208k memsize (    12.440k retained)
+                        396.000  objects (   157.000  retained)
+                          17.000  strings (    13.000  retained)
+              bluejay    40.000  memsize (    40.000  retained)
+                          1.000  objects (     1.000  retained)
+                          0.000  strings (     0.000  retained)
+
+  Comparison:
+              bluejay:         40 allocated
+              graphql:      34208 allocated - 855.20x more
+  ```
+</details>
+
+<details>
+  <summary>Parse + Validate (Ruby 3.2, YJIT disabled)</summary>
+
+  ```
+  Profiling IPS:
+  Warming up --------------------------------------
+              graphql   240.000  i/100ms
+              bluejay     5.107k i/100ms
+  Calculating -------------------------------------
+              graphql      2.000k (± 2.3%) i/s -     10.080k in   5.042715s
+              bluejay     53.537k (±15.6%) i/s -    265.564k in   5.084180s
+
+  Comparison:
+              bluejay:    53537.2 i/s
+              graphql:     2000.0 i/s - 26.77x  (± 0.00) slower
+
+  Profiling Ruby memory allocations:
+  Calculating -------------------------------------
+              graphql    34.120k memsize (    12.560k retained)
+                        394.000  objects (   160.000  retained)
+                          15.000  strings (    13.000  retained)
+              bluejay    40.000  memsize (    40.000  retained)
+                          1.000  objects (     1.000  retained)
+                          0.000  strings (     0.000  retained)
+
+  Comparison:
+              bluejay:         40 allocated
+              graphql:      34120 allocated - 853.00x more
   ```
 </details>
 
