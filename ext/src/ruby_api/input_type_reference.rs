@@ -12,7 +12,7 @@ use bluejay_core::definition::{
     InputTypeReferenceFromAbstract,
 };
 use bluejay_core::{
-    AbstractTypeReference, AbstractValue, BuiltinScalarDefinition,
+    AbstractTypeReference, AbstractValue, AsIter, BuiltinScalarDefinition,
     TypeReference as CoreTypeReference, Value as CoreValue,
 };
 use bluejay_parser::ast::{TypeReference as ParserTypeReference, Value as ParserValue};
@@ -444,7 +444,6 @@ impl InputTypeReference {
                     let inner = inner.get();
 
                     if let ParserValue::List(l) = value {
-                        let l = l.as_ref();
                         let coerced = RArray::with_capacity(l.len());
                         let mut errors = Vec::new();
 

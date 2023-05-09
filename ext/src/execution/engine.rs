@@ -7,9 +7,11 @@ use crate::ruby_api::{
 use bluejay_core::definition::{
     AbstractOutputTypeReference, OutputTypeReference as CoreOutputTypeReference,
 };
-use bluejay_core::executable::AbstractOperationDefinition;
+use bluejay_core::executable::{AbstractOperationDefinition, AbstractSelection};
 use bluejay_core::{AbstractTypeReference, AsIter, Directive as CoreDirective, OperationType};
-use bluejay_parser::ast::executable::{ExecutableDocument, Field, OperationDefinition, Selection};
+use bluejay_parser::ast::executable::{
+    ExecutableDocument, Field, OperationDefinition, Selection, SelectionSet,
+};
 use bluejay_parser::ast::{Directive, VariableArguments, VariableValue};
 use magnus::{ArgList, Error, RArray, RHash, Value, QNIL};
 use std::collections::{BTreeMap, HashSet};
@@ -20,12 +22,6 @@ pub struct Engine<'a> {
     variables: &'a RHash,
     key_store: KeyStore<'a>,
 }
-
-type MergedSelectionSets<'a, 'b> = std::iter::FlatMap<
-    std::slice::Iter<'b, &'a Field<'a>>,
-    &'a [Selection<'a>],
-    fn(&&'a Field) -> &'a [Selection<'a>],
->;
 
 impl<'a> Engine<'a> {
     pub fn execute_request(
@@ -191,7 +187,7 @@ impl<'a> Engine<'a> {
         let selection_set = query.as_ref().selection_set();
 
         let (value, errors) =
-            self.execute_selection_set(selection_set.as_ref().iter(), query_type, initial_value);
+            self.execute_selection_set(selection_set.iter(), query_type, initial_value);
 
         Self::execution_result(value, errors)
     }
@@ -243,7 +239,7 @@ impl<'a> Engine<'a> {
         let mut grouped_fields: BTreeMap<&'a str, Vec<&'a Field>> = BTreeMap::new();
 
         for selection in selection_set {
-            let should_skip = selection.directives().iter().any(|directive| {
+            let should_skip = selection.as_ref().directives().iter().any(|directive| {
                 if directive.name().as_ref() == "skip" {
                     self.coerce_directive(directive)
                         .map(|coerced_directive| -> bool {
@@ -255,7 +251,7 @@ impl<'a> Engine<'a> {
                 }
             });
 
-            let should_include = selection.directives().iter().all(|directive| {
+            let should_include = selection.as_ref().directives().iter().all(|directive| {
                 if directive.name().as_ref() == "include" {
                     self.coerce_directive(directive)
                         .map(|coerced_directive| -> bool {
@@ -303,7 +299,7 @@ impl<'a> Engine<'a> {
 
                         let fragment_grouped_field_set = self.collect_fields(
                             object_type,
-                            fragment_selection_set.as_ref().iter(),
+                            fragment_selection_set.iter(),
                             visited_fragments,
                         );
 
@@ -326,7 +322,7 @@ impl<'a> Engine<'a> {
 
                     let fragment_grouped_field_set = self.collect_fields(
                         object_type,
-                        fragment_selection_set.as_ref().iter(),
+                        fragment_selection_set.iter(),
                         visited_fragments,
                     );
 
@@ -551,10 +547,25 @@ impl<'a> Engine<'a> {
         }
     }
 
-    fn merge_selection_sets<'b>(fields: &'b [&'a Field]) -> MergedSelectionSets<'a, 'b> {
+    fn merge_selection_sets<'b>(
+        fields: impl IntoIterator<Item = &'b &'a Field<'a>>,
+    ) -> impl Iterator<Item = &'a Selection<'a>>
+    where
+        'a: 'b,
+    {
         fields
-            .iter()
-            .flat_map(|field| field.selection_set().map(AsRef::as_ref).unwrap_or_default())
+            .into_iter()
+            .copied()
+            .filter_map(
+                |field| {
+                    field.selection_set().map(
+                        |selection_set: &'a SelectionSet<'a>| -> <SelectionSet<'a> as AsIter>::Iterator<'a> {
+                            selection_set.iter()
+                        },
+                    )
+                },
+            )
+            .flatten()
     }
 
     fn resolve_interface_type(
