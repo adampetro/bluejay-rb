@@ -1,6 +1,6 @@
 use crate::ruby_api::{
     arguments_definition::ArgumentsDefinition,
-    output_type_reference::{BaseOutputTypeReference, OutputTypeReference},
+    output_type_reference::{BaseOutputType, OutputTypeReference},
     root, Directives,
 };
 use convert_case::{Case, Casing};
@@ -57,7 +57,7 @@ impl FieldDefinition {
 
     pub(crate) fn typename() -> Obj<Self> {
         memoize!(([BoxValue<Value>; 4], Obj<FieldDefinition>): {
-            let t = Obj::wrap(OutputTypeReference::Base(BaseOutputTypeReference::builtin_string(), true));
+            let t = Obj::wrap(OutputTypeReference::Base(BaseOutputType::builtin_string(), true));
             let arguments_definition = ArgumentsDefinition::empty();
             let directives = Directives::empty();
             let directives_rarray: RArray = (&directives).into();

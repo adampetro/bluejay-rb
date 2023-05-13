@@ -1,8 +1,8 @@
 use crate::execution::{CoerceResult, ExecutionError, FieldError, KeyStore};
 use crate::ruby_api::{
-    BaseInputType, BaseOutputTypeReference, CoerceInput, ExecutionResult, FieldDefinition,
-    InputType, InputValueDefinition, InterfaceTypeDefinition, ObjectTypeDefinition,
-    OutputTypeReference, SchemaDefinition, TypeDefinitionReference, UnionTypeDefinition,
+    BaseInputType, BaseOutputType, CoerceInput, ExecutionResult, FieldDefinition, InputType,
+    InputValueDefinition, InterfaceTypeDefinition, ObjectTypeDefinition, OutputTypeReference,
+    SchemaDefinition, TypeDefinitionReference, UnionTypeDefinition,
 };
 use bluejay_core::definition::{
     AbstractOutputTypeReference, OutputTypeReference as CoreOutputTypeReference,
@@ -490,30 +490,28 @@ impl<'a> Engine<'a> {
 
         match field_type.as_ref() {
             CoreOutputTypeReference::Base(inner, _) => match inner {
-                BaseOutputTypeReference::BuiltinScalar(bstd) => match bstd.coerce_result(result) {
+                BaseOutputType::BuiltinScalar(bstd) => match bstd.coerce_result(result) {
                     Ok(value) => (value, vec![]),
                     Err(error) => (*QNIL, vec![ExecutionError::FieldError(error)]),
                 },
-                BaseOutputTypeReference::CustomScalar(cstd) => {
-                    match cstd.as_ref().coerce_result(result) {
-                        Ok(value) => (value, vec![]),
-                        Err(error) => (*QNIL, vec![ExecutionError::FieldError(error)]),
-                    }
-                }
-                BaseOutputTypeReference::Enum(etd) => match etd.as_ref().coerce_result(result) {
+                BaseOutputType::CustomScalar(cstd) => match cstd.as_ref().coerce_result(result) {
                     Ok(value) => (value, vec![]),
                     Err(error) => (*QNIL, vec![ExecutionError::FieldError(error)]),
                 },
-                BaseOutputTypeReference::Object(otd) => {
+                BaseOutputType::Enum(etd) => match etd.as_ref().coerce_result(result) {
+                    Ok(value) => (value, vec![]),
+                    Err(error) => (*QNIL, vec![ExecutionError::FieldError(error)]),
+                },
+                BaseOutputType::Object(otd) => {
                     let sub_selection_set = Self::merge_selection_sets(fields);
                     self.execute_selection_set(sub_selection_set, otd.as_ref(), result)
                 }
-                BaseOutputTypeReference::Interface(itd) => {
+                BaseOutputType::Interface(itd) => {
                     let object_type = self.resolve_interface_type(itd.as_ref(), result);
                     let sub_selection_set = Self::merge_selection_sets(fields);
                     self.execute_selection_set(sub_selection_set, object_type, result)
                 }
-                BaseOutputTypeReference::Union(utd) => {
+                BaseOutputType::Union(utd) => {
                     let object_type = self.resolve_union_type(utd.as_ref(), result);
                     let sub_selection_set = Self::merge_selection_sets(fields);
                     self.execute_selection_set(sub_selection_set, object_type, result)

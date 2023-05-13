@@ -6,8 +6,7 @@ use super::{
 };
 use crate::helpers::WrappedDefinition;
 use bluejay_core::definition::{
-    AbstractBaseOutputTypeReference, AbstractOutputTypeReference,
-    BaseOutputTypeReference as CoreBaseOutputTypeReference, BaseOutputTypeReferenceFromAbstract,
+    AbstractOutputTypeReference, BaseOutputType as CoreBaseOutputType, BaseOutputTypeReference,
     OutputTypeReference as CoreOutputTypeReference, OutputTypeReferenceFromAbstract,
 };
 use bluejay_core::BuiltinScalarDefinition;
@@ -17,7 +16,7 @@ use magnus::{
 };
 
 #[derive(Debug)]
-pub enum BaseOutputTypeReference {
+pub enum BaseOutputType {
     BuiltinScalar(BuiltinScalarDefinition),
     CustomScalar(WrappedDefinition<CustomScalarTypeDefinition>),
     Enum(WrappedDefinition<EnumTypeDefinition>),
@@ -26,28 +25,26 @@ pub enum BaseOutputTypeReference {
     Union(WrappedDefinition<UnionTypeDefinition>),
 }
 
-impl AbstractBaseOutputTypeReference for BaseOutputTypeReference {
+impl CoreBaseOutputType for BaseOutputType {
     type CustomScalarTypeDefinition = CustomScalarTypeDefinition;
     type EnumTypeDefinition = EnumTypeDefinition;
     type ObjectTypeDefinition = ObjectTypeDefinition;
     type InterfaceTypeDefinition = InterfaceTypeDefinition;
     type UnionTypeDefinition = UnionTypeDefinition;
 
-    fn as_ref(&self) -> BaseOutputTypeReferenceFromAbstract<'_, Self> {
+    fn as_ref(&self) -> BaseOutputTypeReference<'_, Self> {
         match self {
-            Self::BuiltinScalar(bstd) => CoreBaseOutputTypeReference::BuiltinScalarType(*bstd),
-            Self::CustomScalar(cstd) => {
-                CoreBaseOutputTypeReference::CustomScalarType(cstd.as_ref())
-            }
-            Self::Enum(etd) => CoreBaseOutputTypeReference::EnumType(etd.as_ref()),
-            Self::Object(otd) => CoreBaseOutputTypeReference::ObjectType(otd.as_ref()),
-            Self::Interface(itd) => CoreBaseOutputTypeReference::InterfaceType(itd.as_ref()),
-            Self::Union(utd) => CoreBaseOutputTypeReference::UnionType(utd.as_ref()),
+            Self::BuiltinScalar(bstd) => BaseOutputTypeReference::BuiltinScalar(*bstd),
+            Self::CustomScalar(cstd) => BaseOutputTypeReference::CustomScalar(cstd.as_ref()),
+            Self::Enum(etd) => BaseOutputTypeReference::Enum(etd.as_ref()),
+            Self::Object(otd) => BaseOutputTypeReference::Object(otd.as_ref()),
+            Self::Interface(itd) => BaseOutputTypeReference::Interface(itd.as_ref()),
+            Self::Union(utd) => BaseOutputTypeReference::Union(utd.as_ref()),
         }
     }
 }
 
-impl BaseOutputTypeReference {
+impl BaseOutputType {
     pub fn new(value: Value) -> Result<Self, Error> {
         if let Ok(wrapped_struct) = value.try_convert::<Obj<Scalar>>() {
             Ok(Self::BuiltinScalar(wrapped_struct.get().to_owned().into()))
@@ -119,12 +116,12 @@ impl BaseOutputTypeReference {
 #[derive(Debug, TypedData)]
 #[magnus(class = "Bluejay::OutputTypeReference", mark)]
 pub enum OutputTypeReference {
-    Base(BaseOutputTypeReference, bool),
+    Base(BaseOutputType, bool),
     List(Obj<Self>, bool),
 }
 
 impl AbstractOutputTypeReference for OutputTypeReference {
-    type BaseOutputTypeReference = BaseOutputTypeReference;
+    type BaseOutputType = BaseOutputType;
 
     fn as_ref(&self) -> OutputTypeReferenceFromAbstract<'_, Self> {
         match self {
@@ -146,7 +143,7 @@ impl OutputTypeReference {
     pub fn new(kw: RHash) -> Result<Self, Error> {
         let args: KwArgs<(Value, bool), (), ()> = get_kwargs(kw, &["type", "required"], &[])?;
         let (r#type, required) = args.required;
-        let base = BaseOutputTypeReference::new(r#type)?;
+        let base = BaseOutputType::new(r#type)?;
         Ok(Self::Base(base, required))
     }
 

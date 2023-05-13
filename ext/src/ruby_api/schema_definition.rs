@@ -1,7 +1,7 @@
 use crate::execution::Engine as ExecutionEngine;
 use crate::helpers::WrappedDefinition;
 use crate::ruby_api::{
-    root, BaseInputType, BaseOutputTypeReference, DirectiveDefinition, Directives, ExecutionResult,
+    root, BaseInputType, BaseOutputType, DirectiveDefinition, Directives, ExecutionResult,
     InputType, OutputTypeReference,
 };
 use crate::ruby_api::{
@@ -195,7 +195,7 @@ impl bluejay_core::definition::SchemaDefinition for SchemaDefinition {
     type UnionMemberTypes = UnionMemberTypes;
     type BaseInputType = BaseInputType;
     type InputType = InputType;
-    type BaseOutputTypeReference = BaseOutputTypeReference;
+    type BaseOutputType = BaseOutputType;
     type OutputTypeReference = OutputTypeReference;
     type CustomScalarTypeDefinition = CustomScalarTypeDefinition;
     type ObjectTypeDefinition = ObjectTypeDefinition;
@@ -320,17 +320,17 @@ impl TryInto<BaseInputType> for &TypeDefinitionReference {
     }
 }
 
-impl TryFrom<&BaseOutputTypeReference> for TypeDefinitionReference {
+impl TryFrom<&BaseOutputType> for TypeDefinitionReference {
     type Error = ();
 
-    fn try_from(value: &BaseOutputTypeReference) -> Result<Self, Self::Error> {
+    fn try_from(value: &BaseOutputType) -> Result<Self, Self::Error> {
         match value {
-            BaseOutputTypeReference::BuiltinScalar(_) => Err(()),
-            BaseOutputTypeReference::CustomScalar(cstd) => Ok(Self::CustomScalar(cstd.clone())),
-            BaseOutputTypeReference::Enum(etd) => Ok(Self::Enum(etd.clone())),
-            BaseOutputTypeReference::Object(otd) => Ok(Self::Object(otd.clone())),
-            BaseOutputTypeReference::Interface(itd) => Ok(Self::Interface(itd.clone())),
-            BaseOutputTypeReference::Union(utd) => Ok(Self::Union(utd.clone())),
+            BaseOutputType::BuiltinScalar(_) => Err(()),
+            BaseOutputType::CustomScalar(cstd) => Ok(Self::CustomScalar(cstd.clone())),
+            BaseOutputType::Enum(etd) => Ok(Self::Enum(etd.clone())),
+            BaseOutputType::Object(otd) => Ok(Self::Object(otd.clone())),
+            BaseOutputType::Interface(itd) => Ok(Self::Interface(itd.clone())),
+            BaseOutputType::Union(utd) => Ok(Self::Union(utd.clone())),
         }
     }
 }
