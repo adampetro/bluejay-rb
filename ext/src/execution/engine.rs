@@ -7,8 +7,8 @@ use crate::ruby_api::{
 use bluejay_core::definition::{
     AbstractOutputTypeReference, OutputTypeReference as CoreOutputTypeReference,
 };
-use bluejay_core::executable::{AbstractOperationDefinition, AbstractSelection};
-use bluejay_core::{AbstractTypeReference, AsIter, Directive as CoreDirective, OperationType};
+use bluejay_core::executable::{AbstractOperationDefinition, AbstractSelection, VariableType};
+use bluejay_core::{AsIter, Directive as CoreDirective, OperationType};
 use bluejay_parser::ast::executable::{
     ExecutableDocument, Field, OperationDefinition, Selection, SelectionSet,
 };
@@ -114,7 +114,7 @@ impl<'a> Engine<'a> {
                     .unwrap();
                 let base_input_type_reference: BaseInputTypeReference =
                     variable_base_type.try_into().unwrap();
-                let variable_type = InputTypeReference::from_parser_type_reference(
+                let variable_type = InputTypeReference::from_parser_variable_type(
                     variable_named_type_reference,
                     base_input_type_reference,
                 );

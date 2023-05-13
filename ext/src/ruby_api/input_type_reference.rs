@@ -11,11 +11,10 @@ use bluejay_core::definition::{
     BaseInputTypeReferenceFromAbstract, InputTypeReference as CoreInputTypeReference,
     InputTypeReferenceFromAbstract,
 };
-use bluejay_core::{
-    AbstractTypeReference, AbstractValue, AsIter, BuiltinScalarDefinition,
-    TypeReference as CoreTypeReference, Value as CoreValue,
-};
-use bluejay_parser::ast::{TypeReference as ParserTypeReference, Value as ParserValue};
+use bluejay_core::executable::{VariableType as CoreVariableType, VariableTypeReference};
+use bluejay_core::{AbstractValue, AsIter, BuiltinScalarDefinition, Value as CoreValue};
+use bluejay_parser::ast::executable::VariableType;
+use bluejay_parser::ast::Value as ParserValue;
 use magnus::{
     exception, function, gc, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,
     DataTypeFunctions, Error, Float, Integer, Module, Object, RArray, RHash, RString, TypedData,
@@ -359,14 +358,14 @@ impl InputTypeReference {
         }
     }
 
-    pub fn from_parser_type_reference(
-        parser_type_reference: &ParserTypeReference,
+    pub fn from_parser_variable_type(
+        parse_variable_type: &VariableType,
         base: BaseInputTypeReference,
     ) -> Self {
-        match parser_type_reference.as_ref() {
-            CoreTypeReference::NamedType(_, required) => Self::Base(base, required),
-            CoreTypeReference::ListType(inner, required) => Self::List(
-                Obj::wrap(Self::from_parser_type_reference(inner, base)),
+        match parse_variable_type.as_ref() {
+            VariableTypeReference::Named(_, required) => Self::Base(base, required),
+            VariableTypeReference::List(inner, required) => Self::List(
+                Obj::wrap(Self::from_parser_variable_type(inner, base)),
                 required,
             ),
         }

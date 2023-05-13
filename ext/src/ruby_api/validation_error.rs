@@ -5,8 +5,8 @@ use bluejay_core::{
         AbstractInputTypeReference, AbstractOutputTypeReference, DirectiveDefinition,
         InputValueDefinition,
     },
-    executable::AbstractOperationDefinition,
-    AbstractTypeReference, OperationType,
+    executable::{AbstractOperationDefinition, VariableType},
+    OperationType,
 };
 use bluejay_parser::ast::{executable::ExecutableDocument, Value as ParserValue};
 use bluejay_validator::executable::{ArgumentError, DirectiveError, Error as CoreError};
