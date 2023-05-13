@@ -12,7 +12,7 @@ use bluejay_core::definition::{
     InputTypeReferenceFromAbstract,
 };
 use bluejay_core::executable::{VariableType as CoreVariableType, VariableTypeReference};
-use bluejay_core::{AbstractValue, AsIter, BuiltinScalarDefinition, Value as CoreValue};
+use bluejay_core::{AsIter, BuiltinScalarDefinition, Value as CoreValue, ValueReference};
 use bluejay_parser::ast::executable::VariableType;
 use bluejay_parser::ast::Value as ParserValue;
 use magnus::{
@@ -168,22 +168,22 @@ impl BaseInputTypeReference {
         path: &[String],
     ) -> Result<Value, Vec<CoercionError>> {
         match (t, value.as_ref()) {
-            (BuiltinScalarDefinition::Boolean, CoreValue::Boolean(b)) => {
+            (BuiltinScalarDefinition::Boolean, ValueReference::Boolean(b)) => {
                 let r_value: Value = if b { *magnus::QTRUE } else { *magnus::QFALSE };
                 Ok(r_value)
             }
-            (BuiltinScalarDefinition::Float, CoreValue::Float(f)) => Ok(*Float::from_f64(f)),
-            (BuiltinScalarDefinition::Float, CoreValue::Integer(i)) => {
+            (BuiltinScalarDefinition::Float, ValueReference::Float(f)) => Ok(*Float::from_f64(f)),
+            (BuiltinScalarDefinition::Float, ValueReference::Integer(i)) => {
                 Ok(*Float::from_f64(i.into()))
             }
-            (BuiltinScalarDefinition::ID, CoreValue::Integer(i)) => {
+            (BuiltinScalarDefinition::ID, ValueReference::Integer(i)) => {
                 Ok(*Integer::from_i64(i.into()))
             }
             (
                 BuiltinScalarDefinition::ID | BuiltinScalarDefinition::String,
-                CoreValue::String(s),
+                ValueReference::String(s),
             ) => Ok(*RString::new(s)),
-            (BuiltinScalarDefinition::Int, CoreValue::Integer(i)) => {
+            (BuiltinScalarDefinition::Int, ValueReference::Integer(i)) => {
                 Ok(*Integer::from_i64(i.into()))
             }
             _ => Err(vec![CoercionError::new(

@@ -1,6 +1,6 @@
 use bluejay_core::{
-    AbstractValue, AsIter, ListValue as CoreListValue, ObjectValue as CoreObjectValue,
-    Value as CoreValue, ValueFromAbstract,
+    AsIter, ListValue as CoreListValue, ObjectValue as CoreObjectValue, Value as CoreValue,
+    ValueReference,
 };
 use bluejay_parser::ast::ConstValue as ParserConstValue;
 use magnus::{
@@ -31,21 +31,21 @@ impl bluejay_core::Variable for Never {
     }
 }
 
-impl AbstractValue<true> for ValueInner {
+impl CoreValue<true> for ValueInner {
     type List = ListValue;
     type Object = ObjectValue;
     type Variable = Never;
 
-    fn as_ref(&self) -> ValueFromAbstract<'_, true, Self> {
+    fn as_ref(&self) -> ValueReference<'_, true, Self> {
         match self {
-            Self::Integer(i) => CoreValue::Integer(*i),
-            Self::Float(f) => CoreValue::Float(*f),
-            Self::String(s) => CoreValue::String(s),
-            Self::Boolean(b) => CoreValue::Boolean(*b),
-            Self::Null => CoreValue::Null,
-            Self::Enum(e) => CoreValue::Enum(e),
-            Self::List(l) => CoreValue::List(l),
-            Self::Object(o) => CoreValue::Object(o),
+            Self::Integer(i) => ValueReference::Integer(*i),
+            Self::Float(f) => ValueReference::Float(*f),
+            Self::String(s) => ValueReference::String(s),
+            Self::Boolean(b) => ValueReference::Boolean(*b),
+            Self::Null => ValueReference::Null,
+            Self::Enum(e) => ValueReference::Enum(e),
+            Self::List(l) => ValueReference::List(l),
+            Self::Object(o) => ValueReference::Object(o),
         }
     }
 }
@@ -145,15 +145,15 @@ impl From<WrappedValue> for (Value, ValueInner) {
 
 fn value_inner_from_parser_const_value(value: &ParserConstValue) -> ValueInner {
     match value.as_ref() {
-        CoreValue::Boolean(b) => ValueInner::Boolean(b),
-        CoreValue::Enum(e) => ValueInner::Enum(e.to_owned()),
-        CoreValue::Float(f) => ValueInner::Float(f),
-        CoreValue::Integer(i) => ValueInner::Integer(i),
-        CoreValue::List(l) => ValueInner::List(ListValue(Vec::from_iter(
+        ValueReference::Boolean(b) => ValueInner::Boolean(b),
+        ValueReference::Enum(e) => ValueInner::Enum(e.to_owned()),
+        ValueReference::Float(f) => ValueInner::Float(f),
+        ValueReference::Integer(i) => ValueInner::Integer(i),
+        ValueReference::List(l) => ValueInner::List(ListValue(Vec::from_iter(
             l.iter().map(value_inner_from_parser_const_value),
         ))),
-        CoreValue::Null => ValueInner::Null,
-        CoreValue::Object(o) => ValueInner::Object(ObjectValue(
+        ValueReference::Null => ValueInner::Null,
+        ValueReference::Object(o) => ValueInner::Object(ObjectValue(
             CoreObjectValue::iter(o)
                 .map(|(name, value)| {
                     (
@@ -163,8 +163,8 @@ fn value_inner_from_parser_const_value(value: &ParserConstValue) -> ValueInner {
                 })
                 .collect(),
         )),
-        CoreValue::String(s) => ValueInner::String(s.to_string()),
-        CoreValue::Variable(_) => unreachable!(),
+        ValueReference::String(s) => ValueInner::String(s.to_string()),
+        ValueReference::Variable(_) => unreachable!(),
     }
 }
 
