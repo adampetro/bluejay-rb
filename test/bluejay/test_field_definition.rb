@@ -5,7 +5,7 @@ require "test_helper"
 
 module Bluejay
   class TestFieldDefinition < Minitest::Test
-    include(OutputTypeReferenceShorthands)
+    include(OutputTypeShorthands)
 
     class MyDirective < Directive
       class << self

@@ -1,12 +1,10 @@
 use crate::execution::{CoerceResult, ExecutionError, FieldError, KeyStore};
 use crate::ruby_api::{
     BaseInputType, BaseOutputType, CoerceInput, ExecutionResult, FieldDefinition, InputType,
-    InputValueDefinition, InterfaceTypeDefinition, ObjectTypeDefinition, OutputTypeReference,
+    InputValueDefinition, InterfaceTypeDefinition, ObjectTypeDefinition, OutputType,
     SchemaDefinition, TypeDefinitionReference, UnionTypeDefinition,
 };
-use bluejay_core::definition::{
-    AbstractOutputTypeReference, OutputTypeReference as CoreOutputTypeReference,
-};
+use bluejay_core::definition::{OutputType as CoreOutputType, OutputTypeReference};
 use bluejay_core::executable::{
     OperationDefinition as CoreOperationDefinition, Selection as CoreSelection, VariableType,
 };
@@ -473,7 +471,7 @@ impl<'a> Engine<'a> {
 
     fn complete_value(
         &'a self,
-        field_type: &OutputTypeReference,
+        field_type: &OutputType,
         fields: &[&'a Field],
         result: Value,
     ) -> (Value, Vec<ExecutionError<'a>>) {
@@ -489,7 +487,7 @@ impl<'a> Engine<'a> {
         }
 
         match field_type.as_ref() {
-            CoreOutputTypeReference::Base(inner, _) => match inner {
+            OutputTypeReference::Base(inner, _) => match inner {
                 BaseOutputType::BuiltinScalar(bstd) => match bstd.coerce_result(result) {
                     Ok(value) => (value, vec![]),
                     Err(error) => (*QNIL, vec![ExecutionError::FieldError(error)]),
@@ -517,7 +515,7 @@ impl<'a> Engine<'a> {
                     self.execute_selection_set(sub_selection_set, object_type, result)
                 }
             },
-            CoreOutputTypeReference::List(inner, _) => {
+            OutputTypeReference::List(inner, _) => {
                 if let Some(arr) = RArray::from_value(result) {
                     let completed = RArray::with_capacity(arr.len());
                     let mut errors: Vec<ExecutionError<'a>> = Vec::new();

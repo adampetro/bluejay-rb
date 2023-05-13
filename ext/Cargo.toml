@@ -13,7 +13,7 @@ rb-sys = { version = "0.9.75", features = ["global-allocator"] }
 once_cell = "1.17"
 convert_case = "0.6.0"
 itertools = "0.10.5"
-bluejay-parser = { git = "https://github.com/adampetro/bluejay", rev = "fcd5b5ae42a0dce4a2086eb12e7e8dcf73124869" }
-bluejay-core = { git = "https://github.com/adampetro/bluejay", rev = "fcd5b5ae42a0dce4a2086eb12e7e8dcf73124869" }
-bluejay-printer = { git = "https://github.com/adampetro/bluejay", rev = "fcd5b5ae42a0dce4a2086eb12e7e8dcf73124869" }
-bluejay-validator = { git = "https://github.com/adampetro/bluejay", rev = "fcd5b5ae42a0dce4a2086eb12e7e8dcf73124869" }
+bluejay-parser = { git = "https://github.com/adampetro/bluejay", rev = "716dc10d784268e9db734e819b3e512ad5f667a1" }
+bluejay-core = { git = "https://github.com/adampetro/bluejay", rev = "716dc10d784268e9db734e819b3e512ad5f667a1" }
+bluejay-printer = { git = "https://github.com/adampetro/bluejay", rev = "716dc10d784268e9db734e819b3e512ad5f667a1" }
+bluejay-validator = { git = "https://github.com/adampetro/bluejay", rev = "716dc10d784268e9db734e819b3e512ad5f667a1" }

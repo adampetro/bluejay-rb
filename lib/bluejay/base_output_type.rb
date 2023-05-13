@@ -2,7 +2,7 @@
 # frozen_string_literal: true
 
 module Bluejay
-  BaseOutputTypeReference = T.type_alias do
+  BaseOutputType = T.type_alias do
     T.any(
       Scalar,
       T.class_of(EnumType),

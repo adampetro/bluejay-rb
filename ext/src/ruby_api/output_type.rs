@@ -6,8 +6,8 @@ use super::{
 };
 use crate::helpers::WrappedDefinition;
 use bluejay_core::definition::{
-    AbstractOutputTypeReference, BaseOutputType as CoreBaseOutputType, BaseOutputTypeReference,
-    OutputTypeReference as CoreOutputTypeReference, OutputTypeReferenceFromAbstract,
+    BaseOutputType as CoreBaseOutputType, BaseOutputTypeReference, OutputType as CoreOutputType,
+    OutputTypeReference,
 };
 use bluejay_core::BuiltinScalarDefinition;
 use magnus::{
@@ -114,24 +114,24 @@ impl BaseOutputType {
 }
 
 #[derive(Debug, TypedData)]
-#[magnus(class = "Bluejay::OutputTypeReference", mark)]
-pub enum OutputTypeReference {
+#[magnus(class = "Bluejay::OutputType", mark)]
+pub enum OutputType {
     Base(BaseOutputType, bool),
     List(Obj<Self>, bool),
 }
 
-impl AbstractOutputTypeReference for OutputTypeReference {
+impl CoreOutputType for OutputType {
     type BaseOutputType = BaseOutputType;
 
-    fn as_ref(&self) -> OutputTypeReferenceFromAbstract<'_, Self> {
+    fn as_ref(&self) -> OutputTypeReference<'_, Self> {
         match self {
-            Self::Base(base, required) => CoreOutputTypeReference::Base(base, *required),
-            Self::List(inner, required) => CoreOutputTypeReference::List(inner.get(), *required),
+            Self::Base(base, required) => OutputTypeReference::Base(base, *required),
+            Self::List(inner, required) => OutputTypeReference::List(inner.get(), *required),
         }
     }
 }
 
-impl DataTypeFunctions for OutputTypeReference {
+impl DataTypeFunctions for OutputType {
     fn mark(&self) {
         match self {
             Self::Base(base, _) => base.mark(),
@@ -139,7 +139,7 @@ impl DataTypeFunctions for OutputTypeReference {
         }
     }
 }
-impl OutputTypeReference {
+impl OutputType {
     pub fn new(kw: RHash) -> Result<Self, Error> {
         let args: KwArgs<(Value, bool), (), ()> = get_kwargs(kw, &["type", "required"], &[])?;
         let (r#type, required) = args.required;
@@ -148,8 +148,7 @@ impl OutputTypeReference {
     }
 
     pub fn list(kw: RHash) -> Result<Self, Error> {
-        let args: KwArgs<(Obj<OutputTypeReference>, bool), (), ()> =
-            get_kwargs(kw, &["type", "required"], &[])?;
+        let args: KwArgs<(Obj<Self>, bool), (), ()> = get_kwargs(kw, &["type", "required"], &[])?;
         let (r#type, required) = args.required;
         Ok(Self::List(r#type, required))
     }
@@ -166,12 +165,12 @@ impl OutputTypeReference {
         self.as_ref().is_required()
     }
 
-    fn unwrap_list(&self) -> Result<Obj<OutputTypeReference>, Error> {
+    fn unwrap_list(&self) -> Result<Obj<Self>, Error> {
         match self {
             Self::List(inner, _) => Ok(*inner),
             Self::Base(_, _) => Err(Error::new(
                 exception::runtime_error(),
-                "Tried to unwrap a non-list OutputTypeReference".to_owned(),
+                "Tried to unwrap a non-list OutputType".to_owned(),
             )),
         }
     }
@@ -193,15 +192,15 @@ impl OutputTypeReference {
 }
 
 pub fn init() -> Result<(), Error> {
-    let class = root().define_class("OutputTypeReference", Default::default())?;
+    let class = root().define_class("OutputType", Default::default())?;
 
-    class.define_singleton_method("new", function!(OutputTypeReference::new, 1))?;
-    class.define_singleton_method("list", function!(OutputTypeReference::list, 1))?;
-    class.define_method("list?", method!(OutputTypeReference::is_list, 0))?;
-    class.define_method("base?", method!(OutputTypeReference::is_base, 0))?;
-    class.define_method("required?", method!(OutputTypeReference::is_required, 0))?;
-    class.define_method("sorbet_type", method!(OutputTypeReference::sorbet_type, 0))?;
-    class.define_method("unwrap_list", method!(OutputTypeReference::unwrap_list, 0))?;
+    class.define_singleton_method("new", function!(OutputType::new, 1))?;
+    class.define_singleton_method("list", function!(OutputType::list, 1))?;
+    class.define_method("list?", method!(OutputType::is_list, 0))?;
+    class.define_method("base?", method!(OutputType::is_base, 0))?;
+    class.define_method("required?", method!(OutputType::is_required, 0))?;
+    class.define_method("sorbet_type", method!(OutputType::sorbet_type, 0))?;
+    class.define_method("unwrap_list", method!(OutputType::unwrap_list, 0))?;
 
     Ok(())
 }

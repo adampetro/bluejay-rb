@@ -18,8 +18,8 @@ end
 # source://bluejay//../../bluejay-rb/lib/bluejay/base_input_type.rb#5
 Bluejay::BaseInputType = T.type_alias { T.any(::Bluejay::Scalar, T.class_of(Bluejay::CustomScalarType), T.class_of(Bluejay::EnumType), T.class_of(Bluejay::InputObjectType)) }
 
-# source://bluejay//../../bluejay-rb/lib/bluejay/base_output_type_reference.rb#5
-Bluejay::BaseOutputTypeReference = T.type_alias { T.any(::Bluejay::Scalar, T.class_of(Bluejay::CustomScalarType), T.class_of(Bluejay::EnumType), T.class_of(Bluejay::InterfaceType), T.class_of(Bluejay::ObjectType), T.class_of(Bluejay::UnionType)) }
+# source://bluejay//../../bluejay-rb/lib/bluejay/base_output_type.rb#5
+Bluejay::BaseOutputType = T.type_alias { T.any(::Bluejay::Scalar, T.class_of(Bluejay::CustomScalarType), T.class_of(Bluejay::EnumType), T.class_of(Bluejay::InterfaceType), T.class_of(Bluejay::ObjectType), T.class_of(Bluejay::UnionType)) }
 
 # source://bluejay//../../bluejay-rb/lib/bluejay/builtin/directives/include.rb#5
 module Bluejay::Builtin; end
@@ -418,7 +418,7 @@ end
 #
 # source://bluejay//../../bluejay-rb/lib/bluejay/interface_type.rb#5
 class Bluejay::InterfaceType
-  extend ::Bluejay::OutputTypeReferenceShorthands
+  extend ::Bluejay::OutputTypeShorthands
   extend ::Bluejay::InputTypeShorthands
   extend ::Bluejay::NameFromClass
 
@@ -483,7 +483,7 @@ end
 #
 # source://bluejay//../../bluejay-rb/lib/bluejay/object_type.rb#5
 class Bluejay::ObjectType
-  extend ::Bluejay::OutputTypeReferenceShorthands
+  extend ::Bluejay::OutputTypeShorthands
   extend ::Bluejay::InputTypeShorthands
   extend ::Bluejay::NameFromClass
 
@@ -533,7 +533,7 @@ class Bluejay::ObjectTypeDefinition
   end
 end
 
-class Bluejay::OutputTypeReference
+class Bluejay::OutputType
   def base?; end
   def list?; end
   def required?; end
@@ -546,29 +546,29 @@ class Bluejay::OutputTypeReference
   end
 end
 
-# source://bluejay//../../bluejay-rb/lib/bluejay/output_type_reference_shorthands.rb#5
-module Bluejay::OutputTypeReferenceShorthands
-  # source://bluejay//../../bluejay-rb/lib/bluejay/output_type_reference_shorthands.rb#19
-  sig { params(t: ::Bluejay::OutputTypeReference).returns(::Bluejay::OutputTypeReference) }
+# source://bluejay//../../bluejay-rb/lib/bluejay/output_type_shorthands.rb#5
+module Bluejay::OutputTypeShorthands
+  # source://bluejay//../../bluejay-rb/lib/bluejay/output_type_shorthands.rb#19
+  sig { params(t: ::Bluejay::OutputType).returns(::Bluejay::OutputType) }
   def lot(t); end
 
-  # source://bluejay//../../bluejay-rb/lib/bluejay/output_type_reference_shorthands.rb#24
-  sig { params(t: ::Bluejay::OutputTypeReference).returns(::Bluejay::OutputTypeReference) }
+  # source://bluejay//../../bluejay-rb/lib/bluejay/output_type_shorthands.rb#24
+  sig { params(t: ::Bluejay::OutputType).returns(::Bluejay::OutputType) }
   def lot!(t); end
 
-  # source://bluejay//../../bluejay-rb/lib/bluejay/output_type_reference_shorthands.rb#9
+  # source://bluejay//../../bluejay-rb/lib/bluejay/output_type_shorthands.rb#9
   sig do
     params(
       t: T.any(::Bluejay::Scalar, T.class_of(Bluejay::CustomScalarType), T.class_of(Bluejay::EnumType), T.class_of(Bluejay::InterfaceType), T.class_of(Bluejay::ObjectType), T.class_of(Bluejay::UnionType))
-    ).returns(::Bluejay::OutputTypeReference)
+    ).returns(::Bluejay::OutputType)
   end
   def ot(t); end
 
-  # source://bluejay//../../bluejay-rb/lib/bluejay/output_type_reference_shorthands.rb#14
+  # source://bluejay//../../bluejay-rb/lib/bluejay/output_type_shorthands.rb#14
   sig do
     params(
       t: T.any(::Bluejay::Scalar, T.class_of(Bluejay::CustomScalarType), T.class_of(Bluejay::EnumType), T.class_of(Bluejay::InterfaceType), T.class_of(Bluejay::ObjectType), T.class_of(Bluejay::UnionType))
-    ).returns(::Bluejay::OutputTypeReference)
+    ).returns(::Bluejay::OutputType)
   end
   def ot!(t); end
 end

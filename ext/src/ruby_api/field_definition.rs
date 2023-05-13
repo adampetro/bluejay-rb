@@ -1,8 +1,4 @@
-use crate::ruby_api::{
-    arguments_definition::ArgumentsDefinition,
-    output_type_reference::{BaseOutputType, OutputTypeReference},
-    root, Directives,
-};
+use crate::ruby_api::{root, ArgumentsDefinition, BaseOutputType, Directives, OutputType};
 use convert_case::{Case, Casing};
 use magnus::{
     function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,
@@ -16,7 +12,7 @@ pub struct FieldDefinition {
     name: String,
     description: Option<String>,
     arguments_definition: ArgumentsDefinition,
-    r#type: Obj<OutputTypeReference>,
+    r#type: Obj<OutputType>,
     directives: Directives,
     is_builtin: bool,
     ruby_resolver_method_name: String,
@@ -30,7 +26,7 @@ impl FieldDefinition {
             &["name", "type"],
             &["argument_definitions", "description", "directives"],
         )?;
-        let (name_r_string, r#type): (RString, Obj<OutputTypeReference>) = args.required;
+        let (name_r_string, r#type): (RString, Obj<OutputType>) = args.required;
         let (argument_definitions, description, directives): (
             Option<RArray>,
             Option<Option<String>>,
@@ -57,7 +53,7 @@ impl FieldDefinition {
 
     pub(crate) fn typename() -> Obj<Self> {
         memoize!(([BoxValue<Value>; 4], Obj<FieldDefinition>): {
-            let t = Obj::wrap(OutputTypeReference::Base(BaseOutputType::builtin_string(), true));
+            let t = Obj::wrap(OutputType::Base(BaseOutputType::builtin_string(), true));
             let arguments_definition = ArgumentsDefinition::empty();
             let directives = Directives::empty();
             let directives_rarray: RArray = (&directives).into();
@@ -113,14 +109,14 @@ impl FieldDefinition {
         &self.arguments_definition
     }
 
-    pub fn r#type(&self) -> &OutputTypeReference {
+    pub fn r#type(&self) -> &OutputType {
         self.r#type.get()
     }
 }
 
 impl bluejay_core::definition::FieldDefinition for FieldDefinition {
     type ArgumentsDefinition = ArgumentsDefinition;
-    type OutputTypeReference = OutputTypeReference;
+    type OutputType = OutputType;
     type Directives = Directives;
 
     fn description(&self) -> Option<&str> {
@@ -135,7 +131,7 @@ impl bluejay_core::definition::FieldDefinition for FieldDefinition {
         Some(&self.arguments_definition)
     }
 
-    fn r#type(&self) -> &Self::OutputTypeReference {
+    fn r#type(&self) -> &Self::OutputType {
         self.r#type.get()
     }
 

@@ -1,12 +1,13 @@
 # typed: strict
+# frozen_string_literal: true
 
 module Bluejay
-  class OutputTypeReference
-    sig { params(type: BaseOutputTypeReference, required: T::Boolean).void }
+  class OutputType
+    sig { params(type: BaseOutputType, required: T::Boolean).void }
     def initialize(type:, required:); end
 
     class << self
-      sig { params(type: OutputTypeReference, required: T::Boolean).returns(OutputTypeReference) }
+      sig { params(type: OutputType, required: T::Boolean).returns(OutputType) }
       def list(type:, required:); end
     end
 
