@@ -1,7 +1,7 @@
 use crate::execution::{CoerceResult, ExecutionError, FieldError, KeyStore};
 use crate::ruby_api::{
     BaseInputType, BaseOutputTypeReference, CoerceInput, ExecutionResult, FieldDefinition,
-    InputTypeReference, InputValueDefinition, InterfaceTypeDefinition, ObjectTypeDefinition,
+    InputType, InputValueDefinition, InterfaceTypeDefinition, ObjectTypeDefinition,
     OutputTypeReference, SchemaDefinition, TypeDefinitionReference, UnionTypeDefinition,
 };
 use bluejay_core::definition::{
@@ -116,7 +116,7 @@ impl<'a> Engine<'a> {
                     .unwrap();
                 let base_input_type_reference: BaseInputType =
                     variable_base_type.try_into().unwrap();
-                let variable_type = InputTypeReference::from_parser_variable_type(
+                let variable_type = InputType::from_parser_variable_type(
                     variable_named_type_reference,
                     base_input_type_reference,
                 );

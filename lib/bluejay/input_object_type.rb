@@ -2,13 +2,13 @@
 # frozen_string_literal: true
 
 module Bluejay
-  class InputType
+  class InputObjectType
     extend(T::Sig)
 
     class << self
       extend(T::Sig)
       extend(T::Helpers)
-      include(InputTypeReferenceShorthands)
+      include(InputTypeShorthands)
       include(NameFromClass)
 
       abstract!

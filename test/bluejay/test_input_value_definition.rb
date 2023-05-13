@@ -5,7 +5,7 @@ require "test_helper"
 
 module Bluejay
   class TestInputValueDefinition < Minitest::Test
-    include(InputTypeReferenceShorthands)
+    include(InputTypeShorthands)
 
     def test_ruby_name_default
       ivd = InputValueDefinition.new(name: "myInputField", type: it!(Scalar::String))

@@ -6,7 +6,7 @@ module Bluejay
     sig do
       params(
         name: String,
-        type: InputTypeReference,
+        type: InputType,
         description: T.nilable(String),
         directives: T::Array[Directive],
         ruby_name: T.nilable(String),
@@ -17,7 +17,7 @@ module Bluejay
     sig { returns(String) }
     def name; end
 
-    sig { returns(InputTypeReference) }
+    sig { returns(InputType) }
     def type; end
 
     sig { returns(String) }

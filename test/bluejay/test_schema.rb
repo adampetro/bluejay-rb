@@ -5,7 +5,7 @@ require "test_helper"
 
 module Bluejay
   class TestSchema < Minitest::Test
-    class NameInput < InputType
+    class NameInputObject < InputObjectType
       class << self
         extend(T::Sig)
 
@@ -65,7 +65,7 @@ module Bluejay
               name: "hello",
               type: ot!(Scalar::String),
               argument_definitions: [
-                InputValueDefinition.new(name: "name", type: it!(NameInput)),
+                InputValueDefinition.new(name: "name", type: it!(NameInputObject)),
               ],
             ),
             FieldDefinition.new(
@@ -102,7 +102,7 @@ module Bluejay
 
         const(:today, Date, factory: -> { Date.today })
 
-        sig { params(name: NameInput).returns(String) }
+        sig { params(name: NameInputObject).returns(String) }
         def resolve_hello(name)
           "Hello, #{name.first} #{name.last}!"
         end
@@ -132,7 +132,7 @@ module Bluejay
 
     def test_execute
       query = <<~GQL
-        query Hello($name: NameInput!, $date: Date!) {
+        query Hello($name: NameInputObject!, $date: Date!) {
           __typename
           hello(name: $name)
           otherHello: hello(name: { first: "John" last: "Smith" })
@@ -181,7 +181,7 @@ module Bluejay
 
     def test_validate_query
       query = <<~GQL
-        query Hello($name: NameInput!) {
+        query Hello($name: NameInputObject!) {
           __typename
           hello(name: $name)
           otherHello: hello(name: { first: "John" last: "Smith" })
@@ -203,7 +203,7 @@ module Bluejay
       expected = <<~GQL
         scalar Date
 
-        input NameInput {
+        input NameInputObject {
           first: String!
 
           last: String!
@@ -211,7 +211,7 @@ module Bluejay
 
         type QueryRoot {
           hello(
-            name: NameInput!
+            name: NameInputObject!
           ): String!
 
           today: Date!

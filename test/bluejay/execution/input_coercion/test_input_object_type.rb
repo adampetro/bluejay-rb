@@ -6,8 +6,8 @@ require "test_helper"
 module Bluejay
   module Execution
     module InputCoercion
-      class TestInputType < Minitest::Test
-        class MyInput < InputType
+      class TestInputObjectType < Minitest::Test
+        class MyInputObject < InputObjectType
           class << self
             extend(T::Sig)
 
@@ -29,10 +29,10 @@ module Bluejay
             def field_definitions
               [
                 FieldDefinition.new(
-                  name: "myInput",
+                  name: "myInputObject",
                   type: ot!(Scalar::String),
                   argument_definitions: [
-                    InputValueDefinition.new(name: "myInput", type: it!(MyInput)),
+                    InputValueDefinition.new(name: "myInputObject", type: it!(MyInputObject)),
                   ],
                 ),
               ]
@@ -55,11 +55,11 @@ module Bluejay
           class QueryRoot
             class << self
               extend(T::Sig)
-              include(Execution::InputCoercion::TestInputType::QueryRoot::Interface)
+              include(Execution::InputCoercion::TestInputObjectType::QueryRoot::Interface)
 
-              sig { params(my_input: MyInput).returns(String) }
-              def resolve_my_input(my_input)
-                "myString=`#{my_input.my_string}`, myInt=`#{my_input.my_int}`"
+              sig { params(my_input_object: MyInputObject).returns(String) }
+              def resolve_my_input_object(my_input_object)
+                "myString=`#{my_input_object.my_string}`, myInt=`#{my_input_object.my_int}`"
               end
             end
           end
@@ -77,34 +77,34 @@ module Bluejay
 
         def test_coerce_input_type_from_variables_valid
           query = <<~GQL
-            query Query($myInput: MyInput!) {
-              myInput(myInput: $myInput)
+            query Query($myInputObject: MyInputObject!) {
+              myInputObject(myInputObject: $myInputObject)
             }
           GQL
 
           result = MySchema.execute(
             query:,
-            variables: { "myInput" => { "myString" => "A string", "myInt" => 1 } },
+            variables: { "myInputObject" => { "myString" => "A string", "myInt" => 1 } },
             initial_value: Domain::SchemaRoot,
           )
 
           assert_empty(result.errors)
           assert_equal(
-            { "myInput" => "myString=`A string`, myInt=`1`" },
+            { "myInputObject" => "myString=`A string`, myInt=`1`" },
             result.value,
           )
         end
 
         def test_coerce_input_type_from_variables_missing_field
           query = <<~GQL
-            query Query($myInput: MyInput!) {
-              myInput(myInput: $myInput)
+            query Query($myInputObject: MyInputObject!) {
+              myInputObject(myInputObject: $myInputObject)
             }
           GQL
 
           result = MySchema.execute(
             query:,
-            variables: { "myInput" => { "myString" => "A string" } },
+            variables: { "myInputObject" => { "myString" => "A string" } },
             initial_value: Domain::SchemaRoot,
           )
 
@@ -116,14 +116,14 @@ module Bluejay
 
         def test_coerce_input_type_from_variables_field_incorrect_type
           query = <<~GQL
-            query Query($myInput: MyInput!) {
-              myInput(myInput: $myInput)
+            query Query($myInputObject: MyInputObject!) {
+              myInputObject(myInputObject: $myInputObject)
             }
           GQL
 
           result = MySchema.execute(
             query:,
-            variables: { "myInput" => { "myString" => "A string", "myInt" => "not an int" } },
+            variables: { "myInputObject" => { "myString" => "A string", "myInt" => "not an int" } },
             initial_value: Domain::SchemaRoot,
           )
 
@@ -135,46 +135,46 @@ module Bluejay
 
         def test_coerce_input_type_from_variables_incorrect_type
           query = <<~GQL
-            query Query($myInput: MyInput!) {
-              myInput(myInput: $myInput)
+            query Query($myInputObject: MyInputObject!) {
+              myInputObject(myInputObject: $myInputObject)
             }
           GQL
 
           result = MySchema.execute(
             query:,
-            variables: { "myInput" => "not an object" },
+            variables: { "myInputObject" => "not an object" },
             initial_value: Domain::SchemaRoot,
           )
 
           assert_equal(
-            [ExecutionError.new("No implicit conversion of string to MyInput")],
+            [ExecutionError.new("No implicit conversion of string to MyInputObject")],
             result.errors,
           )
         end
 
         def test_coerce_input_type_from_variables_extra_field
           query = <<~GQL
-            query Query($myInput: MyInput!) {
-              myInput(myInput: $myInput)
+            query Query($myInputObject: MyInputObject!) {
+              myInputObject(myInputObject: $myInputObject)
             }
           GQL
 
           result = MySchema.execute(
             query:,
-            variables: { "myInput" => { "myString" => "A string", "myInt" => 1, "myExtraField" => {} } },
+            variables: { "myInputObject" => { "myString" => "A string", "myInt" => 1, "myExtraField" => {} } },
             initial_value: Domain::SchemaRoot,
           )
 
           assert_equal(
-            [ExecutionError.new("No field named `myExtraField` on MyInput")],
+            [ExecutionError.new("No field named `myExtraField` on MyInputObject")],
             result.errors,
           )
         end
 
         def test_coerce_input_type_from_variables_using_variable_default
           query = <<~GQL
-            query Query($myInput: MyInput! = { myString: "A string", myInt: 1 }) {
-              myInput(myInput: $myInput)
+            query Query($myInputObject: MyInputObject! = { myString: "A string", myInt: 1 }) {
+              myInputObject(myInputObject: $myInputObject)
             }
           GQL
 
@@ -185,7 +185,7 @@ module Bluejay
 
           assert_empty(result.errors)
           assert_equal(
-            { "myInput" => "myString=`A string`, myInt=`1`" },
+            { "myInputObject" => "myString=`A string`, myInt=`1`" },
             result.value,
           )
         end
@@ -193,7 +193,7 @@ module Bluejay
         def test_coerce_input_type_from_hard_coded_argument
           query = <<~GQL
             query {
-              myInput(myInput: { myString: "A string", myInt: 1 })
+              myInputObject(myInputObject: { myString: "A string", myInt: 1 })
             }
           GQL
 
@@ -204,7 +204,7 @@ module Bluejay
 
           assert_empty(result.errors)
           assert_equal(
-            { "myInput" => "myString=`A string`, myInt=`1`" },
+            { "myInputObject" => "myString=`A string`, myInt=`1`" },
             result.value,
           )
         end
@@ -212,7 +212,7 @@ module Bluejay
         def test_coerce_input_type_with_nested_variables_in_argument
           query = <<~GQL
             query Query($myString: String!, $myInt: Int!) {
-              myInput(myInput: { myString: $myString, myInt: $myInt })
+              myInputObject(myInputObject: { myString: $myString, myInt: $myInt })
             }
           GQL
 
@@ -224,7 +224,7 @@ module Bluejay
 
           assert_empty(result.errors)
           assert_equal(
-            { "myInput" => "myString=`A string`, myInt=`1`" },
+            { "myInputObject" => "myString=`A string`, myInt=`1`" },
             result.value,
           )
         end

@@ -4,7 +4,7 @@
 require "test_helper"
 
 module Bluejay
-  class TestInputType < Minitest::Test
+  class TestInputObjectType < Minitest::Test
     class MyEnumType < EnumType
       extend(T::Sig)
 
@@ -21,7 +21,7 @@ module Bluejay
       end
     end
 
-    class MyInputType < InputType
+    class MyInputObjectType < InputObjectType
       class << self
         extend(T::Sig)
 
@@ -29,7 +29,7 @@ module Bluejay
         def input_field_definitions
           [
             InputValueDefinition.new(name: "myArg", type: lit!(it!(Scalar::String)), description: "This is my arg"),
-            InputValueDefinition.new(name: "mySelf", type: it(MyInputType)),
+            InputValueDefinition.new(name: "mySelf", type: it(MyInputObjectType)),
             InputValueDefinition.new(name: "myEnum", type: it(MyEnumType)),
           ]
         end
@@ -37,25 +37,25 @@ module Bluejay
     end
 
     def test_coerce_input_valid
-      result = MyInputType.coerce_input({ "myArg" => ["X"], "mySelf" => { "myArg" => "Y" }, "myEnum" => "ONE" })
+      result = MyInputObjectType.coerce_input({ "myArg" => ["X"], "mySelf" => { "myArg" => "Y" }, "myEnum" => "ONE" })
 
       assert_predicate(result, :ok?)
-      assert_equal(MyInputType.new(["X"], MyInputType.new(["Y"], nil, nil), "ONE"), result.unwrap)
+      assert_equal(MyInputObjectType.new(["X"], MyInputObjectType.new(["Y"], nil, nil), "ONE"), result.unwrap)
     end
 
     def test_coerce_input_extraneous_field
-      result = MyInputType.coerce_input({ "myArg" => [], "notAField" => nil })
+      result = MyInputObjectType.coerce_input({ "myArg" => [], "notAField" => nil })
 
       assert_predicate(result, :err?)
       assert_equal(1, result.unwrap_err.length)
       assert_equal(
-        Bluejay::CoercionError.new("No field named `notAField` on MyInputType", []),
+        Bluejay::CoercionError.new("No field named `notAField` on MyInputObjectType", []),
         result.unwrap_err.first,
       )
     end
 
     def test_coerce_input_field_wrong_type
-      result = MyInputType.coerce_input({ "myArg" => 1 })
+      result = MyInputObjectType.coerce_input({ "myArg" => 1 })
 
       assert_predicate(result, :err?)
       assert_equal(1, result.unwrap_err.length)
@@ -66,15 +66,15 @@ module Bluejay
     end
 
     def test_initialize_and_accessors
-      instance = MyInputType.new(["X"], MyInputType.new(["Y"], nil, nil), "ONE")
+      instance = MyInputObjectType.new(["X"], MyInputObjectType.new(["Y"], nil, nil), "ONE")
 
       assert_equal(["X"], instance.my_arg)
-      assert_equal(MyInputType.new(["Y"], nil, nil), instance.my_self)
+      assert_equal(MyInputObjectType.new(["Y"], nil, nil), instance.my_self)
       assert_equal("ONE", instance.my_enum)
     end
 
     def test_initialize_freezes
-      assert_predicate(MyInputType.new(["X"], nil, nil), :frozen?)
+      assert_predicate(MyInputObjectType.new(["X"], nil, nil), :frozen?)
     end
   end
 end

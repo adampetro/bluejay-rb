@@ -2,8 +2,7 @@ use super::root;
 use crate::ruby_api::SchemaDefinition;
 use bluejay_core::{
     definition::{
-        AbstractInputTypeReference, AbstractOutputTypeReference, DirectiveDefinition,
-        InputValueDefinition,
+        AbstractOutputTypeReference, DirectiveDefinition, InputType, InputValueDefinition,
     },
     executable::{OperationDefinition, VariableType},
     OperationType,

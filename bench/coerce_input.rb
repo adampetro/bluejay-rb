@@ -3,7 +3,7 @@
 
 require_relative "bench"
 
-class MyInputType < Bluejay::InputType
+class MyInputObjectType < Bluejay::InputObjectType
   class << self
     extend(T::Sig)
 
@@ -23,9 +23,9 @@ end
 
 Bench.all do |x|
   input = { "myArg" => ["a", "b", "c"], "myOtherArg" => 12 }
-  expected = MyInputType.new(["a", "b", "c"], 12)
+  expected = MyInputObjectType.new(["a", "b", "c"], 12)
   x.report(:bluejay) do
-    result = MyInputType.coerce_input(input)
+    result = MyInputObjectType.coerce_input(input)
     raise unless result.ok?
     raise unless expected == result.unwrap
   end

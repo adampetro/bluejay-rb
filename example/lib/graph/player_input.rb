@@ -2,7 +2,7 @@
 # frozen_string_literal: true
 
 module Graph
-  class PlayerInput < Bluejay::InputType
+  class PlayerInput < Bluejay::InputObjectType
     class << self
       extend(T::Sig)
 

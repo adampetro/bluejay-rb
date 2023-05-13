@@ -5,17 +5,17 @@ require_relative "../../../rbi_ext/model"
 
 module Tapioca
   module Compilers
-    class InputType < Tapioca::Dsl::Compiler
+    class InputObjectType < Tapioca::Dsl::Compiler
       extend T::Sig
 
-      ConstantType = type_member { { fixed: T.class_of(Bluejay::InputType) } }
+      ConstantType = type_member { { fixed: T.class_of(Bluejay::InputObjectType) } }
 
       class << self
         extend(T::Sig)
 
         sig { override.returns(T::Enumerable[Module]) }
         def gather_constants
-          all_classes.select { |c| c < Bluejay::InputType }
+          all_classes.select { |c| c < Bluejay::InputObjectType }
         end
       end
 

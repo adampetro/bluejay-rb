@@ -15,8 +15,8 @@ module Bluejay
   end
 end
 
-# source://bluejay//../../bluejay-rb/lib/bluejay/base_input_type_reference.rb#5
-Bluejay::BaseInputTypeReference = T.type_alias { T.any(::Bluejay::Scalar, T.class_of(Bluejay::CustomScalarType), T.class_of(Bluejay::EnumType), T.class_of(Bluejay::InputType)) }
+# source://bluejay//../../bluejay-rb/lib/bluejay/base_input_type.rb#5
+Bluejay::BaseInputType = T.type_alias { T.any(::Bluejay::Scalar, T.class_of(Bluejay::CustomScalarType), T.class_of(Bluejay::EnumType), T.class_of(Bluejay::InputObjectType)) }
 
 # source://bluejay//../../bluejay-rb/lib/bluejay/base_output_type_reference.rb#5
 Bluejay::BaseOutputTypeReference = T.type_alias { T.any(::Bluejay::Scalar, T.class_of(Bluejay::CustomScalarType), T.class_of(Bluejay::EnumType), T.class_of(Bluejay::InterfaceType), T.class_of(Bluejay::ObjectType), T.class_of(Bluejay::UnionType)) }
@@ -128,7 +128,7 @@ end
 #
 # source://bluejay//../../bluejay-rb/lib/bluejay/directive.rb#5
 class Bluejay::Directive
-  extend ::Bluejay::InputTypeReferenceShorthands
+  extend ::Bluejay::InputTypeShorthands
   extend ::Bluejay::NameFromClass
 
   abstract!
@@ -301,6 +301,52 @@ module Bluejay::Finalize
   def inherited(obj); end
 end
 
+# @abstract It cannot be directly instantiated. Subclasses must implement the `abstract` methods below.
+#
+# source://bluejay//../../bluejay-rb/lib/bluejay/input_object_type.rb#5
+class Bluejay::InputObjectType
+  extend ::Bluejay::InputTypeShorthands
+  extend ::Bluejay::NameFromClass
+
+  abstract!
+
+  # source://bluejay//../../bluejay-rb/lib/bluejay/input_object_type.rb#58
+  def initialize(*args); end
+
+  # source://bluejay//../../bluejay-rb/lib/bluejay/input_object_type.rb#65
+  def ==(other); end
+
+  class << self
+    # source://bluejay//../../bluejay-rb/lib/bluejay/input_object_type.rb#35
+    sig { params(value: T.untyped).returns(::Bluejay::Result) }
+    def coerce_input(value); end
+
+    # source://bluejay//../../bluejay-rb/lib/bluejay/input_object_type.rb#22
+    sig { overridable.returns(T.nilable(::String)) }
+    def description; end
+
+    # source://bluejay//../../bluejay-rb/lib/bluejay/input_object_type.rb#30
+    sig { overridable.returns(T::Array[::Bluejay::Directive]) }
+    def directives; end
+
+    # source://bluejay//../../bluejay-rb/lib/bluejay/input_object_type.rb#17
+    sig { overridable.returns(::String) }
+    def graphql_name; end
+
+    # @abstract
+    #
+    # source://bluejay//../../bluejay-rb/lib/bluejay/input_object_type.rb#27
+    sig { abstract.returns(T::Array[::Bluejay::InputValueDefinition]) }
+    def input_field_definitions; end
+
+    private
+
+    # source://bluejay//../../bluejay-rb/lib/bluejay/input_object_type.rb#42
+    sig(:final) { returns(::Bluejay::InputObjectTypeDefinition) }
+    def definition; end
+  end
+end
+
 class Bluejay::InputObjectTypeDefinition
   def coerce_input(_arg0); end
   def input_field_definitions; end
@@ -310,53 +356,7 @@ class Bluejay::InputObjectTypeDefinition
   end
 end
 
-# @abstract It cannot be directly instantiated. Subclasses must implement the `abstract` methods below.
-#
-# source://bluejay//../../bluejay-rb/lib/bluejay/input_type.rb#5
 class Bluejay::InputType
-  extend ::Bluejay::InputTypeReferenceShorthands
-  extend ::Bluejay::NameFromClass
-
-  abstract!
-
-  # source://bluejay//../../bluejay-rb/lib/bluejay/input_type.rb#58
-  def initialize(*args); end
-
-  # source://bluejay//../../bluejay-rb/lib/bluejay/input_type.rb#65
-  def ==(other); end
-
-  class << self
-    # source://bluejay//../../bluejay-rb/lib/bluejay/input_type.rb#35
-    sig { params(value: T.untyped).returns(::Bluejay::Result) }
-    def coerce_input(value); end
-
-    # source://bluejay//../../bluejay-rb/lib/bluejay/input_type.rb#22
-    sig { overridable.returns(T.nilable(::String)) }
-    def description; end
-
-    # source://bluejay//../../bluejay-rb/lib/bluejay/input_type.rb#30
-    sig { overridable.returns(T::Array[::Bluejay::Directive]) }
-    def directives; end
-
-    # source://bluejay//../../bluejay-rb/lib/bluejay/input_type.rb#17
-    sig { overridable.returns(::String) }
-    def graphql_name; end
-
-    # @abstract
-    #
-    # source://bluejay//../../bluejay-rb/lib/bluejay/input_type.rb#27
-    sig { abstract.returns(T::Array[::Bluejay::InputValueDefinition]) }
-    def input_field_definitions; end
-
-    private
-
-    # source://bluejay//../../bluejay-rb/lib/bluejay/input_type.rb#42
-    sig(:final) { returns(::Bluejay::InputObjectTypeDefinition) }
-    def definition; end
-  end
-end
-
-class Bluejay::InputTypeReference
   def base?; end
   def list?; end
   def required?; end
@@ -369,30 +369,30 @@ class Bluejay::InputTypeReference
   end
 end
 
-# source://bluejay//../../bluejay-rb/lib/bluejay/input_type_reference_shorthands.rb#5
-module Bluejay::InputTypeReferenceShorthands
-  # source://bluejay//../../bluejay-rb/lib/bluejay/input_type_reference_shorthands.rb#9
+# source://bluejay//../../bluejay-rb/lib/bluejay/input_type_shorthands.rb#5
+module Bluejay::InputTypeShorthands
+  # source://bluejay//../../bluejay-rb/lib/bluejay/input_type_shorthands.rb#9
   sig do
     params(
-      t: T.any(::Bluejay::Scalar, T.class_of(Bluejay::CustomScalarType), T.class_of(Bluejay::EnumType), T.class_of(Bluejay::InputType))
-    ).returns(::Bluejay::InputTypeReference)
+      t: T.any(::Bluejay::Scalar, T.class_of(Bluejay::CustomScalarType), T.class_of(Bluejay::EnumType), T.class_of(Bluejay::InputObjectType))
+    ).returns(::Bluejay::InputType)
   end
   def it(t); end
 
-  # source://bluejay//../../bluejay-rb/lib/bluejay/input_type_reference_shorthands.rb#14
+  # source://bluejay//../../bluejay-rb/lib/bluejay/input_type_shorthands.rb#14
   sig do
     params(
-      t: T.any(::Bluejay::Scalar, T.class_of(Bluejay::CustomScalarType), T.class_of(Bluejay::EnumType), T.class_of(Bluejay::InputType))
-    ).returns(::Bluejay::InputTypeReference)
+      t: T.any(::Bluejay::Scalar, T.class_of(Bluejay::CustomScalarType), T.class_of(Bluejay::EnumType), T.class_of(Bluejay::InputObjectType))
+    ).returns(::Bluejay::InputType)
   end
   def it!(t); end
 
-  # source://bluejay//../../bluejay-rb/lib/bluejay/input_type_reference_shorthands.rb#19
-  sig { params(t: ::Bluejay::InputTypeReference).returns(::Bluejay::InputTypeReference) }
+  # source://bluejay//../../bluejay-rb/lib/bluejay/input_type_shorthands.rb#19
+  sig { params(t: ::Bluejay::InputType).returns(::Bluejay::InputType) }
   def lit(t); end
 
-  # source://bluejay//../../bluejay-rb/lib/bluejay/input_type_reference_shorthands.rb#24
-  sig { params(t: ::Bluejay::InputTypeReference).returns(::Bluejay::InputTypeReference) }
+  # source://bluejay//../../bluejay-rb/lib/bluejay/input_type_shorthands.rb#24
+  sig { params(t: ::Bluejay::InputType).returns(::Bluejay::InputType) }
   def lit!(t); end
 end
 
@@ -419,7 +419,7 @@ end
 # source://bluejay//../../bluejay-rb/lib/bluejay/interface_type.rb#5
 class Bluejay::InterfaceType
   extend ::Bluejay::OutputTypeReferenceShorthands
-  extend ::Bluejay::InputTypeReferenceShorthands
+  extend ::Bluejay::InputTypeShorthands
   extend ::Bluejay::NameFromClass
 
   abstract!
@@ -484,7 +484,7 @@ end
 # source://bluejay//../../bluejay-rb/lib/bluejay/object_type.rb#5
 class Bluejay::ObjectType
   extend ::Bluejay::OutputTypeReferenceShorthands
-  extend ::Bluejay::InputTypeReferenceShorthands
+  extend ::Bluejay::InputTypeShorthands
   extend ::Bluejay::NameFromClass
 
   abstract!

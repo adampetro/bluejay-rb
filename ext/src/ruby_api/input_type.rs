@@ -7,8 +7,8 @@ use super::{
 };
 use crate::helpers::{public_name, Variables, WrappedDefinition};
 use bluejay_core::definition::{
-    AbstractInputTypeReference, BaseInputType as CoreBaseInputType, BaseInputTypeReference,
-    InputTypeReference as CoreInputTypeReference, InputTypeReferenceFromAbstract,
+    BaseInputType as CoreBaseInputType, BaseInputTypeReference, InputType as CoreInputType,
+    InputTypeReference,
 };
 use bluejay_core::executable::{VariableType as CoreVariableType, VariableTypeReference};
 use bluejay_core::{AsIter, BuiltinScalarDefinition, Value as CoreValue, ValueReference};
@@ -291,24 +291,24 @@ impl CoerceInput for BaseInputType {
 }
 
 #[derive(Debug, TypedData)]
-#[magnus(class = "Bluejay::InputTypeReference", mark)]
-pub enum InputTypeReference {
+#[magnus(class = "Bluejay::InputType", mark)]
+pub enum InputType {
     Base(BaseInputType, bool),
     List(Obj<Self>, bool),
 }
 
-impl AbstractInputTypeReference for InputTypeReference {
+impl CoreInputType for InputType {
     type BaseInputType = BaseInputType;
 
-    fn as_ref(&self) -> InputTypeReferenceFromAbstract<'_, Self> {
+    fn as_ref(&self) -> InputTypeReference<'_, Self> {
         match self {
-            Self::Base(base, required) => CoreInputTypeReference::Base(base, *required),
-            Self::List(inner, required) => CoreInputTypeReference::List(inner.get(), *required),
+            Self::Base(base, required) => InputTypeReference::Base(base, *required),
+            Self::List(inner, required) => InputTypeReference::List(inner.get(), *required),
         }
     }
 }
 
-impl DataTypeFunctions for InputTypeReference {
+impl DataTypeFunctions for InputType {
     fn mark(&self) {
         match self {
             Self::Base(base, _) => base.mark(),
@@ -317,7 +317,7 @@ impl DataTypeFunctions for InputTypeReference {
     }
 }
 
-impl InputTypeReference {
+impl InputType {
     pub fn new(kw: RHash) -> Result<Self, Error> {
         let args: KwArgs<(Value, bool), (), ()> = get_kwargs(kw, &["type", "required"], &[])?;
         let (r#type, required) = args.required;
@@ -326,8 +326,7 @@ impl InputTypeReference {
     }
 
     pub fn list(kw: RHash) -> Result<Self, Error> {
-        let args: KwArgs<(Obj<InputTypeReference>, bool), (), ()> =
-            get_kwargs(kw, &["type", "required"], &[])?;
+        let args: KwArgs<(Obj<Self>, bool), (), ()> = get_kwargs(kw, &["type", "required"], &[])?;
         let (r#type, required) = args.required;
         Ok(Self::List(r#type, required))
     }
@@ -380,7 +379,7 @@ impl InputTypeReference {
         self.as_ref().is_required()
     }
 
-    fn unwrap_list(&self) -> Result<Obj<InputTypeReference>, Error> {
+    fn unwrap_list(&self) -> Result<Obj<Self>, Error> {
         match self {
             Self::List(inner, _) => Ok(*inner),
             Self::Base(_, _) => Err(Error::new(
@@ -546,7 +545,7 @@ impl InputTypeReference {
     }
 }
 
-impl CoerceInput for InputTypeReference {
+impl CoerceInput for InputType {
     fn coerced_ruby_value_to_wrapped_value(
         &self,
         value: Value,
@@ -632,15 +631,15 @@ impl CoerceInput for InputTypeReference {
 }
 
 pub fn init() -> Result<(), Error> {
-    let class = root().define_class("InputTypeReference", Default::default())?;
+    let class = root().define_class("InputType", Default::default())?;
 
-    class.define_singleton_method("new", function!(InputTypeReference::new, 1))?;
-    class.define_singleton_method("list", function!(InputTypeReference::list, 1))?;
-    class.define_method("list?", method!(InputTypeReference::is_list, 0))?;
-    class.define_method("base?", method!(InputTypeReference::is_base, 0))?;
-    class.define_method("required?", method!(InputTypeReference::is_required, 0))?;
-    class.define_method("sorbet_type", method!(InputTypeReference::sorbet_type, 0))?;
-    class.define_method("unwrap_list", method!(InputTypeReference::unwrap_list, 0))?;
+    class.define_singleton_method("new", function!(InputType::new, 1))?;
+    class.define_singleton_method("list", function!(InputType::list, 1))?;
+    class.define_method("list?", method!(InputType::is_list, 0))?;
+    class.define_method("base?", method!(InputType::is_base, 0))?;
+    class.define_method("required?", method!(InputType::is_required, 0))?;
+    class.define_method("sorbet_type", method!(InputType::sorbet_type, 0))?;
+    class.define_method("unwrap_list", method!(InputType::unwrap_list, 0))?;
 
     Ok(())
 }

@@ -1,7 +1,4 @@
-use crate::ruby_api::{
-    input_type_reference::InputTypeReference, root, wrapped_value::ValueInner, Directives,
-    WrappedValue,
-};
+use crate::ruby_api::{root, wrapped_value::ValueInner, Directives, InputType, WrappedValue};
 use convert_case::{Case, Casing};
 use magnus::{
     function, gc, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,
@@ -13,7 +10,7 @@ use magnus::{
 pub struct InputValueDefinition {
     name: String,
     description: Option<String>,
-    r#type: Obj<InputTypeReference>,
+    r#type: Obj<InputType>,
     directives: Directives,
     default_value: Option<WrappedValue>,
     ruby_name: String,
@@ -26,7 +23,7 @@ impl InputValueDefinition {
             &["name", "type"],
             &["description", "directives", "ruby_name"],
         )?;
-        let (name, r#type): (String, Obj<InputTypeReference>) = args.required;
+        let (name, r#type): (String, Obj<InputType>) = args.required;
         let (description, directives, ruby_name): (
             Option<Option<String>>,
             Option<RArray>,
@@ -53,7 +50,7 @@ impl InputValueDefinition {
         self.description.as_deref()
     }
 
-    pub fn r#type(&self) -> &InputTypeReference {
+    pub fn r#type(&self) -> &InputType {
         self.r#type.get()
     }
 
@@ -86,7 +83,7 @@ impl DataTypeFunctions for InputValueDefinition {
 }
 
 impl bluejay_core::definition::InputValueDefinition for InputValueDefinition {
-    type InputTypeReference = InputTypeReference;
+    type InputType = InputType;
     type Value = ValueInner;
     type Directives = Directives;
 
@@ -98,7 +95,7 @@ impl bluejay_core::definition::InputValueDefinition for InputValueDefinition {
         self.description.as_deref()
     }
 
-    fn r#type(&self) -> &Self::InputTypeReference {
+    fn r#type(&self) -> &Self::InputType {
         self.r#type.get()
     }
 

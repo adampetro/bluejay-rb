@@ -2,7 +2,7 @@ use crate::execution::Engine as ExecutionEngine;
 use crate::helpers::WrappedDefinition;
 use crate::ruby_api::{
     root, BaseInputType, BaseOutputTypeReference, DirectiveDefinition, Directives, ExecutionResult,
-    InputTypeReference, OutputTypeReference,
+    InputType, OutputTypeReference,
 };
 use crate::ruby_api::{
     ArgumentsDefinition, CustomScalarTypeDefinition, EnumTypeDefinition, EnumValueDefinition,
@@ -12,7 +12,7 @@ use crate::ruby_api::{
     UnionMemberTypes, UnionTypeDefinition, ValidationError,
 };
 use bluejay_core::definition::{
-    AbstractInputTypeReference, AbstractOutputTypeReference, AbstractTypeDefinitionReference,
+    AbstractOutputTypeReference, AbstractTypeDefinitionReference, InputType as CoreInputType,
     TypeDefinitionReference as CoreTypeDefinitionReference, TypeDefinitionReferenceFromAbstract,
 };
 use bluejay_core::{AsIter, BuiltinScalarDefinition, IntoEnumIterator};
@@ -194,7 +194,7 @@ impl bluejay_core::definition::SchemaDefinition for SchemaDefinition {
     type UnionMemberType = UnionMemberType;
     type UnionMemberTypes = UnionMemberTypes;
     type BaseInputType = BaseInputType;
-    type InputTypeReference = InputTypeReference;
+    type InputType = InputType;
     type BaseOutputTypeReference = BaseOutputTypeReference;
     type OutputTypeReference = OutputTypeReference;
     type CustomScalarTypeDefinition = CustomScalarTypeDefinition;

@@ -6,7 +6,7 @@ module Bluejay
     class << self
       extend(T::Sig)
       extend(T::Helpers)
-      include(InputTypeReferenceShorthands)
+      include(InputTypeShorthands)
       include(NameFromClass)
 
       abstract!

@@ -87,7 +87,7 @@ impl DataTypeFunctions for InputObjectTypeDefinition {
 
 impl HasDefinitionWrapper for InputObjectTypeDefinition {
     fn wrapping_class() -> RClass {
-        *memoize!(RClass: root().define_class("InputType", Default::default()).unwrap())
+        *memoize!(RClass: root().define_class("InputObjectType", Default::default()).unwrap())
     }
 }
 
