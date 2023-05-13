@@ -7,7 +7,9 @@ use crate::ruby_api::{
 use bluejay_core::definition::{
     AbstractOutputTypeReference, OutputTypeReference as CoreOutputTypeReference,
 };
-use bluejay_core::executable::{AbstractOperationDefinition, AbstractSelection, VariableType};
+use bluejay_core::executable::{
+    AbstractSelection, OperationDefinition as CoreOperationDefinition, VariableType,
+};
 use bluejay_core::{AsIter, Directive as CoreDirective, OperationType};
 use bluejay_parser::ast::executable::{
     ExecutableDocument, Field, OperationDefinition, Selection, SelectionSet,

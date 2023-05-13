@@ -5,7 +5,7 @@ use bluejay_core::{
         AbstractInputTypeReference, AbstractOutputTypeReference, DirectiveDefinition,
         InputValueDefinition,
     },
-    executable::{AbstractOperationDefinition, VariableType},
+    executable::{OperationDefinition, VariableType},
     OperationType,
 };
 use bluejay_parser::ast::{executable::ExecutableDocument, Value as ParserValue};
