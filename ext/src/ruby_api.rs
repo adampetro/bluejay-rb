@@ -58,7 +58,7 @@ pub use interface_type_definition::InterfaceTypeDefinition;
 pub use object_type_definition::ObjectTypeDefinition;
 pub use output_type::{BaseOutputType, OutputType};
 pub use r_result::RResult;
-pub use schema_definition::{SchemaDefinition, TypeDefinitionReference};
+pub use schema_definition::{SchemaDefinition, TypeDefinition};
 pub use union_member_type::UnionMemberType;
 pub use union_member_types::UnionMemberTypes;
 pub use union_type_definition::UnionTypeDefinition;

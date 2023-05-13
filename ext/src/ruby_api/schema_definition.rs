@@ -12,8 +12,8 @@ use crate::ruby_api::{
     UnionMemberTypes, UnionTypeDefinition, ValidationError,
 };
 use bluejay_core::definition::{
-    AbstractTypeDefinitionReference, InputType as CoreInputType, OutputType as CoreOutputType,
-    TypeDefinitionReference as CoreTypeDefinitionReference, TypeDefinitionReferenceFromAbstract,
+    InputType as CoreInputType, OutputType as CoreOutputType, TypeDefinition as CoreTypeDefinition,
+    TypeDefinitionReference,
 };
 use bluejay_core::{AsIter, BuiltinScalarDefinition, IntoEnumIterator};
 use bluejay_printer::definition::DisplaySchemaDefinition;
@@ -34,7 +34,7 @@ pub struct SchemaDefinition {
     query: WrappedDefinition<ObjectTypeDefinition>,
     mutation: Option<WrappedDefinition<ObjectTypeDefinition>>,
     directives: Directives,
-    contained_types: BTreeMap<String, TypeDefinitionReference>,
+    contained_types: BTreeMap<String, TypeDefinition>,
     contained_directives: BTreeMap<String, WrappedDefinition<DirectiveDefinition>>,
     interface_implementors: HashMap<String, Vec<WrappedDefinition<ObjectTypeDefinition>>>,
 }
@@ -72,7 +72,7 @@ impl SchemaDefinition {
         *self.query.get()
     }
 
-    pub fn r#type(&self, name: &str) -> Option<&TypeDefinitionReference> {
+    pub fn r#type(&self, name: &str) -> Option<&TypeDefinition> {
         self.contained_types.get(name)
     }
 
@@ -114,12 +114,12 @@ impl SchemaDefinition {
     }
 
     fn interface_implementors(
-        type_definitions: &BTreeMap<String, TypeDefinitionReference>,
+        type_definitions: &BTreeMap<String, TypeDefinition>,
     ) -> HashMap<String, Vec<WrappedDefinition<ObjectTypeDefinition>>> {
         type_definitions.values().fold(
             HashMap::new(),
             |mut interface_implementors, type_definition| {
-                if let TypeDefinitionReference::Object(otd) = type_definition {
+                if let TypeDefinition::Object(otd) = type_definition {
                     otd.as_ref().interface_implementations().iter().for_each(
                         |interface_implementation| {
                             let itd = interface_implementation.interface();
@@ -148,7 +148,7 @@ impl DataTypeFunctions for SchemaDefinition {
 }
 
 #[derive(Debug, Clone)]
-pub enum TypeDefinitionReference {
+pub enum TypeDefinition {
     BuiltinScalar(BuiltinScalarDefinition),
     CustomScalar(WrappedDefinition<CustomScalarTypeDefinition>),
     Object(WrappedDefinition<ObjectTypeDefinition>),
@@ -158,7 +158,7 @@ pub enum TypeDefinitionReference {
     Interface(WrappedDefinition<InterfaceTypeDefinition>),
 }
 
-impl AbstractTypeDefinitionReference for TypeDefinitionReference {
+impl CoreTypeDefinition for TypeDefinition {
     type CustomScalarTypeDefinition = CustomScalarTypeDefinition;
     type ObjectTypeDefinition = ObjectTypeDefinition;
     type InputObjectTypeDefinition = InputObjectTypeDefinition;
@@ -166,17 +166,15 @@ impl AbstractTypeDefinitionReference for TypeDefinitionReference {
     type UnionTypeDefinition = UnionTypeDefinition;
     type InterfaceTypeDefinition = InterfaceTypeDefinition;
 
-    fn as_ref(&self) -> TypeDefinitionReferenceFromAbstract<'_, Self> {
+    fn as_ref(&self) -> TypeDefinitionReference<'_, Self> {
         match self {
-            Self::BuiltinScalar(bstd) => CoreTypeDefinitionReference::BuiltinScalarType(*bstd),
-            Self::CustomScalar(cstd) => {
-                CoreTypeDefinitionReference::CustomScalarType(cstd.as_ref())
-            }
-            Self::Object(otd) => CoreTypeDefinitionReference::ObjectType(otd.as_ref()),
-            Self::InputObject(iotd) => CoreTypeDefinitionReference::InputObjectType(iotd.as_ref()),
-            Self::Enum(etd) => CoreTypeDefinitionReference::EnumType(etd.as_ref()),
-            Self::Union(utd) => CoreTypeDefinitionReference::UnionType(utd.as_ref()),
-            Self::Interface(itd) => CoreTypeDefinitionReference::InterfaceType(itd.as_ref()),
+            Self::BuiltinScalar(bstd) => TypeDefinitionReference::BuiltinScalar(*bstd),
+            Self::CustomScalar(cstd) => TypeDefinitionReference::CustomScalar(cstd.as_ref()),
+            Self::Object(otd) => TypeDefinitionReference::Object(otd.as_ref()),
+            Self::InputObject(iotd) => TypeDefinitionReference::InputObject(iotd.as_ref()),
+            Self::Enum(etd) => TypeDefinitionReference::Enum(etd.as_ref()),
+            Self::Union(utd) => TypeDefinitionReference::Union(utd.as_ref()),
+            Self::Interface(itd) => TypeDefinitionReference::Interface(itd.as_ref()),
         }
     }
 }
@@ -203,14 +201,12 @@ impl bluejay_core::definition::SchemaDefinition for SchemaDefinition {
     type UnionTypeDefinition = UnionTypeDefinition;
     type InputObjectTypeDefinition = InputObjectTypeDefinition;
     type EnumTypeDefinition = EnumTypeDefinition;
-    type TypeDefinitionReference = TypeDefinitionReference;
+    type TypeDefinition = TypeDefinition;
     type DirectiveDefinition = DirectiveDefinition;
     type Directives = Directives;
-    type TypeDefinitionReferences<'a> = std::iter::Map<
-        Values<'a, String, TypeDefinitionReference>,
-        fn(
-            &'a TypeDefinitionReference,
-        ) -> TypeDefinitionReferenceFromAbstract<'a, TypeDefinitionReference>,
+    type TypeDefinitions<'a> = std::iter::Map<
+        Values<'a, String, TypeDefinition>,
+        fn(&'a TypeDefinition) -> TypeDefinitionReference<'a, TypeDefinition>,
     >;
     type DirectiveDefinitions<'a> = std::iter::Map<
         Values<'a, String, WrappedDefinition<DirectiveDefinition>>,
@@ -252,16 +248,16 @@ impl bluejay_core::definition::SchemaDefinition for SchemaDefinition {
     fn get_type_definition(
         &self,
         name: &str,
-    ) -> Option<TypeDefinitionReferenceFromAbstract<'_, TypeDefinitionReference>> {
+    ) -> Option<TypeDefinitionReference<'_, TypeDefinition>> {
         self.contained_types
             .get(name)
-            .map(AbstractTypeDefinitionReference::as_ref)
+            .map(CoreTypeDefinition::as_ref)
     }
 
-    fn type_definitions(&self) -> Self::TypeDefinitionReferences<'_> {
+    fn type_definitions(&self) -> Self::TypeDefinitions<'_> {
         self.contained_types
             .values()
-            .map(AbstractTypeDefinitionReference::as_ref)
+            .map(CoreTypeDefinition::as_ref)
     }
 
     fn directive_definitions(&self) -> Self::DirectiveDefinitions<'_> {
@@ -287,7 +283,7 @@ impl bluejay_core::definition::SchemaDefinition for SchemaDefinition {
     }
 }
 
-impl TryFrom<&BaseInputType> for TypeDefinitionReference {
+impl TryFrom<&BaseInputType> for TypeDefinition {
     type Error = ();
 
     fn try_from(value: &BaseInputType) -> Result<Self, Self::Error> {
@@ -300,27 +296,23 @@ impl TryFrom<&BaseInputType> for TypeDefinitionReference {
     }
 }
 
-impl TryInto<BaseInputType> for &TypeDefinitionReference {
+impl TryInto<BaseInputType> for &TypeDefinition {
     type Error = ();
 
     fn try_into(self) -> Result<BaseInputType, Self::Error> {
         match self {
-            TypeDefinitionReference::BuiltinScalar(bstd) => Ok(BaseInputType::BuiltinScalar(*bstd)),
-            TypeDefinitionReference::CustomScalar(cstd) => {
-                Ok(BaseInputType::CustomScalar(cstd.clone()))
+            TypeDefinition::BuiltinScalar(bstd) => Ok(BaseInputType::BuiltinScalar(*bstd)),
+            TypeDefinition::CustomScalar(cstd) => Ok(BaseInputType::CustomScalar(cstd.clone())),
+            TypeDefinition::Enum(etd) => Ok(BaseInputType::Enum(etd.clone())),
+            TypeDefinition::InputObject(iotd) => Ok(BaseInputType::InputObject(iotd.clone())),
+            TypeDefinition::Interface(_) | TypeDefinition::Object(_) | TypeDefinition::Union(_) => {
+                Err(())
             }
-            TypeDefinitionReference::Enum(etd) => Ok(BaseInputType::Enum(etd.clone())),
-            TypeDefinitionReference::InputObject(iotd) => {
-                Ok(BaseInputType::InputObject(iotd.clone()))
-            }
-            TypeDefinitionReference::Interface(_)
-            | TypeDefinitionReference::Object(_)
-            | TypeDefinitionReference::Union(_) => Err(()),
         }
     }
 }
 
-impl TryFrom<&BaseOutputType> for TypeDefinitionReference {
+impl TryFrom<&BaseOutputType> for TypeDefinition {
     type Error = ();
 
     fn try_from(value: &BaseOutputType) -> Result<Self, Self::Error> {
@@ -336,20 +328,20 @@ impl TryFrom<&BaseOutputType> for TypeDefinitionReference {
 }
 
 struct SchemaTypeVisitor {
-    types: BTreeMap<String, TypeDefinitionReference>,
+    types: BTreeMap<String, TypeDefinition>,
     directives: BTreeMap<String, WrappedDefinition<DirectiveDefinition>>,
 }
 
 impl From<SchemaTypeVisitor>
     for (
-        BTreeMap<String, TypeDefinitionReference>,
+        BTreeMap<String, TypeDefinition>,
         BTreeMap<String, WrappedDefinition<DirectiveDefinition>>,
     )
 {
     fn from(
         val: SchemaTypeVisitor,
     ) -> (
-        BTreeMap<String, TypeDefinitionReference>,
+        BTreeMap<String, TypeDefinition>,
         BTreeMap<String, WrappedDefinition<DirectiveDefinition>>,
     ) {
         (val.types, val.directives)
@@ -362,13 +354,13 @@ impl SchemaTypeVisitor {
         mutation: Option<&WrappedDefinition<ObjectTypeDefinition>>,
         schema_directives: &Directives,
     ) -> (
-        BTreeMap<String, TypeDefinitionReference>,
+        BTreeMap<String, TypeDefinition>,
         BTreeMap<String, WrappedDefinition<DirectiveDefinition>>,
     ) {
         let mut type_visitor = Self::new();
-        type_visitor.visit_type(TypeDefinitionReference::Object(query.clone()));
+        type_visitor.visit_type(TypeDefinition::Object(query.clone()));
         if let Some(mutation) = mutation {
-            type_visitor.visit_type(TypeDefinitionReference::Object(mutation.clone()));
+            type_visitor.visit_type(TypeDefinition::Object(mutation.clone()));
         }
         type_visitor.visit_directives(schema_directives);
         type_visitor.visit_builtin_scalar_definitions();
@@ -390,7 +382,7 @@ impl SchemaTypeVisitor {
 
     fn visit_union_type_definition(&mut self, utd: &UnionTypeDefinition) {
         for union_member in utd.member_types().iter() {
-            let t = TypeDefinitionReference::Object(union_member.r#type());
+            let t = TypeDefinition::Object(union_member.r#type());
             self.visit_type(t);
         }
         self.visit_directives(utd.directives());
@@ -417,30 +409,30 @@ impl SchemaTypeVisitor {
         self.visit_directives(etd.directives());
     }
 
-    fn visit_type(&mut self, t: TypeDefinitionReference) {
+    fn visit_type(&mut self, t: TypeDefinition) {
         let name = t.as_ref().name().to_owned();
         match self.types.entry(name) {
             Entry::Occupied(_) => {}
             Entry::Vacant(entry) => {
                 entry.insert(t.clone());
                 match t {
-                    TypeDefinitionReference::BuiltinScalar(_) => {}
-                    TypeDefinitionReference::CustomScalar(cstd) => {
+                    TypeDefinition::BuiltinScalar(_) => {}
+                    TypeDefinition::CustomScalar(cstd) => {
                         self.visit_custom_scalar_type_definition(cstd.as_ref());
                     }
-                    TypeDefinitionReference::Enum(etd) => {
+                    TypeDefinition::Enum(etd) => {
                         self.visit_enum_type_definition(etd.as_ref());
                     }
-                    TypeDefinitionReference::Object(otd) => {
+                    TypeDefinition::Object(otd) => {
                         self.visit_object_type_definition(otd.as_ref());
                     }
-                    TypeDefinitionReference::Union(utd) => {
+                    TypeDefinition::Union(utd) => {
                         self.visit_union_type_definition(utd.as_ref());
                     }
-                    TypeDefinitionReference::Interface(itd) => {
+                    TypeDefinition::Interface(itd) => {
                         self.visit_interface_type_definition(itd.as_ref());
                     }
-                    TypeDefinitionReference::InputObject(iotd) => {
+                    TypeDefinition::InputObject(iotd) => {
                         self.visit_input_object_type_definition(iotd.as_ref());
                     }
                 }
@@ -452,7 +444,7 @@ impl SchemaTypeVisitor {
         for field_definition in fields_definition.iter() {
             self.visit_input_value_definitions(field_definition.argument_definitions());
             let base_type = field_definition.r#type().as_ref().base();
-            let t: Result<TypeDefinitionReference, ()> = base_type.try_into();
+            let t: Result<TypeDefinition, ()> = base_type.try_into();
             if let Ok(t) = t {
                 self.visit_type(t);
             }
@@ -463,7 +455,7 @@ impl SchemaTypeVisitor {
     fn visit_input_value_definitions(&mut self, input_fields_definition: &InputFieldsDefinition) {
         for input_value_definition in input_fields_definition.iter() {
             let base_type = input_value_definition.r#type().as_ref().base();
-            let t: Result<TypeDefinitionReference, ()> = base_type.try_into();
+            let t: Result<TypeDefinition, ()> = base_type.try_into();
             if let Ok(t) = t {
                 self.visit_type(t);
             }
@@ -482,7 +474,7 @@ impl SchemaTypeVisitor {
 
     fn visit_builtin_scalar_definitions(&mut self) {
         BuiltinScalarDefinition::iter().for_each(|bisd| {
-            self.visit_type(TypeDefinitionReference::BuiltinScalar(bisd));
+            self.visit_type(TypeDefinition::BuiltinScalar(bisd));
         })
     }
 

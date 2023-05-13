@@ -2,7 +2,7 @@ use crate::execution::{CoerceResult, ExecutionError, FieldError, KeyStore};
 use crate::ruby_api::{
     BaseInputType, BaseOutputType, CoerceInput, ExecutionResult, FieldDefinition, InputType,
     InputValueDefinition, InterfaceTypeDefinition, ObjectTypeDefinition, OutputType,
-    SchemaDefinition, TypeDefinitionReference, UnionTypeDefinition,
+    SchemaDefinition, TypeDefinition, UnionTypeDefinition,
 };
 use bluejay_core::definition::{OutputType as CoreOutputType, OutputTypeReference};
 use bluejay_core::executable::{
@@ -346,18 +346,16 @@ impl<'a> Engine<'a> {
         let fragment_type = self.schema.r#type(fragment_type_name).unwrap();
 
         match fragment_type {
-            TypeDefinitionReference::Object(otd) => {
+            TypeDefinition::Object(otd) => {
                 // TODO: see if there's any edge case where name equality does not work
                 otd.as_ref().name() == object_type.name()
             }
-            TypeDefinitionReference::Interface(itd) => {
-                object_type.implements_interface(itd.as_ref())
-            }
-            TypeDefinitionReference::Union(utd) => utd.as_ref().contains_type(object_type),
-            TypeDefinitionReference::BuiltinScalar(_)
-            | TypeDefinitionReference::CustomScalar(_)
-            | TypeDefinitionReference::Enum(_)
-            | TypeDefinitionReference::InputObject(_) => unreachable!(),
+            TypeDefinition::Interface(itd) => object_type.implements_interface(itd.as_ref()),
+            TypeDefinition::Union(utd) => utd.as_ref().contains_type(object_type),
+            TypeDefinition::BuiltinScalar(_)
+            | TypeDefinition::CustomScalar(_)
+            | TypeDefinition::Enum(_)
+            | TypeDefinition::InputObject(_) => unreachable!(),
         }
     }
 
@@ -581,7 +579,7 @@ impl<'a> Engine<'a> {
             )
             .unwrap();
         let object_type = match self.schema.r#type(typename.as_str()) {
-            Some(TypeDefinitionReference::Object(otd)) => otd.as_ref(),
+            Some(TypeDefinition::Object(otd)) => otd.as_ref(),
             _ => panic!(),
         };
         if object_type.implements_interface(interface_type) {
@@ -606,7 +604,7 @@ impl<'a> Engine<'a> {
             )
             .unwrap();
         let object_type = match self.schema.r#type(typename.as_str()) {
-            Some(TypeDefinitionReference::Object(otd)) => otd.as_ref(),
+            Some(TypeDefinition::Object(otd)) => otd.as_ref(),
             _ => panic!(),
         };
         if union_type.contains_type(object_type) {
