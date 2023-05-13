@@ -7,9 +7,8 @@ use super::{
 };
 use crate::helpers::{public_name, Variables, WrappedDefinition};
 use bluejay_core::definition::{
-    AbstractInputTypeReference, BaseInputTypeReference as CoreBaseInputTypeReference,
-    BaseInputTypeReferenceFromAbstract, InputTypeReference as CoreInputTypeReference,
-    InputTypeReferenceFromAbstract,
+    AbstractInputTypeReference, BaseInputType as CoreBaseInputType, BaseInputTypeReference,
+    InputTypeReference as CoreInputTypeReference, InputTypeReferenceFromAbstract,
 };
 use bluejay_core::executable::{VariableType as CoreVariableType, VariableTypeReference};
 use bluejay_core::{AsIter, BuiltinScalarDefinition, Value as CoreValue, ValueReference};
@@ -22,29 +21,29 @@ use magnus::{
 };
 
 #[derive(Debug)]
-pub enum BaseInputTypeReference {
+pub enum BaseInputType {
     BuiltinScalar(BuiltinScalarDefinition),
     CustomScalar(WrappedDefinition<CustomScalarTypeDefinition>),
     InputObject(WrappedDefinition<InputObjectTypeDefinition>),
     Enum(WrappedDefinition<EnumTypeDefinition>),
 }
 
-impl bluejay_core::definition::AbstractBaseInputTypeReference for BaseInputTypeReference {
+impl CoreBaseInputType for BaseInputType {
     type CustomScalarTypeDefinition = CustomScalarTypeDefinition;
     type InputObjectTypeDefinition = InputObjectTypeDefinition;
     type EnumTypeDefinition = EnumTypeDefinition;
 
-    fn as_ref(&self) -> BaseInputTypeReferenceFromAbstract<'_, Self> {
+    fn as_ref(&self) -> BaseInputTypeReference<'_, Self> {
         match self {
-            Self::BuiltinScalar(bstd) => CoreBaseInputTypeReference::BuiltinScalarType(*bstd),
-            Self::CustomScalar(cstd) => CoreBaseInputTypeReference::CustomScalarType(cstd.as_ref()),
-            Self::Enum(etd) => CoreBaseInputTypeReference::EnumType(etd.as_ref()),
-            Self::InputObject(iotd) => CoreBaseInputTypeReference::InputObjectType(iotd.as_ref()),
+            Self::BuiltinScalar(bstd) => BaseInputTypeReference::BuiltinScalar(*bstd),
+            Self::CustomScalar(cstd) => BaseInputTypeReference::CustomScalar(cstd.as_ref()),
+            Self::Enum(etd) => BaseInputTypeReference::Enum(etd.as_ref()),
+            Self::InputObject(iotd) => BaseInputTypeReference::InputObject(iotd.as_ref()),
         }
     }
 }
 
-impl BaseInputTypeReference {
+impl BaseInputType {
     pub fn new(value: Value) -> Result<Self, Error> {
         if let Ok(wrapped_struct) = value.try_convert::<Obj<Scalar>>() {
             Ok(Self::BuiltinScalar(wrapped_struct.get().to_owned().into()))
@@ -201,11 +200,11 @@ impl CoerceInput for BuiltinScalarDefinition {
         path: &[String],
     ) -> Result<Result<WrappedValue, Vec<CoercionError>>, Error> {
         let r_value_result = match self {
-            Self::String => BaseInputTypeReference::coerce_string(value, path),
-            Self::Int => BaseInputTypeReference::coerce_integer(value, path),
-            Self::Float => BaseInputTypeReference::coerce_float(value, path),
-            Self::Boolean => BaseInputTypeReference::coerce_boolean(value, path),
-            Self::ID => BaseInputTypeReference::coerce_id(value, path),
+            Self::String => BaseInputType::coerce_string(value, path),
+            Self::Int => BaseInputType::coerce_integer(value, path),
+            Self::Float => BaseInputType::coerce_float(value, path),
+            Self::Boolean => BaseInputType::coerce_boolean(value, path),
+            Self::ID => BaseInputType::coerce_id(value, path),
         };
         match r_value_result {
             Ok(value) => value.try_into().map(Ok),
@@ -219,9 +218,7 @@ impl CoerceInput for BuiltinScalarDefinition {
         path: &[String],
         _: &impl Variables<CONST>,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
-        Ok(BaseInputTypeReference::coerce_parser_value(
-            self, value, path,
-        ))
+        Ok(BaseInputType::coerce_parser_value(self, value, path))
     }
 
     fn coerce_ruby_const_value(
@@ -230,16 +227,16 @@ impl CoerceInput for BuiltinScalarDefinition {
         path: &[String],
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         Ok(match self {
-            Self::String => BaseInputTypeReference::coerce_string(value, path),
-            Self::Int => BaseInputTypeReference::coerce_integer(value, path),
-            Self::Float => BaseInputTypeReference::coerce_float(value, path),
-            Self::Boolean => BaseInputTypeReference::coerce_boolean(value, path),
-            Self::ID => BaseInputTypeReference::coerce_id(value, path),
+            Self::String => BaseInputType::coerce_string(value, path),
+            Self::Int => BaseInputType::coerce_integer(value, path),
+            Self::Float => BaseInputType::coerce_float(value, path),
+            Self::Boolean => BaseInputType::coerce_boolean(value, path),
+            Self::ID => BaseInputType::coerce_id(value, path),
         })
     }
 }
 
-impl CoerceInput for BaseInputTypeReference {
+impl CoerceInput for BaseInputType {
     fn coerced_ruby_value_to_wrapped_value(
         &self,
         value: Value,
@@ -296,12 +293,12 @@ impl CoerceInput for BaseInputTypeReference {
 #[derive(Debug, TypedData)]
 #[magnus(class = "Bluejay::InputTypeReference", mark)]
 pub enum InputTypeReference {
-    Base(BaseInputTypeReference, bool),
+    Base(BaseInputType, bool),
     List(Obj<Self>, bool),
 }
 
 impl AbstractInputTypeReference for InputTypeReference {
-    type BaseInputTypeReference = BaseInputTypeReference;
+    type BaseInputType = BaseInputType;
 
     fn as_ref(&self) -> InputTypeReferenceFromAbstract<'_, Self> {
         match self {
@@ -324,7 +321,7 @@ impl InputTypeReference {
     pub fn new(kw: RHash) -> Result<Self, Error> {
         let args: KwArgs<(Value, bool), (), ()> = get_kwargs(kw, &["type", "required"], &[])?;
         let (r#type, required) = args.required;
-        let base = BaseInputTypeReference::new(r#type)?;
+        let base = BaseInputType::new(r#type)?;
         Ok(Self::Base(base, required))
     }
 
@@ -360,7 +357,7 @@ impl InputTypeReference {
 
     pub fn from_parser_variable_type(
         parse_variable_type: &VariableType,
-        base: BaseInputTypeReference,
+        base: BaseInputType,
     ) -> Self {
         match parse_variable_type.as_ref() {
             VariableTypeReference::Named(_, required) => Self::Base(base, required),

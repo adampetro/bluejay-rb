@@ -1,6 +1,6 @@
 use crate::execution::{CoerceResult, ExecutionError, FieldError, KeyStore};
 use crate::ruby_api::{
-    BaseInputTypeReference, BaseOutputTypeReference, CoerceInput, ExecutionResult, FieldDefinition,
+    BaseInputType, BaseOutputTypeReference, CoerceInput, ExecutionResult, FieldDefinition,
     InputTypeReference, InputValueDefinition, InterfaceTypeDefinition, ObjectTypeDefinition,
     OutputTypeReference, SchemaDefinition, TypeDefinitionReference, UnionTypeDefinition,
 };
@@ -114,7 +114,7 @@ impl<'a> Engine<'a> {
                 let variable_base_type = schema
                     .r#type(variable_named_type_reference.as_ref().name())
                     .unwrap();
-                let base_input_type_reference: BaseInputTypeReference =
+                let base_input_type_reference: BaseInputType =
                     variable_base_type.try_into().unwrap();
                 let variable_type = InputTypeReference::from_parser_variable_type(
                     variable_named_type_reference,

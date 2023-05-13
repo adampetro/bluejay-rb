@@ -1,8 +1,8 @@
 use crate::execution::Engine as ExecutionEngine;
 use crate::helpers::WrappedDefinition;
 use crate::ruby_api::{
-    root, BaseInputTypeReference, BaseOutputTypeReference, DirectiveDefinition, Directives,
-    ExecutionResult, InputTypeReference, OutputTypeReference,
+    root, BaseInputType, BaseOutputTypeReference, DirectiveDefinition, Directives, ExecutionResult,
+    InputTypeReference, OutputTypeReference,
 };
 use crate::ruby_api::{
     ArgumentsDefinition, CustomScalarTypeDefinition, EnumTypeDefinition, EnumValueDefinition,
@@ -193,7 +193,7 @@ impl bluejay_core::definition::SchemaDefinition for SchemaDefinition {
     type InterfaceImplementations = InterfaceImplementations;
     type UnionMemberType = UnionMemberType;
     type UnionMemberTypes = UnionMemberTypes;
-    type BaseInputTypeReference = BaseInputTypeReference;
+    type BaseInputType = BaseInputType;
     type InputTypeReference = InputTypeReference;
     type BaseOutputTypeReference = BaseOutputTypeReference;
     type OutputTypeReference = OutputTypeReference;
@@ -287,33 +287,31 @@ impl bluejay_core::definition::SchemaDefinition for SchemaDefinition {
     }
 }
 
-impl TryFrom<&BaseInputTypeReference> for TypeDefinitionReference {
+impl TryFrom<&BaseInputType> for TypeDefinitionReference {
     type Error = ();
 
-    fn try_from(value: &BaseInputTypeReference) -> Result<Self, Self::Error> {
+    fn try_from(value: &BaseInputType) -> Result<Self, Self::Error> {
         match value {
-            BaseInputTypeReference::BuiltinScalar(_) => Err(()),
-            BaseInputTypeReference::CustomScalar(cstd) => Ok(Self::CustomScalar(cstd.clone())),
-            BaseInputTypeReference::Enum(etd) => Ok(Self::Enum(etd.clone())),
-            BaseInputTypeReference::InputObject(iotd) => Ok(Self::InputObject(iotd.clone())),
+            BaseInputType::BuiltinScalar(_) => Err(()),
+            BaseInputType::CustomScalar(cstd) => Ok(Self::CustomScalar(cstd.clone())),
+            BaseInputType::Enum(etd) => Ok(Self::Enum(etd.clone())),
+            BaseInputType::InputObject(iotd) => Ok(Self::InputObject(iotd.clone())),
         }
     }
 }
 
-impl TryInto<BaseInputTypeReference> for &TypeDefinitionReference {
+impl TryInto<BaseInputType> for &TypeDefinitionReference {
     type Error = ();
 
-    fn try_into(self) -> Result<BaseInputTypeReference, Self::Error> {
+    fn try_into(self) -> Result<BaseInputType, Self::Error> {
         match self {
-            TypeDefinitionReference::BuiltinScalar(bstd) => {
-                Ok(BaseInputTypeReference::BuiltinScalar(*bstd))
-            }
+            TypeDefinitionReference::BuiltinScalar(bstd) => Ok(BaseInputType::BuiltinScalar(*bstd)),
             TypeDefinitionReference::CustomScalar(cstd) => {
-                Ok(BaseInputTypeReference::CustomScalar(cstd.clone()))
+                Ok(BaseInputType::CustomScalar(cstd.clone()))
             }
-            TypeDefinitionReference::Enum(etd) => Ok(BaseInputTypeReference::Enum(etd.clone())),
+            TypeDefinitionReference::Enum(etd) => Ok(BaseInputType::Enum(etd.clone())),
             TypeDefinitionReference::InputObject(iotd) => {
-                Ok(BaseInputTypeReference::InputObject(iotd.clone()))
+                Ok(BaseInputType::InputObject(iotd.clone()))
             }
             TypeDefinitionReference::Interface(_)
             | TypeDefinitionReference::Object(_)
