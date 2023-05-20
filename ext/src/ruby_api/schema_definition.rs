@@ -162,6 +162,13 @@ impl DataTypeFunctions for SchemaDefinition {
             mutation.mark();
         }
         self.directives.mark();
+        self.contained_types.values().for_each(TypeDefinition::mark);
+        self.contained_directives
+            .values()
+            .for_each(WrappedDefinition::mark);
+        self.interface_implementors
+            .values()
+            .for_each(|interfaces| interfaces.iter().for_each(WrappedDefinition::mark));
     }
 }
 
@@ -174,6 +181,20 @@ pub enum TypeDefinition {
     Enum(WrappedDefinition<EnumTypeDefinition>),
     Union(WrappedDefinition<UnionTypeDefinition>),
     Interface(WrappedDefinition<InterfaceTypeDefinition>),
+}
+
+impl TypeDefinition {
+    fn mark(&self) {
+        match self {
+            Self::BuiltinScalar(_) => {}
+            Self::CustomScalar(cstd) => cstd.mark(),
+            Self::Object(otd) => otd.mark(),
+            Self::InputObject(iotd) => iotd.mark(),
+            Self::Enum(etd) => etd.mark(),
+            Self::Union(utd) => utd.mark(),
+            Self::Interface(itd) => itd.mark(),
+        }
+    }
 }
 
 impl CoreTypeDefinition for TypeDefinition {
