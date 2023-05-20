@@ -10,9 +10,11 @@ module Bluejay
         argument_definitions: T::Array[InputValueDefinition],
         description: T.nilable(String),
         directives: T::Array[Directive],
+        resolver_method_name: T.nilable(String),
       ).void
     end
-    def initialize(name:, type:, argument_definitions: [], description: nil, directives: []); end
+    def initialize(name:, type:, argument_definitions: [], description: nil, directives: [], resolver_method_name: nil)
+    end
 
     sig { returns(String) }
     def name; end

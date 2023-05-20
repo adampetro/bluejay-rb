@@ -131,4 +131,95 @@ class TestExample < Minitest::Test
 
     assert_equal(expected, Graph::Schema.to_definition)
   end
+
+  def test_introspection
+    query = <<~GQL
+      query IntrospectionQuery {
+        __schema {
+          queryType { name }
+          mutationType { name }
+          subscriptionType { name }
+          types {
+            ...FullType
+          }
+          directives {
+            name
+            description
+            args {
+              ...InputValue
+            }
+          }
+        }
+      }
+
+      fragment FullType on __Type {
+        kind
+        name
+        description
+        fields(includeDeprecated: true) {
+          name
+          description
+          args {
+            ...InputValue
+          }
+          type {
+            ...TypeRef
+          }
+          isDeprecated
+          deprecationReason
+        }
+        inputFields {
+          ...InputValue
+        }
+        interfaces {
+          ...TypeRef
+        }
+        enumValues(includeDeprecated: true) {
+          name
+          description
+          isDeprecated
+          deprecationReason
+        }
+        possibleTypes {
+          ...TypeRef
+        }
+      }
+
+      fragment InputValue on __InputValue {
+        name
+        description
+        type { ...TypeRef }
+        defaultValue
+      }
+
+      fragment TypeRef on __Type {
+        kind
+        name
+        ofType {
+          kind
+          name
+          ofType {
+            kind
+            name
+            ofType {
+              kind
+              name
+            }
+          }
+        }
+      }
+    GQL
+
+    result = Graph::Schema.execute(
+      query:,
+      operation_name: nil,
+      initial_value: SchemaRoot,
+    )
+
+    assert_empty(result.errors)
+    assert_equal(
+      JSON.parse(File.read(File.join(File.dirname(__FILE__), "data/introspection.json"))),
+      result.value,
+    )
+  end
 end

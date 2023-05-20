@@ -1,4 +1,7 @@
-use magnus::{exception, gc, typed_data::Obj, Error, Module, RClass, TryConvert, TypedData, Value};
+use magnus::{
+    exception, gc, typed_data::Obj, Error, IntoValue, Module, RClass, Ruby, TryConvert, TypedData,
+    Value,
+};
 use once_cell::unsync::OnceCell;
 
 pub trait HasDefinitionWrapper: TypedData {
@@ -80,5 +83,17 @@ impl<T: HasDefinitionWrapper> TryConvert for WrappedDefinition<T> {
 impl<T: HasDefinitionWrapper> AsRef<T> for WrappedDefinition<T> {
     fn as_ref(&self) -> &T {
         self.get().get()
+    }
+}
+
+impl<T: HasDefinitionWrapper> From<&WrappedDefinition<T>> for Value {
+    fn from(value: &WrappedDefinition<T>) -> Value {
+        **value.get()
+    }
+}
+
+impl<T: HasDefinitionWrapper> IntoValue for &WrappedDefinition<T> {
+    fn into_value_with(self, _handle: &Ruby) -> Value {
+        **self.get()
     }
 }

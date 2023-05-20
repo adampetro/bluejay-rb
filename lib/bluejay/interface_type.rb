@@ -61,7 +61,7 @@ module Bluejay
           InterfaceTypeDefinition.new(
             name: graphql_name,
             description:,
-            field_definitions:,
+            field_definitions: field_definitions + [Builtin.typename_field_definition],
             interface_implementations:,
             directives:,
           )

@@ -1,11 +1,9 @@
-use super::{
-    coerce_input::CoerceInput, coercion_error::CoercionError,
-    custom_scalar_type_definition::CustomScalarTypeDefinition,
-    enum_type_definition::EnumTypeDefinition,
-    input_object_type_definition::InputObjectTypeDefinition, root, scalar::Scalar,
-    wrapped_value::ValueInner, WrappedValue,
-};
 use crate::helpers::{public_name, Variables, WrappedDefinition};
+use crate::ruby_api::{
+    introspection, root, wrapped_value::ValueInner, CoerceInput, CoercionError,
+    CustomScalarTypeDefinition, EnumTypeDefinition, InputFieldsDefinition,
+    InputObjectTypeDefinition, Scalar, WrappedValue,
+};
 use bluejay_core::definition::{
     BaseInputType as CoreBaseInputType, BaseInputTypeReference, InputType as CoreInputType,
     InputTypeReference,
@@ -20,7 +18,7 @@ use magnus::{
     Value, QNIL,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum BaseInputType {
     BuiltinScalar(BuiltinScalarDefinition),
     CustomScalar(WrappedDefinition<CustomScalarTypeDefinition>),
@@ -290,7 +288,51 @@ impl CoerceInput for BaseInputType {
     }
 }
 
-#[derive(Debug, TypedData)]
+impl introspection::Type for BaseInputType {
+    type OfType = introspection::Never;
+
+    fn description(&self) -> Option<&str> {
+        match self {
+            Self::BuiltinScalar(_) => None,
+            Self::CustomScalar(cstd) => cstd.as_ref().description(),
+            Self::Enum(etd) => etd.as_ref().description(),
+            Self::InputObject(iotd) => iotd.as_ref().description(),
+        }
+    }
+
+    fn kind(&self) -> introspection::TypeKind {
+        match self {
+            Self::BuiltinScalar(_) | Self::CustomScalar(_) => introspection::TypeKind::Scalar,
+            Self::Enum(_) => introspection::TypeKind::Enum,
+            Self::InputObject(_) => introspection::TypeKind::InputObject,
+        }
+    }
+
+    fn name(&self) -> Option<&str> {
+        Some(match self {
+            Self::BuiltinScalar(bstd) => bstd.name(),
+            Self::CustomScalar(cstd) => cstd.as_ref().name(),
+            Self::Enum(etd) => etd.as_ref().name(),
+            Self::InputObject(iotd) => iotd.as_ref().name(),
+        })
+    }
+
+    fn input_fields(&self) -> Option<InputFieldsDefinition> {
+        match self {
+            Self::InputObject(iotd) => iotd.as_ref().input_fields(),
+            _ => None,
+        }
+    }
+
+    fn specified_by_url(&self) -> Option<&str> {
+        match self {
+            Self::CustomScalar(cstd) => cstd.as_ref().specified_by_url(),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, TypedData, Clone)]
 #[magnus(class = "Bluejay::InputType", mark)]
 pub enum InputType {
     Base(BaseInputType, bool),
@@ -630,6 +672,63 @@ impl CoerceInput for InputType {
     }
 }
 
+impl introspection::Type for InputType {
+    type OfType = Self;
+
+    fn description(&self) -> Option<&str> {
+        match self {
+            Self::Base(base, required) if !required => base.description(),
+            _ => None,
+        }
+    }
+
+    fn kind(&self) -> introspection::TypeKind {
+        match self {
+            Self::Base(base, required) => {
+                if *required {
+                    introspection::TypeKind::NonNull
+                } else {
+                    base.kind()
+                }
+            }
+            Self::List(_, required) => {
+                if *required {
+                    introspection::TypeKind::NonNull
+                } else {
+                    introspection::TypeKind::List
+                }
+            }
+        }
+    }
+
+    fn input_fields(&self) -> Option<InputFieldsDefinition> {
+        match self {
+            Self::Base(base, required) if !required => base.input_fields(),
+            _ => None,
+        }
+    }
+
+    fn name(&self) -> Option<&str> {
+        match self {
+            Self::Base(base, required) if !required => base.name(),
+            _ => None,
+        }
+    }
+
+    fn of_type(&self) -> Option<Self::OfType> {
+        match self {
+            Self::Base(base, required) => required.then(|| Self::Base(base.clone(), false)),
+            Self::List(inner, required) => {
+                if *required {
+                    Some(Self::List(*inner, false))
+                } else {
+                    Some(inner.get().clone())
+                }
+            }
+        }
+    }
+}
+
 pub fn init() -> Result<(), Error> {
     let class = root().define_class("InputType", Default::default())?;
 
@@ -640,6 +739,7 @@ pub fn init() -> Result<(), Error> {
     class.define_method("required?", method!(InputType::is_required, 0))?;
     class.define_method("sorbet_type", method!(InputType::sorbet_type, 0))?;
     class.define_method("unwrap_list", method!(InputType::unwrap_list, 0))?;
+    introspection::implement_type!(InputType, class);
 
     Ok(())
 }

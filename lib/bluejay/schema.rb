@@ -16,7 +16,7 @@ module Bluejay
         nil
       end
 
-      sig { abstract.returns(T.class_of(ObjectType)) }
+      sig { abstract.returns(T.class_of(QueryRoot)) }
       def query; end
 
       sig { overridable.returns(T.nilable(T.class_of(ObjectType))) }

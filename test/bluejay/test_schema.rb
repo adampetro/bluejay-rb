@@ -54,7 +54,7 @@ module Bluejay
       end
     end
 
-    class QueryRoot < ObjectType
+    class QueryRoot < Bluejay::QueryRoot
       class << self
         extend(T::Sig)
 
@@ -78,6 +78,7 @@ module Bluejay
               argument_definitions: [
                 InputValueDefinition.new(name: "date", type: it!(DateScalar)),
               ],
+              resolver_method_name: "today?",
             ),
           ]
         end
@@ -88,7 +89,7 @@ module Bluejay
       class << self
         extend(T::Sig)
 
-        sig { override.returns(T.class_of(ObjectType)) }
+        sig { override.returns(T.class_of(Bluejay::QueryRoot)) }
         def query
           QueryRoot
         end
@@ -103,17 +104,12 @@ module Bluejay
         const(:today, Date, factory: -> { Date.today })
 
         sig { params(name: NameInputObject).returns(String) }
-        def resolve_hello(name)
+        def hello(name)
           "Hello, #{name.first} #{name.last}!"
         end
 
-        sig { returns(Date) }
-        def resolve_today
-          today
-        end
-
         sig { params(date: Date).returns(T::Boolean) }
-        def resolve_is_today(date)
+        def today?(date)
           date == Date.today
         end
       end
@@ -227,6 +223,98 @@ module Bluejay
       GQL
 
       assert_equal(expected, MySchema.to_definition)
+    end
+
+    def test_introspection
+      query = <<~GQL
+        query IntrospectionQuery {
+          __schema {
+            queryType { name }
+            mutationType { name }
+            subscriptionType { name }
+            types {
+              ...FullType
+            }
+            directives {
+              name
+              description
+              args {
+                ...InputValue
+              }
+            }
+          }
+        }
+
+        fragment FullType on __Type {
+          kind
+          name
+          description
+          fields(includeDeprecated: true) {
+            name
+            description
+            args {
+              ...InputValue
+            }
+            type {
+              ...TypeRef
+            }
+            isDeprecated
+            deprecationReason
+          }
+          inputFields {
+            ...InputValue
+          }
+          interfaces {
+            ...TypeRef
+          }
+          enumValues(includeDeprecated: true) {
+            name
+            description
+            isDeprecated
+            deprecationReason
+          }
+          possibleTypes {
+            ...TypeRef
+          }
+        }
+
+        fragment InputValue on __InputValue {
+          name
+          description
+          type { ...TypeRef }
+          defaultValue
+        }
+
+        fragment TypeRef on __Type {
+          kind
+          name
+          ofType {
+            kind
+            name
+            ofType {
+              kind
+              name
+              ofType {
+                kind
+                name
+              }
+            }
+          }
+        }
+      GQL
+      root = Domain::SchemaRoot.new(query: Domain::QueryRoot.new(today: Date.today))
+
+      result = MySchema.execute(
+        query:,
+        operation_name: nil,
+        initial_value: root,
+      )
+
+      assert_empty(result.errors)
+      assert_equal(
+        JSON.parse(File.read(File.join(File.dirname(__FILE__), "data/introspection.json"))),
+        result.value,
+      )
     end
   end
 end

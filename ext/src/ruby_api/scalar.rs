@@ -1,4 +1,4 @@
-use super::root;
+use crate::ruby_api::{introspection, root};
 use bluejay_core::BuiltinScalarDefinition;
 use magnus::{DataTypeFunctions, Error, Module, TypedData};
 
@@ -32,6 +32,18 @@ impl Scalar {
     }
 }
 
+impl introspection::Type for Scalar {
+    type OfType = introspection::Never;
+
+    fn kind(&self) -> introspection::TypeKind {
+        introspection::TypeKind::Scalar
+    }
+
+    fn name(&self) -> Option<&str> {
+        Some(self.0.name())
+    }
+}
+
 pub fn init() -> Result<(), Error> {
     let class = root().define_class("Scalar", Default::default())?;
 
@@ -40,6 +52,7 @@ pub fn init() -> Result<(), Error> {
     class.const_set("String", Scalar(BuiltinScalarDefinition::String))?;
     class.const_set("Boolean", Scalar(BuiltinScalarDefinition::Boolean))?;
     class.const_set("ID", Scalar(BuiltinScalarDefinition::ID))?;
+    introspection::implement_type!(Scalar, class);
 
     Ok(())
 }

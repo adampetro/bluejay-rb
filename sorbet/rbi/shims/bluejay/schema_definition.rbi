@@ -1,11 +1,26 @@
 # typed: strict
+# frozen_string_literal: true
 
 module Bluejay
   class SchemaDefinition
-    sig { params(description: T.nilable(String), query: T.class_of(ObjectType), mutation: T.nilable(T.class_of(ObjectType)), directives: T::Array[Directive]).void }
+    sig do
+      params(
+        description: T.nilable(String),
+        query: T.class_of(QueryRoot),
+        mutation: T.nilable(T.class_of(ObjectType)),
+        directives: T::Array[Directive],
+      ).void
+    end
     def initialize(description:, query:, mutation:, directives:); end
 
-    sig { params(query: String, operation_name: T.nilable(String), variables: T::Hash[String, T.untyped], initial_value: Object).returns(ExecutionResult) }
+    sig do
+      params(
+        query: String,
+        operation_name: T.nilable(String),
+        variables: T::Hash[String, T.untyped],
+        initial_value: Object,
+      ).returns(ExecutionResult)
+    end
     def execute(query, operation_name, variables, initial_value); end
 
     sig { params(query: String).returns(T::Array[ValidationError]) }
@@ -13,5 +28,17 @@ module Bluejay
 
     sig { returns(String) }
     def to_definition; end
+
+    sig do
+      params(name: String).returns(T.nilable(T.any(
+        ObjectTypeDefinition,
+        EnumTypeDefinition,
+        InputObjectTypeDefinition,
+        UnionTypeDefinition,
+        CustomScalarTypeDefinition,
+        InterfaceTypeDefinition,
+      )))
+    end
+    def type(name); end
   end
 end

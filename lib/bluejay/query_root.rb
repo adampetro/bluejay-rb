@@ -1,0 +1,60 @@
+# typed: strict
+# frozen_string_literal: true
+
+module Bluejay
+  class QueryRoot < ObjectType
+    class << self
+      extend(T::Sig)
+      extend(T::Helpers)
+
+      abstract!
+
+      private
+
+      sig { returns(ObjectTypeDefinition) }
+      def definition
+        @definition ||= T.let(nil, T.nilable(ObjectTypeDefinition))
+        @definition ||= begin
+          # TODO: reduce duplication with ObjectType.definition
+          graphql_name = self.graphql_name
+          field_definitions = self.field_definitions + [Builtin.typename_field_definition]
+          interface_implementations = self.interface_implementations
+          interface = Module.new do |mod|
+            field_definitions.each do |field_definition|
+              mod.define_method(field_definition.resolver_method_name) { graphql_name }
+            end
+
+            interface_implementations.each do |interface_implementation|
+              mod.include(interface_implementation.interface.const_get(:Interface))
+            end
+
+            mod.define_method(:resolve_schema) { |schema_definition| schema_definition }
+            mod.define_method(:resolve_type) { |name, schema_definition| schema_definition.type(name) }
+          end
+          const_set(:Interface, interface)
+          introspection_field_definitions = [
+            FieldDefinition.new(
+              name: "__schema",
+              type: ot!(Builtin::ObjectTypes::Schema),
+              resolver_method_name: "resolve_schema",
+            ),
+            FieldDefinition.new(
+              name: "__type",
+              argument_definitions: [InputValueDefinition.new(name: "name", type: it!(Scalar::String))],
+              type: ot(Builtin::ObjectTypes::Type),
+              resolver_method_name: "resolve_type",
+            ),
+          ]
+          ObjectTypeDefinition.new(
+            name: graphql_name,
+            description:,
+            field_definitions: field_definitions + introspection_field_definitions,
+            interface_implementations:,
+            directives:,
+            ruby_class: self,
+          )
+        end
+      end
+    end
+  end
+end

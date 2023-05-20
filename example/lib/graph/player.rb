@@ -11,7 +11,11 @@ module Graph
         [
           Bluejay::FieldDefinition.new(name: "firstName", type: ot!(Bluejay::Scalar::String)),
           Bluejay::FieldDefinition.new(name: "lastName", type: ot!(Bluejay::Scalar::String)),
-          Bluejay::FieldDefinition.new(name: "currentTeam", type: ot(Team)),
+          Bluejay::FieldDefinition.new(
+            name: "currentTeam",
+            type: ot(Team),
+            resolver_method_name: "resolve_current_team",
+          ),
           Bluejay::FieldDefinition.new(name: "birthday", type: ot!(DateScalar)),
         ]
       end

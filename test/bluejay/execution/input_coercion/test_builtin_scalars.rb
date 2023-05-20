@@ -7,7 +7,7 @@ module Bluejay
   module Execution
     module InputCoercion
       class TestBuiltinScalars < Minitest::Test
-        class QueryRoot < ObjectType
+        class QueryRoot < Bluejay::QueryRoot
           class << self
             extend(T::Sig)
 
@@ -58,7 +58,7 @@ module Bluejay
           class << self
             extend(T::Sig)
 
-            sig { override.returns(T.class_of(ObjectType)) }
+            sig { override.returns(T.class_of(Bluejay::QueryRoot)) }
             def query
               QueryRoot
             end
@@ -72,27 +72,27 @@ module Bluejay
               include(Execution::InputCoercion::TestBuiltinScalars::QueryRoot::Interface)
 
               sig { params(int: Integer).returns(Integer) }
-              def resolve_int(int)
+              def int(int)
                 int
               end
 
               sig { params(float: Float).returns(Float) }
-              def resolve_float(float)
+              def float(float)
                 float
               end
 
               sig { params(id: T.any(String, Integer)).returns(T.any(String, Integer)) }
-              def resolve_id(id)
+              def id(id)
                 id
               end
 
               sig { params(string: String).returns(String) }
-              def resolve_string(string)
+              def string(string)
                 string
               end
 
               sig { params(boolean: T::Boolean).returns(T::Boolean) }
-              def resolve_boolean(boolean)
+              def boolean(boolean)
                 boolean
               end
             end

@@ -1,8 +1,5 @@
 use crate::helpers::HasDefinitionWrapper;
-use crate::ruby_api::{
-    object_type_definition::ObjectTypeDefinition, root, union_member_types::UnionMemberTypes,
-    Directives,
-};
+use crate::ruby_api::{introspection, root, Directives, ObjectTypeDefinition, UnionMemberTypes};
 use bluejay_core::AsIter;
 use magnus::{
     function, gc, memoize, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error,
@@ -105,10 +102,31 @@ impl bluejay_core::definition::UnionTypeDefinition for UnionTypeDefinition {
     }
 }
 
+impl introspection::Type for UnionTypeDefinition {
+    type OfType = introspection::Never;
+
+    fn description(&self) -> Option<&str> {
+        self.description()
+    }
+
+    fn kind(&self) -> introspection::TypeKind {
+        introspection::TypeKind::Union
+    }
+
+    fn name(&self) -> Option<&str> {
+        Some(&self.name)
+    }
+
+    fn possible_types(&self) -> Option<UnionMemberTypes> {
+        Some(self.member_types)
+    }
+}
+
 pub fn init() -> Result<(), Error> {
     let class = root().define_class("UnionTypeDefinition", Default::default())?;
 
     class.define_singleton_method("new", function!(UnionTypeDefinition::new, 1))?;
+    introspection::implement_type!(UnionTypeDefinition, class);
 
     Ok(())
 }

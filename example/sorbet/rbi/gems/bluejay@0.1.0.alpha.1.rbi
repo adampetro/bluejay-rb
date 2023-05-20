@@ -21,8 +21,14 @@ Bluejay::BaseInputType = T.type_alias { T.any(::Bluejay::Scalar, T.class_of(Blue
 # source://bluejay//../../bluejay-rb/lib/bluejay/base_output_type.rb#5
 Bluejay::BaseOutputType = T.type_alias { T.any(::Bluejay::Scalar, T.class_of(Bluejay::CustomScalarType), T.class_of(Bluejay::EnumType), T.class_of(Bluejay::InterfaceType), T.class_of(Bluejay::ObjectType), T.class_of(Bluejay::UnionType)) }
 
-# source://bluejay//../../bluejay-rb/lib/bluejay/builtin/directives/include.rb#5
-module Bluejay::Builtin; end
+# source://bluejay//../../bluejay-rb/lib/bluejay/builtin.rb#5
+module Bluejay::Builtin
+  class << self
+    # source://bluejay//../../bluejay-rb/lib/bluejay/builtin.rb#10
+    sig { returns(::Bluejay::FieldDefinition) }
+    def typename_field_definition; end
+  end
+end
 
 # source://bluejay//../../bluejay-rb/lib/bluejay/builtin/directives/include.rb#6
 module Bluejay::Builtin::Directives; end
@@ -58,6 +64,116 @@ class Bluejay::Builtin::Directives::Skip < ::Bluejay::Directive
     # source://bluejay//../../bluejay-rb/lib/bluejay/builtin/directives/skip.rb#24
     sig { override.returns(T::Array[::Bluejay::DirectiveLocation]) }
     def locations; end
+  end
+end
+
+# source://bluejay//../../bluejay-rb/lib/bluejay/builtin/enum_types/directive_location.rb#6
+module Bluejay::Builtin::EnumTypes; end
+
+# source://bluejay//../../bluejay-rb/lib/bluejay/builtin/enum_types/directive_location.rb#7
+class Bluejay::Builtin::EnumTypes::DirectiveLocation < ::Bluejay::EnumType
+  class << self
+    # source://bluejay//../../bluejay-rb/lib/bluejay/builtin/enum_types/directive_location.rb#17
+    sig { override.returns(T::Array[::Bluejay::EnumValueDefinition]) }
+    def enum_value_definitions; end
+
+    # source://bluejay//../../bluejay-rb/lib/bluejay/builtin/enum_types/directive_location.rb#12
+    sig { override.returns(::String) }
+    def graphql_name; end
+  end
+end
+
+# source://bluejay//../../bluejay-rb/lib/bluejay/builtin/enum_types/type_kind.rb#7
+class Bluejay::Builtin::EnumTypes::TypeKind < ::Bluejay::EnumType
+  class << self
+    # source://bluejay//../../bluejay-rb/lib/bluejay/builtin/enum_types/type_kind.rb#17
+    sig { override.returns(T::Array[::Bluejay::EnumValueDefinition]) }
+    def enum_value_definitions; end
+
+    # source://bluejay//../../bluejay-rb/lib/bluejay/builtin/enum_types/type_kind.rb#12
+    sig { override.returns(::String) }
+    def graphql_name; end
+  end
+end
+
+# source://bluejay//../../bluejay-rb/lib/bluejay/builtin/object_types/enum_value.rb#6
+module Bluejay::Builtin::ObjectTypes; end
+
+# source://bluejay//../../bluejay-rb/lib/bluejay/builtin/object_types/directive.rb#7
+class Bluejay::Builtin::ObjectTypes::Directive < ::Bluejay::ObjectType
+  class << self
+    # source://bluejay//../../bluejay-rb/lib/bluejay/builtin/object_types/directive.rb#17
+    sig { override.returns(T::Array[::Bluejay::FieldDefinition]) }
+    def field_definitions; end
+
+    # source://bluejay//../../bluejay-rb/lib/bluejay/builtin/object_types/directive.rb#12
+    sig { override.returns(::String) }
+    def graphql_name; end
+  end
+end
+
+# source://bluejay//../../bluejay-rb/lib/bluejay/builtin/object_types/enum_value.rb#7
+class Bluejay::Builtin::ObjectTypes::EnumValue < ::Bluejay::ObjectType
+  class << self
+    # source://bluejay//../../bluejay-rb/lib/bluejay/builtin/object_types/enum_value.rb#17
+    sig { override.returns(T::Array[::Bluejay::FieldDefinition]) }
+    def field_definitions; end
+
+    # source://bluejay//../../bluejay-rb/lib/bluejay/builtin/object_types/enum_value.rb#12
+    sig { override.returns(::String) }
+    def graphql_name; end
+  end
+end
+
+# source://bluejay//../../bluejay-rb/lib/bluejay/builtin/object_types/field.rb#7
+class Bluejay::Builtin::ObjectTypes::Field < ::Bluejay::ObjectType
+  class << self
+    # source://bluejay//../../bluejay-rb/lib/bluejay/builtin/object_types/field.rb#17
+    sig { override.returns(T::Array[::Bluejay::FieldDefinition]) }
+    def field_definitions; end
+
+    # source://bluejay//../../bluejay-rb/lib/bluejay/builtin/object_types/field.rb#12
+    sig { override.returns(::String) }
+    def graphql_name; end
+  end
+end
+
+# source://bluejay//../../bluejay-rb/lib/bluejay/builtin/object_types/input_value.rb#7
+class Bluejay::Builtin::ObjectTypes::InputValue < ::Bluejay::ObjectType
+  class << self
+    # source://bluejay//../../bluejay-rb/lib/bluejay/builtin/object_types/input_value.rb#17
+    sig { override.returns(T::Array[::Bluejay::FieldDefinition]) }
+    def field_definitions; end
+
+    # source://bluejay//../../bluejay-rb/lib/bluejay/builtin/object_types/input_value.rb#12
+    sig { override.returns(::String) }
+    def graphql_name; end
+  end
+end
+
+# source://bluejay//../../bluejay-rb/lib/bluejay/builtin/object_types/schema.rb#7
+class Bluejay::Builtin::ObjectTypes::Schema < ::Bluejay::ObjectType
+  class << self
+    # source://bluejay//../../bluejay-rb/lib/bluejay/builtin/object_types/schema.rb#17
+    sig { override.returns(T::Array[::Bluejay::FieldDefinition]) }
+    def field_definitions; end
+
+    # source://bluejay//../../bluejay-rb/lib/bluejay/builtin/object_types/schema.rb#12
+    sig { override.returns(::String) }
+    def graphql_name; end
+  end
+end
+
+# source://bluejay//../../bluejay-rb/lib/bluejay/builtin/object_types/type.rb#7
+class Bluejay::Builtin::ObjectTypes::Type < ::Bluejay::ObjectType
+  class << self
+    # source://bluejay//../../bluejay-rb/lib/bluejay/builtin/object_types/type.rb#17
+    sig { override.returns(T::Array[::Bluejay::FieldDefinition]) }
+    def field_definitions; end
+
+    # source://bluejay//../../bluejay-rb/lib/bluejay/builtin/object_types/type.rb#12
+    sig { override.returns(::String) }
+    def graphql_name; end
   end
 end
 
@@ -119,6 +235,17 @@ class Bluejay::CustomScalarType
 end
 
 class Bluejay::CustomScalarTypeDefinition
+  def description; end
+  def enum_values(_arg0); end
+  def fields(_arg0); end
+  def input_fields; end
+  def interfaces; end
+  def kind; end
+  def name; end
+  def of_type; end
+  def possible_types; end
+  def specified_by_url; end
+
   class << self
     def new(_arg0); end
   end
@@ -173,7 +300,12 @@ class Bluejay::Directive
 end
 
 class Bluejay::DirectiveDefinition
+  def args; end
   def argument_definitions; end
+  def description; end
+  def locations; end
+  def name; end
+  def repeatable?; end
 
   class << self
     def new(_arg0); end
@@ -205,51 +337,58 @@ Bluejay::DirectiveLocation::VARIABLE_DEFINITION = T.let(T.unsafe(nil), Bluejay::
 #
 # source://bluejay//../../bluejay-rb/lib/bluejay/enum_type.rb#5
 class Bluejay::EnumType
-  extend ::Bluejay::Finalize
   extend ::Bluejay::NameFromClass
 
   abstract!
 
   class << self
-    # source://bluejay//../../bluejay-rb/lib/bluejay/enum_type.rb#21
+    # source://bluejay//../../bluejay-rb/lib/bluejay/enum_type.rb#19
     sig { overridable.returns(T.nilable(::String)) }
     def description; end
 
-    # source://bluejay//../../bluejay-rb/lib/bluejay/enum_type.rb#29
+    # source://bluejay//../../bluejay-rb/lib/bluejay/enum_type.rb#27
     sig { overridable.returns(T::Array[::Bluejay::Directive]) }
     def directives; end
 
     # @abstract
     #
-    # source://bluejay//../../bluejay-rb/lib/bluejay/enum_type.rb#26
+    # source://bluejay//../../bluejay-rb/lib/bluejay/enum_type.rb#24
     sig { abstract.returns(T::Array[::Bluejay::EnumValueDefinition]) }
     def enum_value_definitions; end
 
-    # source://bluejay//../../bluejay-rb/lib/bluejay/enum_type.rb#16
+    # source://bluejay//../../bluejay-rb/lib/bluejay/enum_type.rb#14
     sig { overridable.returns(::String) }
     def graphql_name; end
 
-    protected
-
-    # source://bluejay//../../bluejay-rb/lib/bluejay/enum_type.rb#36
-    sig(:final) { override.void }
-    def finalize; end
-
     private
 
-    # source://bluejay//../../bluejay-rb/lib/bluejay/enum_type.rb#43
+    # source://bluejay//../../bluejay-rb/lib/bluejay/enum_type.rb#34
     sig(:final) { returns(::Bluejay::EnumTypeDefinition) }
     def definition; end
   end
 end
 
 class Bluejay::EnumTypeDefinition
+  def description; end
+  def enum_values(_arg0); end
+  def fields(_arg0); end
+  def input_fields; end
+  def interfaces; end
+  def kind; end
+  def name; end
+  def of_type; end
+  def possible_types; end
+  def specified_by_url; end
+
   class << self
     def new(_arg0); end
   end
 end
 
 class Bluejay::EnumValueDefinition
+  def deprecated?; end
+  def deprecation_reason; end
+  def description; end
   def name; end
 
   class << self
@@ -273,7 +412,11 @@ class Bluejay::ExecutionResult
 end
 
 class Bluejay::FieldDefinition
+  def args; end
   def argument_definitions; end
+  def deprecated?; end
+  def deprecation_reason; end
+  def description; end
   def directives; end
   def name; end
   def resolver_method_name; end
@@ -349,7 +492,17 @@ end
 
 class Bluejay::InputObjectTypeDefinition
   def coerce_input(_arg0); end
+  def description; end
+  def enum_values(_arg0); end
+  def fields(_arg0); end
   def input_field_definitions; end
+  def input_fields; end
+  def interfaces; end
+  def kind; end
+  def name; end
+  def of_type; end
+  def possible_types; end
+  def specified_by_url; end
 
   class << self
     def new(_arg0); end
@@ -358,9 +511,19 @@ end
 
 class Bluejay::InputType
   def base?; end
+  def description; end
+  def enum_values(_arg0); end
+  def fields(_arg0); end
+  def input_fields; end
+  def interfaces; end
+  def kind; end
   def list?; end
+  def name; end
+  def of_type; end
+  def possible_types; end
   def required?; end
   def sorbet_type; end
+  def specified_by_url; end
   def unwrap_list; end
 
   class << self
@@ -397,6 +560,8 @@ module Bluejay::InputTypeShorthands
 end
 
 class Bluejay::InputValueDefinition
+  def default_value; end
+  def description; end
   def name; end
   def ruby_name; end
   def type; end
@@ -460,6 +625,17 @@ class Bluejay::InterfaceType
 end
 
 class Bluejay::InterfaceTypeDefinition
+  def description; end
+  def enum_values(_arg0); end
+  def fields(_arg0); end
+  def input_fields; end
+  def interfaces; end
+  def kind; end
+  def name; end
+  def of_type; end
+  def possible_types; end
+  def specified_by_url; end
+
   class << self
     def new(_arg0); end
   end
@@ -525,8 +701,17 @@ class Bluejay::ObjectType
 end
 
 class Bluejay::ObjectTypeDefinition
+  def description; end
+  def enum_values(_arg0); end
   def field_definitions; end
+  def fields(_arg0); end
+  def input_fields; end
+  def interfaces; end
+  def kind; end
   def name; end
+  def of_type; end
+  def possible_types; end
+  def specified_by_url; end
 
   class << self
     def new(_arg0); end
@@ -535,9 +720,19 @@ end
 
 class Bluejay::OutputType
   def base?; end
+  def description; end
+  def enum_values(_arg0); end
+  def fields(_arg0); end
+  def input_fields; end
+  def interfaces; end
+  def kind; end
   def list?; end
+  def name; end
+  def of_type; end
+  def possible_types; end
   def required?; end
   def sorbet_type; end
+  def specified_by_url; end
   def unwrap_list; end
 
   class << self
@@ -573,6 +768,21 @@ module Bluejay::OutputTypeShorthands
   def ot!(t); end
 end
 
+# @abstract It cannot be directly instantiated. Subclasses must implement the `abstract` methods below.
+#
+# source://bluejay//../../bluejay-rb/lib/bluejay/query_root.rb#5
+class Bluejay::QueryRoot < ::Bluejay::ObjectType
+  abstract!
+
+  class << self
+    private
+
+    # source://bluejay//../../bluejay-rb/lib/bluejay/query_root.rb#15
+    sig { returns(::Bluejay::ObjectTypeDefinition) }
+    def definition; end
+  end
+end
+
 class Bluejay::Result
   def ==(_arg0); end
   def err?; end
@@ -588,7 +798,19 @@ class Bluejay::Result
   end
 end
 
-class Bluejay::Scalar; end
+class Bluejay::Scalar
+  def description; end
+  def enum_values(_arg0); end
+  def fields(_arg0); end
+  def input_fields; end
+  def interfaces; end
+  def kind; end
+  def name; end
+  def of_type; end
+  def possible_types; end
+  def specified_by_url; end
+end
+
 Bluejay::Scalar::Boolean = T.let(T.unsafe(nil), Bluejay::Scalar)
 Bluejay::Scalar::Float = T.let(T.unsafe(nil), Bluejay::Scalar)
 Bluejay::Scalar::ID = T.let(T.unsafe(nil), Bluejay::Scalar)
@@ -630,7 +852,7 @@ class Bluejay::Schema
     # @abstract
     #
     # source://bluejay//../../bluejay-rb/lib/bluejay/schema.rb#20
-    sig { abstract.returns(T.class_of(Bluejay::ObjectType)) }
+    sig { abstract.returns(T.class_of(Bluejay::QueryRoot)) }
     def query; end
 
     # source://bluejay//../../bluejay-rb/lib/bluejay/schema.rb#50
@@ -660,8 +882,15 @@ class Bluejay::Schema
 end
 
 class Bluejay::SchemaDefinition
+  def description; end
+  def directives; end
   def execute(_arg0, _arg1, _arg2, _arg3); end
+  def mutation_type; end
+  def query_type; end
+  def subscription_type; end
   def to_definition; end
+  def type(_arg0); end
+  def types; end
   def validate_query(_arg0); end
 
   class << self
@@ -711,6 +940,17 @@ class Bluejay::UnionType
 end
 
 class Bluejay::UnionTypeDefinition
+  def description; end
+  def enum_values(_arg0); end
+  def fields(_arg0); end
+  def input_fields; end
+  def interfaces; end
+  def kind; end
+  def name; end
+  def of_type; end
+  def possible_types; end
+  def specified_by_url; end
+
   class << self
     def new(_arg0); end
   end

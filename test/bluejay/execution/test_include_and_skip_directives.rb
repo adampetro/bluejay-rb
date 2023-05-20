@@ -6,7 +6,7 @@ require "test_helper"
 module Bluejay
   module Execution
     class TestIncludeAndSkipDirectives < Minitest::Test
-      class QueryRoot < ObjectType
+      class QueryRoot < Bluejay::QueryRoot
         class << self
           extend(T::Sig)
 
@@ -26,7 +26,7 @@ module Bluejay
         class << self
           extend(T::Sig)
 
-          sig { override.returns(T.class_of(ObjectType)) }
+          sig { override.returns(T.class_of(Bluejay::QueryRoot)) }
           def query
             QueryRoot
           end
@@ -40,7 +40,7 @@ module Bluejay
             include(TestIncludeAndSkipDirectives::QueryRoot::Interface)
 
             sig { returns(String) }
-            def resolve_foo
+            def foo
               "foo"
             end
           end

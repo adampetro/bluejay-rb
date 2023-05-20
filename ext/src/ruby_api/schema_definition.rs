@@ -1,26 +1,26 @@
 use crate::execution::Engine as ExecutionEngine;
-use crate::helpers::WrappedDefinition;
+use crate::helpers::{HasDefinitionWrapper, WrappedDefinition};
 use crate::ruby_api::{
-    root, BaseInputType, BaseOutputType, DirectiveDefinition, Directives, ExecutionResult,
-    InputType, OutputType,
-};
-use crate::ruby_api::{
-    ArgumentsDefinition, CustomScalarTypeDefinition, EnumTypeDefinition, EnumValueDefinition,
-    EnumValueDefinitions, FieldDefinition, FieldsDefinition, InputFieldsDefinition,
-    InputObjectTypeDefinition, InputValueDefinition, InterfaceImplementation,
-    InterfaceImplementations, InterfaceTypeDefinition, ObjectTypeDefinition, UnionMemberType,
-    UnionMemberTypes, UnionTypeDefinition, ValidationError,
+    root, ArgumentsDefinition, BaseInputType, BaseOutputType, CustomScalarTypeDefinition,
+    DirectiveDefinition, Directives, EnumTypeDefinition, EnumValueDefinition, EnumValueDefinitions,
+    ExecutionResult, FieldDefinition, FieldsDefinition, InputFieldsDefinition,
+    InputObjectTypeDefinition, InputType, InputValueDefinition, InterfaceImplementation,
+    InterfaceImplementations, InterfaceTypeDefinition, ObjectTypeDefinition, OutputType, Scalar,
+    UnionMemberType, UnionMemberTypes, UnionTypeDefinition, ValidationError,
 };
 use bluejay_core::definition::{
-    InputType as CoreInputType, OutputType as CoreOutputType, TypeDefinition as CoreTypeDefinition,
+    InputType as CoreInputType, OutputType as CoreOutputType,
+    SchemaDefinition as CoreSchemaDefinition, TypeDefinition as CoreTypeDefinition,
     TypeDefinitionReference,
 };
-use bluejay_core::{AsIter, BuiltinScalarDefinition, IntoEnumIterator};
+use bluejay_core::{AsIter, BuiltinScalarDefinition};
 use bluejay_printer::definition::DisplaySchemaDefinition;
 use bluejay_validator::executable::{Cache as ValidationCache, RulesValidator};
+use magnus::IntoValue;
 use magnus::{
-    function, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj, DataTypeFunctions,
-    Error, Module, Object, RArray, RHash, TypedData, Value,
+    exception, function, memoize, method, scan_args::get_kwargs, scan_args::KwArgs,
+    typed_data::Obj, DataTypeFunctions, Error, Module, Object, RArray, RClass, RHash, Ruby,
+    TypedData, Value,
 };
 use std::collections::{
     btree_map::{Entry, Values},
@@ -49,6 +49,16 @@ impl SchemaDefinition {
             Option<WrappedDefinition<ObjectTypeDefinition>>,
             RArray,
         ) = args.required;
+        if !query.class().is_inherited(Self::query_root_class()) {
+            return Err(Error::new(
+                exception::type_error(),
+                format!(
+                    "no implicit conversion of {} into {}",
+                    query.class(),
+                    Self::query_root_class(),
+                ),
+            ));
+        }
         let directives = directives.try_into()?;
         let (contained_types, contained_directives) =
             SchemaTypeVisitor::compute_contained_definitions(
@@ -72,6 +82,10 @@ impl SchemaDefinition {
         *self.query.get()
     }
 
+    pub fn mutation(&self) -> Option<Obj<ObjectTypeDefinition>> {
+        self.mutation.as_ref().map(WrappedDefinition::get).copied()
+    }
+
     pub fn r#type(&self, name: &str) -> Option<&TypeDefinition> {
         self.contained_types.get(name)
     }
@@ -81,14 +95,14 @@ impl SchemaDefinition {
     }
 
     fn execute(
-        &self,
+        rb_self: Obj<Self>,
         query: String,
         operation_name: Option<String>,
         variable_values: RHash,
         initial_value: Value,
     ) -> Result<ExecutionResult, Error> {
         ExecutionEngine::execute_request(
-            self,
+            rb_self,
             query.as_str(),
             operation_name.as_deref(),
             variable_values,
@@ -135,6 +149,10 @@ impl SchemaDefinition {
             },
         )
     }
+
+    fn query_root_class() -> RClass {
+        *memoize!(RClass: root().define_class("QueryRoot", ObjectTypeDefinition::wrapping_class()).unwrap())
+    }
 }
 
 impl DataTypeFunctions for SchemaDefinition {
@@ -179,7 +197,7 @@ impl CoreTypeDefinition for TypeDefinition {
     }
 }
 
-impl bluejay_core::definition::SchemaDefinition for SchemaDefinition {
+impl CoreSchemaDefinition for SchemaDefinition {
     type InputValueDefinition = InputValueDefinition;
     type InputFieldsDefinition = InputFieldsDefinition;
     type ArgumentsDefinition = ArgumentsDefinition;
@@ -283,15 +301,13 @@ impl bluejay_core::definition::SchemaDefinition for SchemaDefinition {
     }
 }
 
-impl TryFrom<&BaseInputType> for TypeDefinition {
-    type Error = ();
-
-    fn try_from(value: &BaseInputType) -> Result<Self, Self::Error> {
+impl From<&BaseInputType> for TypeDefinition {
+    fn from(value: &BaseInputType) -> Self {
         match value {
-            BaseInputType::BuiltinScalar(_) => Err(()),
-            BaseInputType::CustomScalar(cstd) => Ok(Self::CustomScalar(cstd.clone())),
-            BaseInputType::Enum(etd) => Ok(Self::Enum(etd.clone())),
-            BaseInputType::InputObject(iotd) => Ok(Self::InputObject(iotd.clone())),
+            BaseInputType::BuiltinScalar(bstd) => Self::BuiltinScalar(*bstd),
+            BaseInputType::CustomScalar(cstd) => Self::CustomScalar(cstd.clone()),
+            BaseInputType::Enum(etd) => Self::Enum(etd.clone()),
+            BaseInputType::InputObject(iotd) => Self::InputObject(iotd.clone()),
         }
     }
 }
@@ -312,18 +328,42 @@ impl TryInto<BaseInputType> for &TypeDefinition {
     }
 }
 
-impl TryFrom<&BaseOutputType> for TypeDefinition {
-    type Error = ();
-
-    fn try_from(value: &BaseOutputType) -> Result<Self, Self::Error> {
+impl From<&BaseOutputType> for TypeDefinition {
+    fn from(value: &BaseOutputType) -> Self {
         match value {
-            BaseOutputType::BuiltinScalar(_) => Err(()),
-            BaseOutputType::CustomScalar(cstd) => Ok(Self::CustomScalar(cstd.clone())),
-            BaseOutputType::Enum(etd) => Ok(Self::Enum(etd.clone())),
-            BaseOutputType::Object(otd) => Ok(Self::Object(otd.clone())),
-            BaseOutputType::Interface(itd) => Ok(Self::Interface(itd.clone())),
-            BaseOutputType::Union(utd) => Ok(Self::Union(utd.clone())),
+            BaseOutputType::BuiltinScalar(bstd) => Self::BuiltinScalar(*bstd),
+            BaseOutputType::CustomScalar(cstd) => Self::CustomScalar(cstd.clone()),
+            BaseOutputType::Enum(etd) => Self::Enum(etd.clone()),
+            BaseOutputType::Object(otd) => Self::Object(otd.clone()),
+            BaseOutputType::Interface(itd) => Self::Interface(itd.clone()),
+            BaseOutputType::Union(utd) => Self::Union(utd.clone()),
         }
+    }
+}
+
+impl From<&TypeDefinition> for Value {
+    fn from(value: &TypeDefinition) -> Self {
+        match value {
+            TypeDefinition::BuiltinScalar(bstd) => Scalar::from(*bstd).into(),
+            TypeDefinition::CustomScalar(cstd) => cstd.into(),
+            TypeDefinition::Enum(etd) => etd.into(),
+            TypeDefinition::InputObject(iotd) => iotd.into(),
+            TypeDefinition::Interface(itd) => itd.into(),
+            TypeDefinition::Object(otd) => otd.into(),
+            TypeDefinition::Union(utd) => utd.into(),
+        }
+    }
+}
+
+impl IntoValue for TypeDefinition {
+    fn into_value_with(self, _handle: &Ruby) -> Value {
+        Value::from(&self)
+    }
+}
+
+impl IntoValue for &TypeDefinition {
+    fn into_value_with(self, _handle: &Ruby) -> Value {
+        Value::from(self)
     }
 }
 
@@ -363,7 +403,6 @@ impl SchemaTypeVisitor {
             type_visitor.visit_type(TypeDefinition::Object(mutation.clone()));
         }
         type_visitor.visit_directives(schema_directives);
-        type_visitor.visit_builtin_scalar_definitions();
         type_visitor.visit_builtin_directive_definitions();
         type_visitor.into()
     }
@@ -444,10 +483,7 @@ impl SchemaTypeVisitor {
         for field_definition in fields_definition.iter() {
             self.visit_input_value_definitions(field_definition.argument_definitions());
             let base_type = field_definition.r#type().as_ref().base();
-            let t: Result<TypeDefinition, ()> = base_type.try_into();
-            if let Ok(t) = t {
-                self.visit_type(t);
-            }
+            self.visit_type(base_type.into());
             self.visit_directives(field_definition.directives());
         }
     }
@@ -455,10 +491,7 @@ impl SchemaTypeVisitor {
     fn visit_input_value_definitions(&mut self, input_fields_definition: &InputFieldsDefinition) {
         for input_value_definition in input_fields_definition.iter() {
             let base_type = input_value_definition.r#type().as_ref().base();
-            let t: Result<TypeDefinition, ()> = base_type.try_into();
-            if let Ok(t) = t {
-                self.visit_type(t);
-            }
+            self.visit_type(base_type.into());
             self.visit_directives(input_value_definition.directives());
         }
     }
@@ -470,12 +503,6 @@ impl SchemaTypeVisitor {
                 .entry(definition.as_ref().name().to_string())
                 .or_insert_with(|| definition.clone());
         });
-    }
-
-    fn visit_builtin_scalar_definitions(&mut self) {
-        BuiltinScalarDefinition::iter().for_each(|bisd| {
-            self.visit_type(TypeDefinition::BuiltinScalar(bisd));
-        })
     }
 
     fn visit_builtin_directive_definitions(&mut self) {
@@ -499,6 +526,34 @@ pub fn init() -> Result<(), Error> {
         method!(SchemaDefinition::validate_query, 1),
     )?;
     class.define_method("to_definition", method!(SchemaDefinition::to_definition, 0))?;
+    class.define_method(
+        "type",
+        method!(
+            |sd: &SchemaDefinition, name: String| sd.r#type(&name).map(Value::from),
+            1
+        ),
+    )?;
+    class.define_method(
+        "description",
+        method!(<SchemaDefinition as CoreSchemaDefinition>::description, 0),
+    )?;
+    class.define_method("query_type", method!(SchemaDefinition::query, 0))?;
+    class.define_method("mutation_type", method!(SchemaDefinition::mutation, 0))?;
+    class.define_method("subscription_type", method!(|_: &SchemaDefinition| (), 0))?;
+    class.define_method(
+        "types",
+        method!(
+            |sd: &SchemaDefinition| RArray::from_iter(sd.contained_types.values()),
+            0
+        ),
+    )?;
+    class.define_method(
+        "directives",
+        method!(
+            |sd: &SchemaDefinition| RArray::from_iter(sd.contained_directives.values()),
+            0
+        ),
+    )?;
 
     Ok(())
 }

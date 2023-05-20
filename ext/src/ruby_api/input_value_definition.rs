@@ -1,4 +1,6 @@
 use crate::ruby_api::{root, wrapped_value::ValueInner, Directives, InputType, WrappedValue};
+use bluejay_core::Value as CoreValue;
+use bluejay_printer::value::DisplayValue;
 use convert_case::{Case, Casing};
 use magnus::{
     function, gc, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,
@@ -115,6 +117,16 @@ pub fn init() -> Result<(), Error> {
     class.define_method("name", method!(InputValueDefinition::name, 0))?;
     class.define_method("type", method!(|ivd: &InputValueDefinition| ivd.r#type, 0))?;
     class.define_method("ruby_name", method!(InputValueDefinition::ruby_name, 0))?;
+    class.define_method("description", method!(InputValueDefinition::description, 0))?;
+    class.define_method(
+        "default_value",
+        method!(
+            |ivd: &InputValueDefinition| ivd
+                .default_value()
+                .map(|v| DisplayValue::to_string(&v.as_ref().as_ref())),
+            0
+        ),
+    )?;
 
     Ok(())
 }

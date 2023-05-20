@@ -1,8 +1,7 @@
 use crate::helpers::HasDefinitionWrapper;
 use crate::ruby_api::{
-    field_definition::FieldDefinition, fields_definition::FieldsDefinition,
-    interface_implementations::InterfaceImplementations,
-    interface_type_definition::InterfaceTypeDefinition, root, Directives,
+    introspection, root, Directives, FieldDefinition, FieldsDefinition, InterfaceImplementations,
+    InterfaceTypeDefinition,
 };
 use bluejay_core::AsIter;
 use magnus::{
@@ -18,6 +17,7 @@ pub struct ObjectTypeDefinition {
     fields_definition: FieldsDefinition,
     directives: Directives,
     interface_implementations: InterfaceImplementations,
+    is_builtin: bool,
 }
 
 impl ObjectTypeDefinition {
@@ -30,26 +30,29 @@ impl ObjectTypeDefinition {
                 "interface_implementations",
                 "description",
                 "directives",
+                "ruby_class",
             ],
             &[],
         )?;
-        let (name, field_definitions, interface_implementations, description, directives): (
-            String,
-            RArray,
-            RArray,
-            Option<String>,
-            RArray,
-        ) = args.required;
-        field_definitions.push(FieldDefinition::typename())?;
+        let (
+            name,
+            field_definitions,
+            interface_implementations,
+            description,
+            directives,
+            ruby_class,
+        ): (String, RArray, RArray, Option<String>, RArray, RClass) = args.required;
         let fields_definition = FieldsDefinition::new(field_definitions)?;
         let interface_implementations = InterfaceImplementations::new(interface_implementations)?;
         let directives = directives.try_into()?;
+        let is_builtin = unsafe { ruby_class.name() }.starts_with("Bluejay::Builtin::ObjectTypes");
         Ok(Self {
             name,
             description,
             fields_definition,
             directives,
             interface_implementations,
+            is_builtin,
         })
     }
 }
@@ -124,20 +127,48 @@ impl bluejay_core::definition::ObjectTypeDefinition for ObjectTypeDefinition {
     fn directives(&self) -> Option<&Self::Directives> {
         Some(&self.directives)
     }
+
+    fn is_builtin(&self) -> bool {
+        self.is_builtin
+    }
+}
+
+impl introspection::Type for ObjectTypeDefinition {
+    type OfType = introspection::Never;
+
+    fn description(&self) -> Option<&str> {
+        self.description()
+    }
+
+    fn fields(&self) -> Option<FieldsDefinition> {
+        Some(self.fields_definition)
+    }
+
+    fn interfaces(&self) -> Option<InterfaceImplementations> {
+        Some(self.interface_implementations)
+    }
+
+    fn kind(&self) -> introspection::TypeKind {
+        introspection::TypeKind::Object
+    }
+
+    fn name(&self) -> Option<&str> {
+        Some(&self.name)
+    }
 }
 
 pub fn init() -> Result<(), Error> {
     let class = root().define_class("ObjectTypeDefinition", Default::default())?;
 
     class.define_singleton_method("new", function!(ObjectTypeDefinition::new, 1))?;
-    class.define_method("name", method!(ObjectTypeDefinition::name, 0))?;
     class.define_method(
         "field_definitions",
         method!(
-            |otd: &ObjectTypeDefinition| -> RArray { (*otd.fields_definition()).into() },
+            |otd: &ObjectTypeDefinition| RArray::from(*otd.fields_definition()),
             0
         ),
     )?;
+    introspection::implement_type!(ObjectTypeDefinition, class);
 
     Ok(())
 }

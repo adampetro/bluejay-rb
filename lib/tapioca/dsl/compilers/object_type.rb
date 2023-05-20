@@ -15,7 +15,7 @@ module Tapioca
 
         sig { override.returns(T::Enumerable[Module]) }
         def gather_constants
-          all_classes.select { |c| c < Bluejay::ObjectType }
+          all_classes.select { |c| c < Bluejay::ObjectType && c != Bluejay::QueryRoot }
         end
       end
 
@@ -32,8 +32,9 @@ module Tapioca
           end
 
           constant.field_definitions.each do |field_definition|
+            # TODO: add extra args
             parameters = field_definition.argument_definitions.map do |argument_definition|
-              create_param(argument_definition.name, type: argument_definition.type.sorbet_type)
+              create_param(argument_definition.ruby_name, type: argument_definition.type.sorbet_type)
             end
 
             return_type = field_definition.type.sorbet_type

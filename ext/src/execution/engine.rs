@@ -1,7 +1,7 @@
 use crate::execution::{CoerceResult, ExecutionError, FieldError, KeyStore};
 use crate::ruby_api::{
-    BaseInputType, BaseOutputType, CoerceInput, ExecutionResult, FieldDefinition, InputType,
-    InputValueDefinition, InterfaceTypeDefinition, ObjectTypeDefinition, OutputType,
+    BaseInputType, BaseOutputType, CoerceInput, ExecutionResult, ExtraResolverArg, FieldDefinition,
+    InputType, InputValueDefinition, InterfaceTypeDefinition, ObjectTypeDefinition, OutputType,
     SchemaDefinition, TypeDefinition, UnionTypeDefinition,
 };
 use bluejay_core::definition::{OutputType as CoreOutputType, OutputTypeReference};
@@ -13,11 +13,11 @@ use bluejay_parser::ast::executable::{
     ExecutableDocument, Field, OperationDefinition, Selection, SelectionSet,
 };
 use bluejay_parser::ast::{Directive, VariableArguments, VariableValue};
-use magnus::{ArgList, Error, RArray, RHash, Value, QNIL};
+use magnus::{typed_data::Obj, ArgList, Error, RArray, RHash, Value, QNIL};
 use std::collections::{BTreeMap, HashSet};
 
 pub struct Engine<'a> {
-    schema: &'a SchemaDefinition,
+    schema: Obj<SchemaDefinition>,
     document: &'a ExecutableDocument<'a>,
     variables: &'a RHash,
     key_store: KeyStore<'a>,
@@ -25,7 +25,7 @@ pub struct Engine<'a> {
 
 impl<'a> Engine<'a> {
     pub fn execute_request(
-        schema: &SchemaDefinition,
+        schema: Obj<SchemaDefinition>,
         query: &str,
         operation_name: Option<&str>,
         variable_values: RHash,
@@ -52,7 +52,7 @@ impl<'a> Engine<'a> {
         };
 
         let variables =
-            match Self::get_variable_values(schema, operation_definition, variable_values) {
+            match Self::get_variable_values(schema.get(), operation_definition, variable_values) {
                 Ok(cvv) => cvv,
                 Err(errors) => {
                     return Ok(Self::execution_result(Default::default(), errors));
@@ -182,7 +182,7 @@ impl<'a> Engine<'a> {
         query: &'a OperationDefinition,
         initial_value: Value,
     ) -> ExecutionResult {
-        let query_type = self.schema.query();
+        let query_type = self.schema.get().query();
         let query_type = query_type.get();
         let selection_set = query.as_ref().selection_set();
 
@@ -208,7 +208,12 @@ impl<'a> Engine<'a> {
 
         for (response_key, fields) in grouped_field_set {
             let field_name = fields.first().unwrap().name().as_ref();
-            let field_definition = object_type.field_definition(field_name).unwrap();
+            let field_definition = object_type.field_definition(field_name).unwrap_or_else(|| {
+                panic!(
+                    "No field definition with name {field_name} on type {}",
+                    object_type.name()
+                )
+            });
             let (response_value, mut errs) =
                 self.execute_field(object_type, object_value, field_definition, &fields);
             if field_definition.r#type().as_ref().is_required() && response_value.is_nil() {
@@ -343,7 +348,7 @@ impl<'a> Engine<'a> {
         object_type: &ObjectTypeDefinition,
         fragment_type_name: &str,
     ) -> bool {
-        let fragment_type = self.schema.r#type(fragment_type_name).unwrap();
+        let fragment_type = self.schema.get().r#type(fragment_type_name).unwrap();
 
         match fragment_type {
             TypeDefinition::Object(otd) => {
@@ -368,7 +373,7 @@ impl<'a> Engine<'a> {
     ) -> (Value, Vec<ExecutionError<'a>>) {
         let field = fields.first().unwrap();
 
-        if field_definition.argument_definitions().is_empty() {
+        if field_definition.resolver_arg_count() == 0 {
             self.resolve_field_value(object_type, object_value, field_definition, ())
                 .map_err(|err| vec![err])
         } else {
@@ -391,13 +396,18 @@ impl<'a> Engine<'a> {
         field_definition: &FieldDefinition,
         field: &Field,
     ) -> Result<RArray, Vec<ExecutionError<'a>>> {
-        let coerced_args = RArray::with_capacity(field_definition.argument_definitions().len());
+        let coerced_args = RArray::with_capacity(field_definition.resolver_arg_count());
         let mut errors: Vec<ExecutionError<'a>> = Vec::new();
         let argument_definitions = field_definition.argument_definitions();
         for argument_definition in argument_definitions.iter() {
             match self.coerce_argument_value(argument_definition, field.arguments()) {
                 Ok(value) => coerced_args.push(value).unwrap(),
                 Err(errs) => errors.extend(errs.into_iter()),
+            }
+        }
+        for extra_resolver_arg in field_definition.extra_resolver_args() {
+            match extra_resolver_arg {
+                ExtraResolverArg::SchemaDefinition => coerced_args.push(self.schema).unwrap(),
             }
         }
 
@@ -570,15 +580,8 @@ impl<'a> Engine<'a> {
         object_value: Value,
     ) -> &'a ObjectTypeDefinition {
         // TODO: change to return Result<_, FieldError>
-        let typename: String = object_value
-            .funcall(
-                FieldDefinition::typename()
-                    .get()
-                    .ruby_resolver_method_name(),
-                (),
-            )
-            .unwrap();
-        let object_type = match self.schema.r#type(typename.as_str()) {
+        let typename: String = object_value.funcall("resolve_typename", ()).unwrap();
+        let object_type = match self.schema.get().r#type(typename.as_str()) {
             Some(TypeDefinition::Object(otd)) => otd.as_ref(),
             _ => panic!(),
         };
@@ -595,15 +598,8 @@ impl<'a> Engine<'a> {
         object_value: Value,
     ) -> &'a ObjectTypeDefinition {
         // TODO: change to return Result<_, FieldError>
-        let typename: String = object_value
-            .funcall(
-                FieldDefinition::typename()
-                    .get()
-                    .ruby_resolver_method_name(),
-                (),
-            )
-            .unwrap();
-        let object_type = match self.schema.r#type(typename.as_str()) {
+        let typename: String = object_value.funcall("resolve_typename", ()).unwrap();
+        let object_type = match self.schema.get().r#type(typename.as_str()) {
             Some(TypeDefinition::Object(otd)) => otd.as_ref(),
             _ => panic!(),
         };
@@ -618,7 +614,11 @@ impl<'a> Engine<'a> {
         &'a self,
         directive: &'a Directive<'a, false>,
     ) -> Result<Value, Vec<ExecutionError<'a>>> {
-        let directive_definition_obj = self.schema.directive(directive.name().as_ref()).unwrap();
+        let directive_definition_obj = self
+            .schema
+            .get()
+            .directive(directive.name().as_ref())
+            .unwrap();
         let directive_definition = directive_definition_obj.get();
 
         let directive = if directive_definition.arguments_definition().is_empty() {

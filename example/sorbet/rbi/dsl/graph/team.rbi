@@ -8,13 +8,13 @@ module Graph::Team::Interface
   abstract!
 
   sig { abstract.returns(String) }
-  def resolve_location; end
+  def location; end
 
   sig { abstract.returns(String) }
-  def resolve_name; end
+  def name; end
 
   sig { abstract.returns(T::Array[Graph::Player::Interface]) }
-  def resolve_players; end
+  def players; end
 
   sig(:final) { returns(String) }
   def resolve_typename; end

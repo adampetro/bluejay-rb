@@ -28,7 +28,7 @@ module Bluejay
     def test_resolver_method_name
       instance = FieldDefinition.new(name: "myField", type: ot!(Scalar::String))
 
-      assert_equal("resolve_my_field", instance.resolver_method_name)
+      assert_equal("my_field", instance.resolver_method_name)
     end
 
     def test_directives

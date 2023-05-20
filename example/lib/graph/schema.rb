@@ -6,7 +6,7 @@ module Graph
     class << self
       extend(T::Sig)
 
-      sig { override.returns(T.class_of(Bluejay::ObjectType)) }
+      sig { override.returns(T.class_of(Bluejay::QueryRoot)) }
       def query = QueryRoot
     end
   end

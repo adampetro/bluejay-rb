@@ -1,4 +1,5 @@
 use crate::ruby_api::{root, Directives};
+use bluejay_core::definition::EnumValueDefinition as CoreEnumValueDefinition;
 use magnus::{
     function, method, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error, Module,
     Object, RArray, RHash, TypedData,
@@ -41,7 +42,7 @@ impl DataTypeFunctions for EnumValueDefinition {
     }
 }
 
-impl bluejay_core::definition::EnumValueDefinition for EnumValueDefinition {
+impl CoreEnumValueDefinition for EnumValueDefinition {
     type Directives = Directives;
 
     fn description(&self) -> Option<&str> {
@@ -62,6 +63,18 @@ pub fn init() -> Result<(), Error> {
 
     class.define_singleton_method("new", function!(EnumValueDefinition::new, 1))?;
     class.define_method("name", method!(EnumValueDefinition::name, 0))?;
+    class.define_method(
+        "description",
+        method!(
+            <EnumValueDefinition as CoreEnumValueDefinition>::description,
+            0
+        ),
+    )?;
+    class.define_method("deprecated?", method!(|_: &EnumValueDefinition| false, 0))?;
+    class.define_method(
+        "deprecation_reason",
+        method!(|_: &EnumValueDefinition| (), 0),
+    )?;
 
     Ok(())
 }

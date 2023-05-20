@@ -5,6 +5,7 @@ require "bluejay"
 require "pry"
 require "pry-nav"
 require "date"
+require "json"
 require "minitest/autorun"
 
 module GCStressPlugin

@@ -52,7 +52,7 @@ module Bluejay
         @definition ||= T.let(nil, T.nilable(ObjectTypeDefinition))
         @definition ||= begin
           graphql_name = self.graphql_name
-          field_definitions = self.field_definitions
+          field_definitions = self.field_definitions + [Builtin.typename_field_definition]
           interface_implementations = self.interface_implementations
           interface = Module.new do |mod|
             field_definitions.each do |field_definition|
@@ -60,11 +60,8 @@ module Bluejay
             end
 
             interface_implementations.each do |interface_implementation|
-              # interface_implementation.interface.send(:definition)
               mod.include(interface_implementation.interface.const_get(:Interface))
             end
-
-            mod.define_method(:resolve_typename) { graphql_name }
           end
           const_set(:Interface, interface)
           ObjectTypeDefinition.new(
@@ -73,6 +70,7 @@ module Bluejay
             field_definitions:,
             interface_implementations:,
             directives:,
+            ruby_class: self,
           )
         end
       end

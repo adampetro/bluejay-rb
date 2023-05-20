@@ -3,8 +3,6 @@
 
 module Bluejay
   class EnumType
-    extend(Finalize)
-
     class << self
       extend(T::Sig)
       extend(T::Helpers)
@@ -30,19 +28,18 @@ module Bluejay
         []
       end
 
-      protected
-
-      sig(:final) { override.void }
-      def finalize
-        definition
-      end
-
       private
 
       sig(:final) { returns(EnumTypeDefinition) }
       def definition
         @definition ||= T.let(nil, T.nilable(EnumTypeDefinition))
-        @definition ||= EnumTypeDefinition.new(name: graphql_name, enum_value_definitions:, description:, directives:)
+        @definition ||= EnumTypeDefinition.new(
+          name: graphql_name,
+          enum_value_definitions:,
+          description:,
+          directives:,
+          ruby_class: self,
+        )
       end
     end
   end

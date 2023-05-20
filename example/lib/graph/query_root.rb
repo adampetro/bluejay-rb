@@ -2,7 +2,7 @@
 # frozen_string_literal: true
 
 module Graph
-  class QueryRoot < Bluejay::ObjectType
+  class QueryRoot < Bluejay::QueryRoot
     class << self
       extend(T::Sig)
 

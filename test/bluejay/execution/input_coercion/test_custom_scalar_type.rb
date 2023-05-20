@@ -38,7 +38,7 @@ module Bluejay
           end
         end
 
-        class QueryRoot < ObjectType
+        class QueryRoot < Bluejay::QueryRoot
           class << self
             extend(T::Sig)
 
@@ -61,7 +61,7 @@ module Bluejay
           class << self
             extend(T::Sig)
 
-            sig { override.returns(T.class_of(ObjectType)) }
+            sig { override.returns(T.class_of(Bluejay::QueryRoot)) }
             def query
               QueryRoot
             end
@@ -75,7 +75,7 @@ module Bluejay
               include(Execution::InputCoercion::TestCustomScalarType::QueryRoot::Interface)
 
               sig { params(my_date: Date).returns(Date) }
-              def resolve_my_date(my_date)
+              def my_date(my_date)
                 my_date
               end
             end

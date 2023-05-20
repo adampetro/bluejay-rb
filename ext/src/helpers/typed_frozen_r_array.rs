@@ -1,5 +1,5 @@
 use bluejay_core::AsIter;
-use magnus::{typed_data::Obj, Error, RArray, TryConvert, TypedData, Value};
+use magnus::{typed_data::Obj, Error, IntoValue, RArray, Ruby, TryConvert, TypedData, Value};
 use std::{marker::PhantomData, ops::Deref};
 
 #[derive(Debug)]
@@ -50,6 +50,14 @@ impl<T: TryConvert> TypedFrozenRArray<T> {
     }
 }
 
+impl<T: TypedData> TypedFrozenRArray<Obj<T>> {
+    pub fn iter_objects(&self) -> impl Iterator<Item = Obj<T>> + '_ {
+        unsafe { self.data.as_slice() }
+            .iter()
+            .map(|val| val.try_convert().unwrap())
+    }
+}
+
 impl<T: TryConvert> Deref for TypedFrozenRArray<T> {
     type Target = Value;
 
@@ -83,5 +91,11 @@ impl<T: TypedData> FromIterator<T> for TypedFrozenRArray<Obj<T>> {
             data,
             t: Default::default(),
         }
+    }
+}
+
+impl<T: TryConvert> IntoValue for TypedFrozenRArray<T> {
+    fn into_value_with(self, _handle: &Ruby) -> Value {
+        *self.data
     }
 }

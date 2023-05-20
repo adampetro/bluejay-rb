@@ -1,7 +1,6 @@
 use crate::helpers::HasDefinitionWrapper;
 use crate::ruby_api::{
-    fields_definition::FieldsDefinition, interface_implementations::InterfaceImplementations, root,
-    Directives,
+    introspection, root, Directives, FieldsDefinition, InterfaceImplementations,
 };
 use magnus::{
     function, gc, memoize, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error,
@@ -111,10 +110,35 @@ impl bluejay_core::definition::InterfaceTypeDefinition for InterfaceTypeDefiniti
     }
 }
 
+impl introspection::Type for InterfaceTypeDefinition {
+    type OfType = introspection::Never;
+
+    fn description(&self) -> Option<&str> {
+        self.description()
+    }
+
+    fn fields(&self) -> Option<FieldsDefinition> {
+        Some(self.fields_definition)
+    }
+
+    fn interfaces(&self) -> Option<InterfaceImplementations> {
+        Some(self.interface_implementations)
+    }
+
+    fn kind(&self) -> introspection::TypeKind {
+        introspection::TypeKind::Interface
+    }
+
+    fn name(&self) -> Option<&str> {
+        Some(&self.name)
+    }
+}
+
 pub fn init() -> Result<(), Error> {
     let class = root().define_class("InterfaceTypeDefinition", Default::default())?;
 
     class.define_singleton_method("new", function!(InterfaceTypeDefinition::new, 1))?;
+    introspection::implement_type!(InterfaceTypeDefinition, class);
 
     Ok(())
 }

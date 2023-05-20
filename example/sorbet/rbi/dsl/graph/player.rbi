@@ -10,16 +10,16 @@ module Graph::Player::Interface
   abstract!
 
   sig { abstract.returns(Date) }
-  def resolve_birthday; end
+  def birthday; end
+
+  sig { abstract.returns(String) }
+  def first_name; end
+
+  sig { abstract.returns(String) }
+  def last_name; end
 
   sig { abstract.returns(T.nilable(Graph::Team::Interface)) }
   def resolve_current_team; end
-
-  sig { abstract.returns(String) }
-  def resolve_first_name; end
-
-  sig { abstract.returns(String) }
-  def resolve_last_name; end
 
   sig(:final) { returns(String) }
   def resolve_typename; end

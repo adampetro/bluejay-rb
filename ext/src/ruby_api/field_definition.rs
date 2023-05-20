@@ -1,9 +1,8 @@
-use crate::ruby_api::{root, ArgumentsDefinition, BaseOutputType, Directives, OutputType};
+use crate::ruby_api::{root, ArgumentsDefinition, Directives, OutputType};
 use convert_case::{Case, Casing};
 use magnus::{
-    function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,
-    value::BoxValue, DataTypeFunctions, Error, Module, Object, RArray, RHash, RString, TypedData,
-    Value,
+    function, gc, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,
+    DataTypeFunctions, Error, Module, Object, RArray, RHash, RString, TypedData, QNIL,
 };
 
 #[derive(Debug, TypedData)]
@@ -17,6 +16,7 @@ pub struct FieldDefinition {
     is_builtin: bool,
     ruby_resolver_method_name: String,
     name_r_string: RString,
+    extra_resolver_args: Vec<ExtraResolverArg>,
 }
 
 impl FieldDefinition {
@@ -24,54 +24,47 @@ impl FieldDefinition {
         let args: KwArgs<_, _, ()> = get_kwargs(
             kw,
             &["name", "type"],
-            &["argument_definitions", "description", "directives"],
+            &[
+                "argument_definitions",
+                "description",
+                "directives",
+                "resolver_method_name",
+            ],
         )?;
         let (name_r_string, r#type): (RString, Obj<OutputType>) = args.required;
-        let (argument_definitions, description, directives): (
+        type OptionalArgs = (
             Option<RArray>,
             Option<Option<String>>,
             Option<RArray>,
-        ) = args.optional;
+            Option<Option<String>>,
+        );
+        let (argument_definitions, description, directives, resolver_method_name): OptionalArgs =
+            args.optional;
         name_r_string.freeze();
         let name = name_r_string.to_string()?;
         let arguments_definition =
             ArgumentsDefinition::new(argument_definitions.unwrap_or_else(RArray::new))?;
         let description = description.unwrap_or_default();
         let directives = directives.try_into()?;
-        let ruby_resolver_method_name = format!("resolve_{}", name.to_case(Case::Snake));
+        let is_builtin = name.starts_with("__");
+        let ruby_resolver_method_name = resolver_method_name
+            .and_then(|r| r)
+            .unwrap_or_else(|| name.to_case(Case::Snake));
+        let extra_resolver_args = match name.as_str() {
+            "__schema" | "__type" => vec![ExtraResolverArg::SchemaDefinition],
+            _ => vec![],
+        };
         Ok(Self {
             name,
             description,
             arguments_definition,
             r#type,
             directives,
-            is_builtin: false,
+            is_builtin,
             ruby_resolver_method_name,
             name_r_string,
+            extra_resolver_args,
         })
-    }
-
-    pub(crate) fn typename() -> Obj<Self> {
-        memoize!(([BoxValue<Value>; 4], Obj<FieldDefinition>): {
-            let t = Obj::wrap(OutputType::Base(BaseOutputType::builtin_string(), true));
-            let arguments_definition = ArgumentsDefinition::empty();
-            let directives = Directives::empty();
-            let directives_rarray: RArray = (&directives).into();
-            let name_r_string = RString::new("__typename");
-            name_r_string.freeze();
-            let fd = Self {
-                name: "__typename".to_string(),
-                description: None,
-                arguments_definition,
-                r#type: t,
-                directives,
-                is_builtin: true,
-                ruby_resolver_method_name: "resolve_typename".to_string(),
-                name_r_string,
-            };
-            let obj = Obj::wrap(fd);
-            ([BoxValue::new(*obj), BoxValue::new(*arguments_definition), BoxValue::new(*t), BoxValue::new(*directives_rarray)], obj)
-        }).1
     }
 
     pub(crate) fn ruby_resolver_method_name(&self) -> &str {
@@ -85,18 +78,7 @@ impl FieldDefinition {
     pub fn directives(&self) -> &Directives {
         &self.directives
     }
-}
 
-impl DataTypeFunctions for FieldDefinition {
-    fn mark(&self) {
-        gc::mark(self.arguments_definition);
-        gc::mark(self.r#type);
-        self.directives.mark();
-        gc::mark(self.name_r_string);
-    }
-}
-
-impl FieldDefinition {
     pub fn name(&self) -> &str {
         self.name.as_str()
     }
@@ -111,6 +93,23 @@ impl FieldDefinition {
 
     pub fn r#type(&self) -> &OutputType {
         self.r#type.get()
+    }
+
+    pub fn extra_resolver_args(&self) -> &[ExtraResolverArg] {
+        &self.extra_resolver_args
+    }
+
+    pub fn resolver_arg_count(&self) -> usize {
+        self.arguments_definition.len() + self.extra_resolver_args.len()
+    }
+}
+
+impl DataTypeFunctions for FieldDefinition {
+    fn mark(&self) {
+        gc::mark(self.arguments_definition);
+        gc::mark(self.r#type);
+        self.directives.mark();
+        gc::mark(self.name_r_string);
     }
 }
 
@@ -144,6 +143,11 @@ impl bluejay_core::definition::FieldDefinition for FieldDefinition {
     }
 }
 
+#[derive(Debug)]
+pub enum ExtraResolverArg {
+    SchemaDefinition,
+}
+
 pub fn init() -> Result<(), Error> {
     let class = root().define_class("FieldDefinition", Default::default())?;
 
@@ -168,6 +172,16 @@ pub fn init() -> Result<(), Error> {
             0
         ),
     )?;
+    class.define_method(
+        "args",
+        method!(
+            |fd: &FieldDefinition| RArray::from(fd.arguments_definition),
+            0
+        ),
+    )?;
+    class.define_method("deprecated?", method!(|_: &FieldDefinition| false, 0))?;
+    class.define_method("deprecation_reason", method!(|_: &FieldDefinition| QNIL, 0))?;
+    class.define_method("description", method!(FieldDefinition::description, 0))?;
 
     Ok(())
 }

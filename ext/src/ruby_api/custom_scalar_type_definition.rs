@@ -1,7 +1,7 @@
 use crate::execution::{CoerceResult, FieldError};
 use crate::helpers::{value_from_core_value, HasDefinitionWrapper, Variables};
 use crate::ruby_api::{
-    coerce_input::CoerceInput, coercion_error::CoercionError, root,
+    coerce_input::CoerceInput, coercion_error::CoercionError, introspection, root,
     wrapped_value::value_inner_from_ruby_const_value, Directives, RResult, WrappedValue,
 };
 use bluejay_parser::ast::Value as ParserValue;
@@ -150,10 +150,29 @@ impl bluejay_core::definition::ScalarTypeDefinition for CustomScalarTypeDefiniti
     }
 }
 
+impl introspection::Type for CustomScalarTypeDefinition {
+    type OfType = introspection::Never;
+
+    fn kind(&self) -> introspection::TypeKind {
+        introspection::TypeKind::Scalar
+    }
+
+    fn description(&self) -> Option<&str> {
+        self.description()
+    }
+
+    fn name(&self) -> Option<&str> {
+        Some(&self.name)
+    }
+
+    // TODO: specified_by_url
+}
+
 pub fn init() -> Result<(), Error> {
     let class = root().define_class("CustomScalarTypeDefinition", Default::default())?;
 
     class.define_singleton_method("new", function!(CustomScalarTypeDefinition::new, 1))?;
+    introspection::implement_type!(CustomScalarTypeDefinition, class);
 
     Ok(())
 }

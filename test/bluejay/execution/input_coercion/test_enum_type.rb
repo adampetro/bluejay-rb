@@ -23,7 +23,7 @@ module Bluejay
           end
         end
 
-        class QueryRoot < ObjectType
+        class QueryRoot < Bluejay::QueryRoot
           class << self
             extend(T::Sig)
 
@@ -46,7 +46,7 @@ module Bluejay
           class << self
             extend(T::Sig)
 
-            sig { override.returns(T.class_of(ObjectType)) }
+            sig { override.returns(T.class_of(Bluejay::QueryRoot)) }
             def query
               QueryRoot
             end
@@ -60,7 +60,7 @@ module Bluejay
               include(Execution::InputCoercion::TestEnumType::QueryRoot::Interface)
 
               sig { params(my_enum: String).returns(String) }
-              def resolve_my_enum(my_enum)
+              def my_enum(my_enum)
                 my_enum
               end
             end

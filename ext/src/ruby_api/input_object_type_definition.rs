@@ -1,8 +1,7 @@
 use crate::helpers::{public_name, HasDefinitionWrapper, Variables};
 use crate::ruby_api::{
-    coerce_input::CoerceInput, coercion_error::CoercionError,
-    input_fields_definition::InputFieldsDefinition, r_result::RResult, root,
-    wrapped_value::value_inner_from_ruby_const_value, Directives, WrappedValue,
+    introspection, root, wrapped_value::value_inner_from_ruby_const_value, CoerceInput,
+    CoercionError, Directives, InputFieldsDefinition, RResult, WrappedValue,
 };
 use bluejay_core::AsIter;
 use bluejay_parser::ast::Value as ParserValue;
@@ -337,6 +336,26 @@ impl CoerceInput for InputObjectTypeDefinition {
     }
 }
 
+impl introspection::Type for InputObjectTypeDefinition {
+    type OfType = introspection::Never;
+
+    fn description(&self) -> Option<&str> {
+        self.description()
+    }
+
+    fn input_fields(&self) -> Option<InputFieldsDefinition> {
+        Some(self.input_fields_definition)
+    }
+
+    fn kind(&self) -> introspection::TypeKind {
+        introspection::TypeKind::InputObject
+    }
+
+    fn name(&self) -> Option<&str> {
+        Some(&self.name)
+    }
+}
+
 pub fn init() -> Result<(), Error> {
     let class = root().define_class("InputObjectTypeDefinition", Default::default())?;
 
@@ -361,6 +380,7 @@ pub fn init() -> Result<(), Error> {
             0
         ),
     )?;
+    introspection::implement_type!(InputObjectTypeDefinition, class);
 
     Ok(())
 }

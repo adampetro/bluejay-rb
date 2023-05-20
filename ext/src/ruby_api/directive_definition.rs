@@ -68,8 +68,8 @@ impl DirectiveDefinition {
         self.name.as_str()
     }
 
-    pub fn arguments_definition(&self) -> &ArgumentsDefinition {
-        &self.arguments_definition
+    pub fn arguments_definition(&self) -> ArgumentsDefinition {
+        self.arguments_definition
     }
 
     pub fn ruby_class(&self) -> RClass {
@@ -139,8 +139,31 @@ pub fn init() -> Result<(), Error> {
     class.define_singleton_method("new", function!(DirectiveDefinition::new, 1))?;
     class.define_method(
         "argument_definitions",
+        method!(DirectiveDefinition::arguments_definition, 0),
+    )?;
+    class.define_method("name", method!(DirectiveDefinition::name, 0))?;
+    class.define_method(
+        "description",
         method!(
-            |dd: &DirectiveDefinition| -> RArray { (*dd.arguments_definition()).into() },
+            <DirectiveDefinition as CoreDirectiveDefinition>::description,
+            0
+        ),
+    )?;
+    class.define_method(
+        "locations",
+        method!(
+            |dd: &DirectiveDefinition| RArray::from_iter(dd.locations.iter().map(AsRef::as_ref)),
+            0
+        ),
+    )?;
+    class.define_method(
+        "args",
+        method!(DirectiveDefinition::arguments_definition, 0),
+    )?;
+    class.define_method(
+        "repeatable?",
+        method!(
+            <DirectiveDefinition as CoreDirectiveDefinition>::is_repeatable,
             0
         ),
     )?;

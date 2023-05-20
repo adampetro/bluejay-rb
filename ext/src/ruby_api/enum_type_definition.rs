@@ -2,8 +2,8 @@ use crate::execution::{CoerceResult, FieldError};
 use crate::helpers::{public_name, HasDefinitionWrapper, Variables};
 use crate::ruby_api::{
     coerce_input::CoerceInput, coercion_error::CoercionError,
-    enum_value_definitions::EnumValueDefinitions, root, wrapped_value::ValueInner, Directives,
-    WrappedValue,
+    enum_value_definitions::EnumValueDefinitions, introspection, root, wrapped_value::ValueInner,
+    Directives, WrappedValue,
 };
 use bluejay_core::AsIter;
 use bluejay_parser::ast::Value as ParserValue;
@@ -19,28 +19,38 @@ pub struct EnumTypeDefinition {
     description: Option<String>,
     enum_value_definitions: EnumValueDefinitions,
     directives: Directives,
+    is_builtin: bool,
 }
 
 impl EnumTypeDefinition {
     fn new(kw: RHash) -> Result<Self, Error> {
-        let args: KwArgs<(String, RArray, Option<String>, RArray), (), ()> = get_kwargs(
+        let args: KwArgs<_, (), ()> = get_kwargs(
             kw,
             &[
                 "name",
                 "enum_value_definitions",
                 "description",
                 "directives",
+                "ruby_class",
             ],
             &[],
         )?;
-        let (name, enum_value_definitions, description, directives) = args.required;
+        let (name, enum_value_definitions, description, directives, ruby_class): (
+            String,
+            RArray,
+            Option<String>,
+            RArray,
+            RClass,
+        ) = args.required;
         let enum_value_definitions = EnumValueDefinitions::new(enum_value_definitions)?;
         let directives = directives.try_into()?;
+        let is_builtin = unsafe { ruby_class.name() }.starts_with("Bluejay::Builtin::EnumTypes");
         Ok(Self {
             name,
             description,
             enum_value_definitions,
             directives,
+            is_builtin,
         })
     }
 
@@ -183,6 +193,10 @@ impl bluejay_core::definition::EnumTypeDefinition for EnumTypeDefinition {
     fn directives(&self) -> Option<&Self::Directives> {
         Some(&self.directives)
     }
+
+    fn is_builtin(&self) -> bool {
+        self.is_builtin
+    }
 }
 
 impl CoerceResult for EnumTypeDefinition {
@@ -204,10 +218,31 @@ impl CoerceResult for EnumTypeDefinition {
     }
 }
 
+impl introspection::Type for EnumTypeDefinition {
+    type OfType = introspection::Never;
+
+    fn description(&self) -> Option<&str> {
+        self.description()
+    }
+
+    fn enum_values(&self) -> Option<EnumValueDefinitions> {
+        Some(self.enum_value_definitions)
+    }
+
+    fn kind(&self) -> introspection::TypeKind {
+        introspection::TypeKind::Enum
+    }
+
+    fn name(&self) -> Option<&str> {
+        Some(&self.name)
+    }
+}
+
 pub fn init() -> Result<(), Error> {
     let class = root().define_class("EnumTypeDefinition", Default::default())?;
 
     class.define_singleton_method("new", function!(EnumTypeDefinition::new, 1))?;
+    introspection::implement_type!(EnumTypeDefinition, class);
 
     Ok(())
 }

@@ -1,10 +1,9 @@
-use super::{
-    custom_scalar_type_definition::CustomScalarTypeDefinition,
-    enum_type_definition::EnumTypeDefinition, interface_type_definition::InterfaceTypeDefinition,
-    object_type_definition::ObjectTypeDefinition, root, scalar::Scalar,
-    union_type_definition::UnionTypeDefinition,
-};
 use crate::helpers::WrappedDefinition;
+use crate::ruby_api::{
+    introspection, root, CustomScalarTypeDefinition, EnumTypeDefinition, EnumValueDefinitions,
+    FieldsDefinition, InterfaceImplementations, InterfaceTypeDefinition, ObjectTypeDefinition,
+    Scalar, UnionMemberTypes, UnionTypeDefinition,
+};
 use bluejay_core::definition::{
     BaseOutputType as CoreBaseOutputType, BaseOutputTypeReference, OutputType as CoreOutputType,
     OutputTypeReference,
@@ -15,7 +14,7 @@ use magnus::{
     DataTypeFunctions, Error, Module, Object, RHash, TypedData, Value,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum BaseOutputType {
     BuiltinScalar(BuiltinScalarDefinition),
     CustomScalar(WrappedDefinition<CustomScalarTypeDefinition>),
@@ -107,13 +106,78 @@ impl BaseOutputType {
             Self::Union(utd) => utd.as_ref().sorbet_type(),
         }
     }
+}
 
-    pub(crate) fn builtin_string() -> Self {
-        Self::BuiltinScalar(BuiltinScalarDefinition::String)
+impl introspection::Type for BaseOutputType {
+    type OfType = introspection::Never;
+
+    fn description(&self) -> Option<&str> {
+        match self {
+            Self::BuiltinScalar(_) => None,
+            Self::CustomScalar(cstd) => cstd.as_ref().description(),
+            Self::Enum(etd) => etd.as_ref().description(),
+            Self::Interface(itd) => itd.as_ref().description(),
+            Self::Object(otd) => otd.as_ref().description(),
+            Self::Union(utd) => utd.as_ref().description(),
+        }
+    }
+
+    fn kind(&self) -> introspection::TypeKind {
+        match self {
+            Self::BuiltinScalar(_) | Self::CustomScalar(_) => introspection::TypeKind::Scalar,
+            Self::Enum(_) => introspection::TypeKind::Enum,
+            Self::Interface(_) => introspection::TypeKind::Interface,
+            Self::Object(_) => introspection::TypeKind::Object,
+            Self::Union(_) => introspection::TypeKind::Union,
+        }
+    }
+
+    fn enum_values(&self) -> Option<EnumValueDefinitions> {
+        if let Self::Enum(etd) = self {
+            etd.as_ref().enum_values()
+        } else {
+            None
+        }
+    }
+
+    fn fields(&self) -> Option<FieldsDefinition> {
+        match self {
+            Self::Interface(itd) => itd.as_ref().fields(),
+            Self::Object(otd) => otd.as_ref().fields(),
+            _ => None,
+        }
+    }
+
+    fn interfaces(&self) -> Option<InterfaceImplementations> {
+        match self {
+            Self::Interface(itd) => itd.as_ref().interfaces(),
+            Self::Object(otd) => otd.as_ref().interfaces(),
+            _ => None,
+        }
+    }
+
+    fn name(&self) -> Option<&str> {
+        Some(self.name())
+    }
+
+    fn possible_types(&self) -> Option<UnionMemberTypes> {
+        if let Self::Union(utd) = self {
+            utd.as_ref().possible_types()
+        } else {
+            None
+        }
+    }
+
+    fn specified_by_url(&self) -> Option<&str> {
+        if let Self::CustomScalar(cstd) = self {
+            cstd.as_ref().specified_by_url()
+        } else {
+            None
+        }
     }
 }
 
-#[derive(Debug, TypedData)]
+#[derive(Debug, TypedData, Clone)]
 #[magnus(class = "Bluejay::OutputType", mark)]
 pub enum OutputType {
     Base(BaseOutputType, bool),
@@ -191,6 +255,91 @@ impl OutputType {
     }
 }
 
+impl introspection::Type for OutputType {
+    type OfType = Self;
+
+    fn kind(&self) -> introspection::TypeKind {
+        match self {
+            Self::Base(base, required) => {
+                if *required {
+                    introspection::TypeKind::NonNull
+                } else {
+                    base.kind()
+                }
+            }
+            Self::List(_, required) => {
+                if *required {
+                    introspection::TypeKind::NonNull
+                } else {
+                    introspection::TypeKind::List
+                }
+            }
+        }
+    }
+
+    fn description(&self) -> Option<&str> {
+        match self {
+            Self::Base(base, required) if !required => base.description(),
+            _ => None,
+        }
+    }
+
+    fn enum_values(&self) -> Option<EnumValueDefinitions> {
+        match self {
+            Self::Base(base, required) if !required => base.enum_values(),
+            _ => None,
+        }
+    }
+
+    fn fields(&self) -> Option<FieldsDefinition> {
+        match self {
+            Self::Base(base, required) if !required => base.fields(),
+            _ => None,
+        }
+    }
+
+    fn interfaces(&self) -> Option<InterfaceImplementations> {
+        match self {
+            Self::Base(base, required) if !required => base.interfaces(),
+            _ => None,
+        }
+    }
+
+    fn name(&self) -> Option<&str> {
+        match self {
+            Self::Base(base, required) if !required => Some(base.name()),
+            _ => None,
+        }
+    }
+
+    fn possible_types(&self) -> Option<UnionMemberTypes> {
+        match self {
+            Self::Base(base, required) if !required => base.possible_types(),
+            _ => None,
+        }
+    }
+
+    fn specified_by_url(&self) -> Option<&str> {
+        match self {
+            Self::Base(base, required) if !required => base.specified_by_url(),
+            _ => None,
+        }
+    }
+
+    fn of_type(&self) -> Option<Self> {
+        match self {
+            Self::Base(base, required) => required.then(|| Self::Base(base.clone(), false)),
+            Self::List(inner, required) => {
+                if *required {
+                    Some(Self::List(*inner, false))
+                } else {
+                    Some(inner.get().clone())
+                }
+            }
+        }
+    }
+}
+
 pub fn init() -> Result<(), Error> {
     let class = root().define_class("OutputType", Default::default())?;
 
@@ -201,6 +350,7 @@ pub fn init() -> Result<(), Error> {
     class.define_method("required?", method!(OutputType::is_required, 0))?;
     class.define_method("sorbet_type", method!(OutputType::sorbet_type, 0))?;
     class.define_method("unwrap_list", method!(OutputType::unwrap_list, 0))?;
+    introspection::implement_type!(OutputType, class);
 
     Ok(())
 }

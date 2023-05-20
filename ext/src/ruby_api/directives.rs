@@ -28,15 +28,6 @@ impl From<&Directives> for RArray {
 }
 
 impl Directives {
-    pub(crate) fn empty() -> Self {
-        let rarray = RArray::new();
-        rarray.freeze();
-        Self {
-            directives: Vec::new(),
-            rarray,
-        }
-    }
-
     pub(crate) fn mark(&self) {
         self.directives.iter().for_each(Directive::mark);
         gc::mark(self.rarray);

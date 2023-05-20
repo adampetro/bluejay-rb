@@ -51,7 +51,7 @@ module Schemas
       end
     end
 
-    class QueryRoot < ::Bluejay::ObjectType
+    class QueryRoot < ::Bluejay::QueryRoot
       class << self
         extend(T::Sig)
 
@@ -68,7 +68,7 @@ module Schemas
       class << self
         extend(T::Sig)
 
-        sig { override.returns(T.class_of(::Bluejay::ObjectType)) }
+        sig { override.returns(T.class_of(::Bluejay::QueryRoot)) }
         def query
           QueryRoot
         end
