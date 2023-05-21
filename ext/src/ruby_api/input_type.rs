@@ -1,4 +1,4 @@
-use crate::helpers::{public_name, Variables, WrappedDefinition};
+use crate::helpers::{public_name, RArrayIter, Variables, WrappedDefinition};
 use crate::ruby_api::{
     introspection, root, wrapped_value::ValueInner, CoerceInput, CoercionError,
     CustomScalarTypeDefinition, EnumTypeDefinition, InputFieldsDefinition,
@@ -546,18 +546,16 @@ impl InputType {
                         let coerced = RArray::with_capacity(array.len());
                         let mut errors = Vec::new();
 
-                        unsafe {
-                            for (idx, value) in array.as_slice().iter().enumerate() {
-                                let mut path = path.to_owned();
-                                path.push(idx.to_string());
+                        for (idx, value) in RArrayIter::<Value>::from(&array).enumerate() {
+                            let mut path = path.to_owned();
+                            path.push(idx.to_string());
 
-                                match inner.coerce_ruby_const_value(*value, &path, false)? {
-                                    Ok(coerced_value) => {
-                                        coerced.push(coerced_value).unwrap();
-                                    }
-                                    Err(errs) => {
-                                        errors.extend(errs);
-                                    }
+                            match inner.coerce_ruby_const_value(value, &path, false)? {
+                                Ok(coerced_value) => {
+                                    coerced.push(coerced_value).unwrap();
+                                }
+                                Err(errs) => {
+                                    errors.extend(errs);
                                 }
                             }
                         }
@@ -613,20 +611,18 @@ impl CoerceInput for InputType {
                         let mut inner_value = Vec::with_capacity(array.len());
                         let mut errors = Vec::new();
 
-                        unsafe {
-                            for (idx, value) in array.as_slice().iter().enumerate() {
-                                let mut path = path.to_owned();
-                                path.push(idx.to_string());
+                        for (idx, value) in RArrayIter::<Value>::from(&array).enumerate() {
+                            let mut path = path.to_owned();
+                            path.push(idx.to_string());
 
-                                match inner.coerced_ruby_value_to_wrapped_value(*value, &path)? {
-                                    Ok(coerced_value) => {
-                                        let (r_value, inner) = coerced_value.into();
-                                        coerced.push(r_value).unwrap();
-                                        inner_value.push(inner);
-                                    }
-                                    Err(errs) => {
-                                        errors.extend(errs);
-                                    }
+                            match inner.coerced_ruby_value_to_wrapped_value(value, &path)? {
+                                Ok(coerced_value) => {
+                                    let (r_value, inner) = coerced_value.into();
+                                    coerced.push(r_value).unwrap();
+                                    inner_value.push(inner);
+                                }
+                                Err(errs) => {
+                                    errors.extend(errs);
                                 }
                             }
                         }

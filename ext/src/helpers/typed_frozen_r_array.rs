@@ -1,3 +1,4 @@
+use crate::helpers::RArrayIter;
 use bluejay_core::AsIter;
 use magnus::{typed_data::Obj, Error, IntoValue, RArray, Ruby, TryConvert, TypedData, Value};
 use std::{marker::PhantomData, ops::Deref};
@@ -51,10 +52,8 @@ impl<T: TryConvert> TypedFrozenRArray<T> {
 }
 
 impl<T: TypedData> TypedFrozenRArray<Obj<T>> {
-    pub fn iter_objects(&self) -> impl Iterator<Item = Obj<T>> + '_ {
-        unsafe { self.data.as_slice() }
-            .iter()
-            .map(|val| val.try_convert().unwrap())
+    pub fn iter_objects(&self) -> RArrayIter<Obj<T>> {
+        RArrayIter::from(&self.data)
     }
 }
 
@@ -74,12 +73,10 @@ impl<T: TryConvert> From<TypedFrozenRArray<T>> for RArray {
 
 impl<T: TypedData> AsIter for TypedFrozenRArray<Obj<T>> {
     type Item = T;
-    type Iterator<'a> = std::iter::Map<std::slice::Iter<'a, Value>, fn(&'a Value) -> &'a T> where T: 'a;
+    type Iterator<'a> = RArrayIter<'a, &'a T> where T: 'a;
 
     fn iter(&self) -> Self::Iterator<'_> {
-        unsafe { self.data.as_slice() }
-            .iter()
-            .map(|val| val.try_convert().unwrap())
+        RArrayIter::from(&self.data)
     }
 }
 

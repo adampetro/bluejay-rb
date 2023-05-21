@@ -1,6 +1,7 @@
+use crate::helpers::RArrayIter;
 use crate::ruby_api::Directive;
 use bluejay_core::{AsIter, Directives as CoreDirectives};
-use magnus::{gc, Error, RArray};
+use magnus::{gc, Error, RArray, Value};
 use std::ops::Not;
 
 #[derive(Debug)]
@@ -52,9 +53,8 @@ impl TryFrom<RArray> for Directives {
 
     fn try_from(rarray: RArray) -> Result<Self, Self::Error> {
         rarray.freeze();
-        let directives: Result<Vec<Directive>, Error> = unsafe { rarray.as_slice() }
-            .iter()
-            .map(|val| -> Result<Directive, Error> { val.try_convert() })
+        let directives: Result<Vec<Directive>, Error> = RArrayIter::from(&rarray)
+            .map(|val: Value| -> Result<Directive, Error> { val.try_convert() })
             .collect();
         directives.map(|directives| Self { directives, rarray })
     }

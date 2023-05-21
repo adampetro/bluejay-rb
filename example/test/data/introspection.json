@@ -6,6 +6,22 @@
                     {
                         "defaultValue": null,
                         "description": null,
+                        "name": "reason",
+                        "type": {
+                            "kind": "SCALAR",
+                            "name": "String",
+                            "ofType": null
+                        }
+                    }
+                ],
+                "description": null,
+                "name": "deprecated"
+            },
+            {
+                "args": [
+                    {
+                        "defaultValue": null,
+                        "description": null,
                         "name": "if",
                         "type": {
                             "kind": "NON_NULL",
@@ -40,6 +56,26 @@
                 ],
                 "description": null,
                 "name": "skip"
+            },
+            {
+                "args": [
+                    {
+                        "defaultValue": null,
+                        "description": null,
+                        "name": "url",
+                        "type": {
+                            "kind": "NON_NULL",
+                            "name": null,
+                            "ofType": {
+                                "kind": "SCALAR",
+                                "name": "String",
+                                "ofType": null
+                            }
+                        }
+                    }
+                ],
+                "description": null,
+                "name": "specifiedBy"
             }
         ],
         "mutationType": null,

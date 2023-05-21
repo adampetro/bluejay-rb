@@ -6,8 +6,8 @@ use crate::ruby_api::{
 use bluejay_core::AsIter;
 use bluejay_parser::ast::Value as ParserValue;
 use magnus::{
-    function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,
-    DataTypeFunctions, Error, Module, Object, RArray, RClass, RHash, TypedData, Value, QNIL,
+    function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions,
+    Error, Module, Object, RArray, RClass, RHash, TypedData, Value, QNIL,
 };
 use std::collections::HashSet;
 
@@ -366,7 +366,11 @@ pub fn init() -> Result<(), Error> {
             |itd: &InputObjectTypeDefinition, input: Value| -> Result<RResult, Error> {
                 itd.coerce_ruby_const_value(input, &[]).map(|result| {
                     result
-                        .map_err(|errors| RArray::from_iter(errors.into_iter().map(Obj::wrap)))
+                        .map_err(|errors| {
+                            let arr = RArray::from_iter(errors);
+                            let _ = arr.len();
+                            arr
+                        })
                         .into()
                 })
             },
@@ -376,7 +380,7 @@ pub fn init() -> Result<(), Error> {
     class.define_method(
         "input_field_definitions",
         method!(
-            |itd: &InputObjectTypeDefinition| -> RArray { (*itd.input_fields_definition()).into() },
+            |itd: &InputObjectTypeDefinition| RArray::from(*itd.input_fields_definition()),
             0
         ),
     )?;

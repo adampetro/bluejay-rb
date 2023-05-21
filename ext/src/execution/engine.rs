@@ -1,4 +1,5 @@
 use crate::execution::{CoerceResult, ExecutionError, FieldError, KeyStore};
+use crate::helpers::RArrayIter;
 use crate::ruby_api::{
     BaseInputType, BaseOutputType, CoerceInput, ExecutionResult, ExtraResolverArg, FieldDefinition,
     InputType, InputValueDefinition, InterfaceTypeDefinition, ObjectTypeDefinition, OutputType,
@@ -536,8 +537,8 @@ impl<'a> Engine<'a> {
                     let completed = RArray::with_capacity(arr.len());
                     let mut errors: Vec<ExecutionError<'a>> = Vec::new();
                     let mut has_null = false;
-                    for item in unsafe { arr.as_slice() } {
-                        let (value, mut errs) = self.complete_value(inner, fields, *item);
+                    for item in RArrayIter::from(&arr) {
+                        let (value, mut errs) = self.complete_value(inner, fields, item);
                         completed.push(value).unwrap(); // TODO: make sure unwrapping is ok here
                         errors.append(&mut errs);
                         if value.is_nil() {

@@ -1,12 +1,11 @@
 use super::root;
 use magnus::{
     exception, function, gc, method, rb_sys::AsRawValue, typed_data::Obj, DataTypeFunctions, Error,
-    Module, Object, TryConvert, TypedData, Value,
+    IntoValue, Module, Object, TryConvert, TypedData, Value,
 };
 
 #[derive(Clone, Debug, TypedData)]
 #[magnus(class = "Bluejay::Result", mark)]
-#[repr(transparent)]
 pub struct RResult(Result<Value, Value>);
 
 impl RResult {
@@ -30,7 +29,7 @@ impl RResult {
         match self.0 {
             Ok(_) => Err(Error::new(
                 exception::runtime_error(),
-                "Ok variant does not have an error value".to_owned(),
+                "Ok variant does not have an error value",
             )),
             Err(err) => Ok(err),
         }
@@ -41,7 +40,7 @@ impl RResult {
             Ok(ok) => Ok(ok),
             Err(_) => Err(Error::new(
                 exception::runtime_error(),
-                "Error variant does not have an ok value".to_owned(),
+                "Error variant does not have an ok value",
             )),
         }
     }
@@ -78,17 +77,16 @@ impl RResult {
 
 impl DataTypeFunctions for RResult {
     fn mark(&self) {
-        let value = match &self.0 {
-            Ok(ok) => ok,
-            Err(err) => err,
-        };
-        gc::mark(value)
+        match &self.0 {
+            Ok(ok) => gc::mark(ok),
+            Err(err) => gc::mark(err),
+        }
     }
 }
 
-impl<T: Into<Value>, E: Into<Value>> From<Result<T, E>> for RResult {
+impl<T: IntoValue, E: IntoValue> From<Result<T, E>> for RResult {
     fn from(r: Result<T, E>) -> Self {
-        Self(r.map(Into::into).map_err(Into::into))
+        Self(r.map(IntoValue::into_value).map_err(IntoValue::into_value))
     }
 }
 

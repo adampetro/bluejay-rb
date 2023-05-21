@@ -8,7 +8,8 @@ mod variables;
 pub use variables::Variables;
 
 use bluejay_core::{AsIter, ObjectValue, Value as CoreValue, ValueReference, Variable};
-use magnus::{RArray, RHash, Value, QNIL};
+use magnus::{RArray, RHash, TryConvert, Value, QNIL};
+use std::marker::PhantomData;
 
 pub fn value_from_core_value<const CONST: bool>(
     value: &impl CoreValue<CONST>,
@@ -35,5 +36,40 @@ pub fn value_from_core_value<const CONST: bool>(
             o.iter()
                 .map(|(k, v)| (k.as_ref(), value_from_core_value(v, variables))),
         ),
+    }
+}
+
+pub struct RArrayIter<'a, T: TryConvert> {
+    data: &'a RArray,
+    idx: usize,
+    item_type: PhantomData<T>,
+}
+
+impl<'a, T: TryConvert> From<&'a RArray> for RArrayIter<'a, T> {
+    fn from(value: &'a RArray) -> Self {
+        Self {
+            data: value,
+            idx: 0,
+            item_type: Default::default(),
+        }
+    }
+}
+
+impl<T: TryConvert> Iterator for RArrayIter<'_, T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.idx >= self.data.len() {
+            None
+        } else {
+            let value = self.data.entry(self.idx as isize).ok();
+            self.idx += 1;
+            value
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = self.data.len() - self.idx;
+        (remaining, Some(remaining))
     }
 }
