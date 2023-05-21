@@ -1,8 +1,8 @@
 use crate::execution::{CoerceResult, FieldError};
 use crate::helpers::{value_from_core_value, HasDefinitionWrapper, Variables};
 use crate::ruby_api::{
-    coerce_input::CoerceInput, coercion_error::CoercionError, introspection, root,
-    wrapped_value::value_inner_from_ruby_const_value, Directives, RResult, WrappedValue,
+    introspection, root, wrapped_value::value_inner_from_ruby_const_value, CoerceInput,
+    CoercionError, DirectiveDefinition, Directives, RResult, WrappedValue,
 };
 use bluejay_parser::ast::Value as ParserValue;
 use magnus::{
@@ -16,6 +16,7 @@ pub struct CustomScalarTypeDefinition {
     name: String,
     description: Option<String>,
     directives: Directives,
+    specified_by_url: Option<String>,
     ruby_class: RClass,
     internal_representation_sorbet_type_name: String,
 }
@@ -28,17 +29,40 @@ impl CustomScalarTypeDefinition {
                 "name",
                 "description",
                 "directives",
+                "specified_by_url",
                 "ruby_class",
                 "internal_representation_sorbet_type_name",
             ],
             &[],
         )?;
-        let (name, description, directives, ruby_class, internal_representation_sorbet_type_name): (String, Option<String>, RArray, RClass, String) = args.required;
+        let (
+            name,
+            description,
+            directives,
+            specified_by_url,
+            ruby_class,
+            internal_representation_sorbet_type_name,
+        ): (
+            String,
+            Option<String>,
+            RArray,
+            Option<String>,
+            RClass,
+            String,
+        ) = args.required;
+        if let Some(specified_by_url) = specified_by_url.as_deref() {
+            directives.push(
+                DirectiveDefinition::specified_by()
+                    .class()
+                    .new_instance((specified_by_url,))?,
+            )?;
+        }
         let directives: Directives = directives.try_into()?;
         Ok(Self {
             name,
             description,
             directives,
+            specified_by_url,
             ruby_class,
             internal_representation_sorbet_type_name,
         })
@@ -58,6 +82,10 @@ impl CustomScalarTypeDefinition {
 
     pub(crate) fn internal_representation_sorbet_type_name(&self) -> &str {
         &self.internal_representation_sorbet_type_name
+    }
+
+    pub fn specified_by_url(&self) -> Option<&str> {
+        self.specified_by_url.as_deref()
     }
 }
 
@@ -146,7 +174,7 @@ impl bluejay_core::definition::ScalarTypeDefinition for CustomScalarTypeDefiniti
     }
 
     fn directives(&self) -> Option<&Self::Directives> {
-        Some(&self.directives)
+        self.directives.to_option()
     }
 }
 
@@ -165,7 +193,9 @@ impl introspection::Type for CustomScalarTypeDefinition {
         Some(&self.name)
     }
 
-    // TODO: specified_by_url
+    fn specified_by_url(&self) -> Option<&str> {
+        self.specified_by_url()
+    }
 }
 
 pub fn init() -> Result<(), Error> {

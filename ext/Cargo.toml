@@ -14,7 +14,7 @@ once_cell = "1.17"
 convert_case = "0.6.0"
 itertools = "0.10.5"
 strum = { version = "0.24", features = ["derive"] }
-bluejay-parser = { git = "https://github.com/adampetro/bluejay", rev = "f465e50ea635f44370a1b8dcd294f4ae73ee9378" }
-bluejay-core = { git = "https://github.com/adampetro/bluejay", rev = "f465e50ea635f44370a1b8dcd294f4ae73ee9378" }
-bluejay-printer = { git = "https://github.com/adampetro/bluejay", rev = "f465e50ea635f44370a1b8dcd294f4ae73ee9378" }
-bluejay-validator = { git = "https://github.com/adampetro/bluejay", rev = "f465e50ea635f44370a1b8dcd294f4ae73ee9378" }
+bluejay-parser = { git = "https://github.com/adampetro/bluejay", rev = "ad2f0a4c3b26fd5d1f17b245d6d8d8650be6345d" }
+bluejay-core = { git = "https://github.com/adampetro/bluejay", rev = "ad2f0a4c3b26fd5d1f17b245d6d8d8650be6345d" }
+bluejay-printer = { git = "https://github.com/adampetro/bluejay", rev = "ad2f0a4c3b26fd5d1f17b245d6d8d8650be6345d" }
+bluejay-validator = { git = "https://github.com/adampetro/bluejay", rev = "ad2f0a4c3b26fd5d1f17b245d6d8d8650be6345d" }

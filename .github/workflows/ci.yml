@@ -28,7 +28,7 @@ jobs:
           cargo-cache: true
           cache-version: v3
           rustup-components: rustfmt,clippy
-          rustup-toolchain: nightly
+          rustup-toolchain: stable
 
       - name: Compile rust ext
         run: bundle exec rake compile

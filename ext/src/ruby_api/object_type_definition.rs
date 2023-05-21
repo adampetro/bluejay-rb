@@ -125,7 +125,7 @@ impl bluejay_core::definition::ObjectTypeDefinition for ObjectTypeDefinition {
     }
 
     fn directives(&self) -> Option<&Self::Directives> {
-        Some(&self.directives)
+        self.directives.to_option()
     }
 
     fn is_builtin(&self) -> bool {

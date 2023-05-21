@@ -1,4 +1,4 @@
-use crate::ruby_api::{root, Directives};
+use crate::ruby_api::{root, DirectiveDefinition, Directives};
 use bluejay_core::definition::EnumValueDefinition as CoreEnumValueDefinition;
 use magnus::{
     function, method, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error, Module,
@@ -11,19 +11,37 @@ pub struct EnumValueDefinition {
     name: String,
     description: Option<String>,
     directives: Directives,
+    deprecation_reason: Option<String>,
 }
 
 impl EnumValueDefinition {
     pub fn new(kw: RHash) -> Result<Self, Error> {
-        let args: KwArgs<(String,), (Option<String>, Option<RArray>), ()> =
-            get_kwargs(kw, &["name"], &["description", "directives"])?;
+        let args: KwArgs<(String,), _, ()> = get_kwargs(
+            kw,
+            &["name"],
+            &["description", "directives", "deprecation_reason"],
+        )?;
         let (name,) = args.required;
-        let (description, directives) = args.optional;
+        let (description, directives, deprecation_reason): (
+            Option<String>,
+            Option<RArray>,
+            Option<Option<String>>,
+        ) = args.optional;
+        let deprecation_reason = deprecation_reason.flatten();
+        let directives = directives.unwrap_or_else(RArray::new);
+        if let Some(deprecation_reason) = deprecation_reason.as_deref() {
+            directives.push(
+                DirectiveDefinition::deprecated()
+                    .class()
+                    .new_instance((deprecation_reason,))?,
+            )?;
+        }
         let directives = directives.try_into()?;
         Ok(Self {
             name,
             description,
             directives,
+            deprecation_reason,
         })
     }
 
@@ -33,6 +51,14 @@ impl EnumValueDefinition {
 
     pub fn directives(&self) -> &Directives {
         &self.directives
+    }
+
+    pub fn deprecation_reason(&self) -> Option<&str> {
+        self.deprecation_reason.as_deref()
+    }
+
+    pub fn is_deprecated(&self) -> bool {
+        self.deprecation_reason.is_some()
     }
 }
 
@@ -54,7 +80,7 @@ impl CoreEnumValueDefinition for EnumValueDefinition {
     }
 
     fn directives(&self) -> Option<&Self::Directives> {
-        Some(&self.directives)
+        self.directives.to_option()
     }
 }
 
@@ -70,10 +96,13 @@ pub fn init() -> Result<(), Error> {
             0
         ),
     )?;
-    class.define_method("deprecated?", method!(|_: &EnumValueDefinition| false, 0))?;
+    class.define_method(
+        "deprecated?",
+        method!(EnumValueDefinition::is_deprecated, 0),
+    )?;
     class.define_method(
         "deprecation_reason",
-        method!(|_: &EnumValueDefinition| (), 0),
+        method!(EnumValueDefinition::deprecation_reason, 0),
     )?;
 
     Ok(())

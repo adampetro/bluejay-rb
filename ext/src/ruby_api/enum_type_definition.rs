@@ -191,7 +191,7 @@ impl bluejay_core::definition::EnumTypeDefinition for EnumTypeDefinition {
     }
 
     fn directives(&self) -> Option<&Self::Directives> {
-        Some(&self.directives)
+        self.directives.to_option()
     }
 
     fn is_builtin(&self) -> bool {

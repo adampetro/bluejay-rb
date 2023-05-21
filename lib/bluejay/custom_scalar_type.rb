@@ -29,6 +29,11 @@ module Bluejay
         []
       end
 
+      sig { overridable.returns(T.nilable(String)) }
+      def specified_by_url
+        nil
+      end
+
       sig { overridable.params(value: InternalRepresentation).returns(Result[T.untyped, String]) }
       def coerce_result(value)
         Result.ok(value)
@@ -51,6 +56,7 @@ module Bluejay
             name: graphql_name,
             description:,
             directives:,
+            specified_by_url:,
             ruby_class: self,
             internal_representation_sorbet_type_name:,
           ),

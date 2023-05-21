@@ -295,7 +295,7 @@ impl CoreSchemaDefinition for SchemaDefinition {
     }
 
     fn schema_directives(&self) -> Option<&Self::Directives> {
-        Some(&self.directives)
+        self.directives.to_option()
     }
 
     fn get_directive_definition(&self, name: &str) -> Option<&Self::DirectiveDefinition> {

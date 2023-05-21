@@ -84,8 +84,16 @@ macro_rules! implement_type {
         $class.define_method(
             "enum_values",
             magnus::method!(
-                |t: &$t, _include_deprecated: bool| {
-                    <$t as crate::ruby_api::introspection::Type>::enum_values(t)
+                |t: &$t, include_deprecated: bool| {
+                    <$t as crate::ruby_api::introspection::Type>::enum_values(t).map(
+                        |enum_values| {
+                            magnus::RArray::from_iter(
+                                enum_values
+                                    .iter_objects()
+                                    .filter(|evd| include_deprecated || !evd.get().is_deprecated()),
+                            )
+                        },
+                    )
                 },
                 1
             ),
@@ -93,10 +101,12 @@ macro_rules! implement_type {
         $class.define_method(
             "fields",
             magnus::method!(
-                |t: &$t, _include_deprecated: bool| {
+                |t: &$t, include_deprecated: bool| {
                     <$t as crate::ruby_api::introspection::Type>::fields(t).map(|fields| {
                         magnus::RArray::from_iter(fields.iter_objects().filter(|fd| {
-                            !bluejay_core::definition::FieldDefinition::is_builtin(fd.get())
+                            let fd = fd.get();
+                            !bluejay_core::definition::FieldDefinition::is_builtin(fd)
+                                && (include_deprecated || !fd.is_deprecated())
                         }))
                     })
                 },

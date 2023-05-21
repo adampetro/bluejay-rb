@@ -1,6 +1,7 @@
 use crate::ruby_api::Directive;
 use bluejay_core::{AsIter, Directives as CoreDirectives};
 use magnus::{gc, Error, RArray};
+use std::ops::Not;
 
 #[derive(Debug)]
 pub struct Directives {
@@ -31,6 +32,10 @@ impl Directives {
     pub(crate) fn mark(&self) {
         self.directives.iter().for_each(Directive::mark);
         gc::mark(self.rarray);
+    }
+
+    pub(crate) fn to_option(&self) -> Option<&Self> {
+        self.directives.is_empty().not().then_some(self)
     }
 }
 

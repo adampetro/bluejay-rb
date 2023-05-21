@@ -106,7 +106,7 @@ impl bluejay_core::definition::InterfaceTypeDefinition for InterfaceTypeDefiniti
     }
 
     fn directives(&self) -> Option<&Self::Directives> {
-        Some(&self.directives)
+        self.directives.to_option()
     }
 }
 

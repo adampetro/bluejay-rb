@@ -30,6 +30,11 @@ module Bluejay
         sig { override.returns(String) }
         def graphql_name = "Date"
 
+        sig { override.returns(T.nilable(String)) }
+        def specified_by_url
+          "https://example.com"
+        end
+
         sig { override.params(value: InternalRepresentation).returns(Result[T.untyped, String]) }
         def coerce_result(value)
           if value == Date.today
@@ -50,6 +55,22 @@ module Bluejay
           else
             Result.err("Expected a date encoded as a string")
           end
+        end
+      end
+    end
+
+    class MyEnumType < EnumType
+      extend(T::Sig)
+
+      class << self
+        extend(T::Sig)
+
+        sig { override.returns(T::Array[EnumValueDefinition]) }
+        def enum_value_definitions
+          [
+            EnumValueDefinition.new(name: "ONE", deprecation_reason: "Testing deprecation"),
+            EnumValueDefinition.new(name: "TWO"),
+          ]
         end
       end
     end
@@ -79,6 +100,11 @@ module Bluejay
                 InputValueDefinition.new(name: "date", type: it!(DateScalar)),
               ],
               resolver_method_name: "today?",
+            ),
+            FieldDefinition.new(
+              name: "deprecatedField",
+              type: ot(MyEnumType),
+              deprecation_reason: "Testing deprecation",
             ),
           ]
         end
@@ -112,6 +138,9 @@ module Bluejay
         def today?(date)
           date == Date.today
         end
+
+        sig { returns(T.nilable(String)) }
+        def deprecated_field = nil
       end
 
       class SchemaRoot < T::Struct
@@ -197,7 +226,13 @@ module Bluejay
 
     def test_to_definition
       expected = <<~GQL
-        scalar Date
+        scalar Date @specifiedBy(url: "https://example.com")
+
+        enum MyEnumType {
+          ONE @deprecated(reason: "Testing deprecation")
+
+          TWO
+        }
 
         input NameInputObject {
           first: String!
@@ -215,6 +250,8 @@ module Bluejay
           isToday(
             date: Date!
           ): Boolean!
+
+          deprecatedField: MyEnumType @deprecated(reason: "Testing deprecation")
         }
 
         schema {
@@ -241,6 +278,7 @@ module Bluejay
               args {
                 ...InputValue
               }
+              locations
             }
           }
         }
@@ -276,6 +314,7 @@ module Bluejay
           possibleTypes {
             ...TypeRef
           }
+          specifiedByURL
         }
 
         fragment InputValue on __InputValue {

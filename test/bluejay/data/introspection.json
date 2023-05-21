@@ -6,6 +6,26 @@
                     {
                         "defaultValue": null,
                         "description": null,
+                        "name": "reason",
+                        "type": {
+                            "kind": "SCALAR",
+                            "name": "String",
+                            "ofType": null
+                        }
+                    }
+                ],
+                "description": null,
+                "locations": [
+                    "FIELD_DEFINITION",
+                    "ENUM_VALUE"
+                ],
+                "name": "deprecated"
+            },
+            {
+                "args": [
+                    {
+                        "defaultValue": null,
+                        "description": null,
                         "name": "if",
                         "type": {
                             "kind": "NON_NULL",
@@ -19,6 +39,11 @@
                     }
                 ],
                 "description": null,
+                "locations": [
+                    "FIELD",
+                    "FRAGMENT_SPREAD",
+                    "INLINE_FRAGMENT"
+                ],
                 "name": "include"
             },
             {
@@ -39,7 +64,35 @@
                     }
                 ],
                 "description": null,
+                "locations": [
+                    "FIELD",
+                    "FRAGMENT_SPREAD",
+                    "INLINE_FRAGMENT"
+                ],
                 "name": "skip"
+            },
+            {
+                "args": [
+                    {
+                        "defaultValue": null,
+                        "description": null,
+                        "name": "url",
+                        "type": {
+                            "kind": "NON_NULL",
+                            "name": null,
+                            "ofType": {
+                                "kind": "SCALAR",
+                                "name": "String",
+                                "ofType": null
+                            }
+                        }
+                    }
+                ],
+                "description": null,
+                "locations": [
+                    "SCALAR"
+                ],
+                "name": "specifiedBy"
             }
         ],
         "mutationType": null,
@@ -56,7 +109,8 @@
                 "interfaces": null,
                 "kind": "SCALAR",
                 "name": "Boolean",
-                "possibleTypes": null
+                "possibleTypes": null,
+                "specifiedByURL": null
             },
             {
                 "description": null,
@@ -66,7 +120,32 @@
                 "interfaces": null,
                 "kind": "SCALAR",
                 "name": "Date",
-                "possibleTypes": null
+                "possibleTypes": null,
+                "specifiedByURL": "https://example.com"
+            },
+            {
+                "description": null,
+                "enumValues": [
+                    {
+                        "deprecationReason": "Testing deprecation",
+                        "description": null,
+                        "isDeprecated": true,
+                        "name": "ONE"
+                    },
+                    {
+                        "deprecationReason": null,
+                        "description": null,
+                        "isDeprecated": false,
+                        "name": "TWO"
+                    }
+                ],
+                "fields": null,
+                "inputFields": null,
+                "interfaces": null,
+                "kind": "ENUM",
+                "name": "MyEnumType",
+                "possibleTypes": null,
+                "specifiedByURL": null
             },
             {
                 "description": null,
@@ -105,7 +184,8 @@
                 "interfaces": null,
                 "kind": "INPUT_OBJECT",
                 "name": "NameInputObject",
-                "possibleTypes": null
+                "possibleTypes": null,
+                "specifiedByURL": null
             },
             {
                 "description": null,
@@ -188,13 +268,26 @@
                                 "ofType": null
                             }
                         }
+                    },
+                    {
+                        "args": [],
+                        "deprecationReason": "Testing deprecation",
+                        "description": null,
+                        "isDeprecated": true,
+                        "name": "deprecatedField",
+                        "type": {
+                            "kind": "ENUM",
+                            "name": "MyEnumType",
+                            "ofType": null
+                        }
                     }
                 ],
                 "inputFields": null,
                 "interfaces": [],
                 "kind": "OBJECT",
                 "name": "QueryRoot",
-                "possibleTypes": null
+                "possibleTypes": null,
+                "specifiedByURL": null
             },
             {
                 "description": null,
@@ -204,7 +297,8 @@
                 "interfaces": null,
                 "kind": "SCALAR",
                 "name": "String",
-                "possibleTypes": null
+                "possibleTypes": null,
+                "specifiedByURL": null
             },
             {
                 "description": null,
@@ -305,7 +399,8 @@
                 "interfaces": [],
                 "kind": "OBJECT",
                 "name": "__Directive",
-                "possibleTypes": null
+                "possibleTypes": null,
+                "specifiedByURL": null
             },
             {
                 "description": null,
@@ -430,7 +525,8 @@
                 "interfaces": null,
                 "kind": "ENUM",
                 "name": "__DirectiveLocation",
-                "possibleTypes": null
+                "possibleTypes": null,
+                "specifiedByURL": null
             },
             {
                 "description": null,
@@ -497,7 +593,8 @@
                 "interfaces": [],
                 "kind": "OBJECT",
                 "name": "__EnumValue",
-                "possibleTypes": null
+                "possibleTypes": null,
+                "specifiedByURL": null
             },
             {
                 "description": null,
@@ -603,7 +700,8 @@
                 "interfaces": [],
                 "kind": "OBJECT",
                 "name": "__Field",
-                "possibleTypes": null
+                "possibleTypes": null,
+                "specifiedByURL": null
             },
             {
                 "description": null,
@@ -666,7 +764,8 @@
                 "interfaces": [],
                 "kind": "OBJECT",
                 "name": "__InputValue",
-                "possibleTypes": null
+                "possibleTypes": null,
+                "specifiedByURL": null
             },
             {
                 "description": null,
@@ -775,7 +874,8 @@
                 "interfaces": [],
                 "kind": "OBJECT",
                 "name": "__Schema",
-                "possibleTypes": null
+                "possibleTypes": null,
+                "specifiedByURL": null
             },
             {
                 "description": null,
@@ -972,7 +1072,8 @@
                 "interfaces": [],
                 "kind": "OBJECT",
                 "name": "__Type",
-                "possibleTypes": null
+                "possibleTypes": null,
+                "specifiedByURL": null
             },
             {
                 "description": null,
@@ -1031,7 +1132,8 @@
                 "interfaces": null,
                 "kind": "ENUM",
                 "name": "__TypeKind",
-                "possibleTypes": null
+                "possibleTypes": null,
+                "specifiedByURL": null
             }
         ]
     }

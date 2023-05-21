@@ -109,7 +109,7 @@ impl bluejay_core::definition::InputValueDefinition for InputValueDefinition {
     }
 
     fn directives(&self) -> Option<&Self::Directives> {
-        Some(&self.directives)
+        self.directives.to_option()
     }
 }
 

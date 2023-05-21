@@ -98,7 +98,7 @@ impl bluejay_core::definition::UnionTypeDefinition for UnionTypeDefinition {
     }
 
     fn directives(&self) -> Option<&Self::Directives> {
-        Some(&self.directives)
+        self.directives.to_option()
     }
 }
 

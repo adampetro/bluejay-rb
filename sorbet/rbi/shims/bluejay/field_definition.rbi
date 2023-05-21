@@ -11,9 +11,10 @@ module Bluejay
         description: T.nilable(String),
         directives: T::Array[Directive],
         resolver_method_name: T.nilable(String),
+        deprecation_reason: T.nilable(String),
       ).void
     end
-    def initialize(name:, type:, argument_definitions: [], description: nil, directives: [], resolver_method_name: nil)
+    def initialize(name:, type:, argument_definitions: [], description: nil, directives: [], resolver_method_name: nil, deprecation_reason: nil)
     end
 
     sig { returns(String) }

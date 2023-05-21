@@ -107,7 +107,7 @@ impl bluejay_core::definition::InputObjectTypeDefinition for InputObjectTypeDefi
     }
 
     fn directives(&self) -> Option<&Self::Directives> {
-        Some(&self.directives)
+        self.directives.to_option()
     }
 }
 

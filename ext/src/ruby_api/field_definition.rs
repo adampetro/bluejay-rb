@@ -1,4 +1,4 @@
-use crate::ruby_api::{root, ArgumentsDefinition, Directives, OutputType};
+use crate::ruby_api::{root, ArgumentsDefinition, DirectiveDefinition, Directives, OutputType};
 use convert_case::{Case, Casing};
 use magnus::{
     function, gc, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,
@@ -17,6 +17,7 @@ pub struct FieldDefinition {
     ruby_resolver_method_name: String,
     name_r_string: RString,
     extra_resolver_args: Vec<ExtraResolverArg>,
+    deprecation_reason: Option<String>,
 }
 
 impl FieldDefinition {
@@ -29,6 +30,7 @@ impl FieldDefinition {
                 "description",
                 "directives",
                 "resolver_method_name",
+                "deprecation_reason",
             ],
         )?;
         let (name_r_string, r#type): (RString, Obj<OutputType>) = args.required;
@@ -37,14 +39,29 @@ impl FieldDefinition {
             Option<Option<String>>,
             Option<RArray>,
             Option<Option<String>>,
+            Option<Option<String>>,
         );
-        let (argument_definitions, description, directives, resolver_method_name): OptionalArgs =
-            args.optional;
+        let (
+            argument_definitions,
+            description,
+            directives,
+            resolver_method_name,
+            deprecation_reason,
+        ): OptionalArgs = args.optional;
         name_r_string.freeze();
         let name = name_r_string.to_string()?;
         let arguments_definition =
             ArgumentsDefinition::new(argument_definitions.unwrap_or_else(RArray::new))?;
         let description = description.unwrap_or_default();
+        let directives = directives.unwrap_or_else(RArray::new);
+        let deprecation_reason = deprecation_reason.flatten();
+        if let Some(deprecation_reason) = deprecation_reason.as_deref() {
+            directives.push(
+                DirectiveDefinition::deprecated()
+                    .class()
+                    .new_instance((deprecation_reason,))?,
+            )?;
+        }
         let directives = directives.try_into()?;
         let is_builtin = name.starts_with("__");
         let ruby_resolver_method_name = resolver_method_name
@@ -64,6 +81,7 @@ impl FieldDefinition {
             ruby_resolver_method_name,
             name_r_string,
             extra_resolver_args,
+            deprecation_reason,
         })
     }
 
@@ -102,6 +120,14 @@ impl FieldDefinition {
     pub fn resolver_arg_count(&self) -> usize {
         self.arguments_definition.len() + self.extra_resolver_args.len()
     }
+
+    pub fn is_deprecated(&self) -> bool {
+        self.deprecation_reason.is_some()
+    }
+
+    pub fn deprecation_reason(&self) -> Option<&str> {
+        self.deprecation_reason.as_deref()
+    }
 }
 
 impl DataTypeFunctions for FieldDefinition {
@@ -139,7 +165,7 @@ impl bluejay_core::definition::FieldDefinition for FieldDefinition {
     }
 
     fn directives(&self) -> Option<&Self::Directives> {
-        Some(&self.directives)
+        self.directives.to_option()
     }
 }
 
@@ -179,8 +205,11 @@ pub fn init() -> Result<(), Error> {
             0
         ),
     )?;
-    class.define_method("deprecated?", method!(|_: &FieldDefinition| false, 0))?;
-    class.define_method("deprecation_reason", method!(|_: &FieldDefinition| (), 0))?;
+    class.define_method("deprecated?", method!(FieldDefinition::is_deprecated, 0))?;
+    class.define_method(
+        "deprecation_reason",
+        method!(FieldDefinition::deprecation_reason, 0),
+    )?;
     class.define_method("description", method!(FieldDefinition::description, 0))?;
 
     Ok(())

@@ -77,7 +77,7 @@ impl DirectiveDefinition {
     }
 
     pub fn builtin_directive_definitions() -> &'static [WrappedDefinition<Self>] {
-        memoize!([WrappedDefinition<DirectiveDefinition>; 2]: ["Skip", "Include"].map(
+        memoize!([WrappedDefinition<DirectiveDefinition>; 4]: ["Skip", "Include", "Deprecated", "SpecifiedBy"].map(
             |builtin_directive_base_name| -> WrappedDefinition<DirectiveDefinition> {
                 root()
                     .const_get::<_, RModule>("Builtin")
@@ -88,6 +88,14 @@ impl DirectiveDefinition {
                     .unwrap()
             },
         ))
+    }
+
+    pub fn deprecated() -> WrappedDefinition<Self> {
+        Self::builtin_directive_definitions()[2].clone()
+    }
+
+    pub fn specified_by() -> WrappedDefinition<Self> {
+        Self::builtin_directive_definitions()[3].clone()
     }
 }
 
