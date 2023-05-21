@@ -18,7 +18,7 @@ use magnus::{
 use std::borrow::Cow;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[magnus::wrap(class = "Bluejay::ValidationError", mark)]
+#[magnus::wrap(class = "Bluejay::ValidationError")]
 pub struct ValidationError {
     message: Cow<'static, str>,
 }

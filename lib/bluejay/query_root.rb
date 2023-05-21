@@ -28,8 +28,10 @@ module Bluejay
               mod.include(interface_implementation.interface.const_get(:Interface))
             end
 
-            mod.define_method(:resolve_schema) { |schema_definition| schema_definition }
-            mod.define_method(:resolve_type) { |name, schema_definition| schema_definition.type(name) }
+            mod.define_method(:resolve_schema) { |schema_class| schema_class.send(:definition) }
+            mod.define_method(:resolve_type) do |name, schema_class|
+              schema_class.send(:definition).type(name)
+            end
           end
           const_set(:Interface, interface)
           introspection_field_definitions = [

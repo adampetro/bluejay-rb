@@ -3,7 +3,7 @@ use bluejay_core::BuiltinScalarDefinition;
 use magnus::{DataTypeFunctions, Error, Module, TypedData};
 
 #[derive(Clone, Debug, TypedData)]
-#[magnus(class = "Bluejay::Scalar", mark)]
+#[magnus(class = "Bluejay::Scalar")]
 pub struct Scalar(BuiltinScalarDefinition);
 
 impl DataTypeFunctions for Scalar {}

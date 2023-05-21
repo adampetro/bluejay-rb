@@ -123,12 +123,12 @@ impl CoerceResult for CustomScalarTypeDefinition {
         let coerced_r_result: Obj<RResult> = self
             .ruby_class
             .funcall("coerce_result", (value,))
-            .map_err(FieldError::ApplicationError)?;
+            .map_err(|error| FieldError::ApplicationError(error.to_string()))?;
 
         let coerced_result: Result<Value, String> = coerced_r_result
             .get()
             .try_into()
-            .map_err(FieldError::ApplicationError)?;
+            .map_err(|error: Error| FieldError::ApplicationError(error.to_string()))?;
 
         coerced_result.map_err(|message| FieldError::CannotCoerceResultToCustomScalar { message })
     }

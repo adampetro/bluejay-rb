@@ -18,7 +18,7 @@ use bluejay_printer::definition::DisplaySchemaDefinition;
 use bluejay_validator::executable::{Cache as ValidationCache, RulesValidator};
 use magnus::IntoValue;
 use magnus::{
-    exception, function, memoize, method, scan_args::get_kwargs, scan_args::KwArgs,
+    exception, function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs,
     typed_data::Obj, DataTypeFunctions, Error, Module, Object, RArray, RClass, RHash, Ruby,
     TypedData, Value,
 };
@@ -37,17 +37,28 @@ pub struct SchemaDefinition {
     contained_types: BTreeMap<String, TypeDefinition>,
     contained_directives: BTreeMap<String, WrappedDefinition<DirectiveDefinition>>,
     interface_implementors: HashMap<String, Vec<WrappedDefinition<ObjectTypeDefinition>>>,
+    ruby_class: RClass,
 }
 
 impl SchemaDefinition {
     pub fn new(kw: RHash) -> Result<Self, Error> {
-        let args: KwArgs<_, (), ()> =
-            get_kwargs(kw, &["description", "query", "mutation", "directives"], &[])?;
-        let (description, query, mutation, directives): (
+        let args: KwArgs<_, (), ()> = get_kwargs(
+            kw,
+            &[
+                "description",
+                "query",
+                "mutation",
+                "directives",
+                "ruby_class",
+            ],
+            &[],
+        )?;
+        let (description, query, mutation, directives, ruby_class): (
             Option<String>,
             WrappedDefinition<ObjectTypeDefinition>,
             Option<WrappedDefinition<ObjectTypeDefinition>>,
             RArray,
+            RClass,
         ) = args.required;
         if !query.class().is_inherited(Self::query_root_class()) {
             return Err(Error::new(
@@ -75,6 +86,7 @@ impl SchemaDefinition {
             contained_types,
             contained_directives,
             interface_implementors,
+            ruby_class,
         })
     }
 
@@ -94,15 +106,19 @@ impl SchemaDefinition {
         self.contained_directives.get(name).map(|wd| *wd.get())
     }
 
+    pub fn ruby_class(&self) -> RClass {
+        self.ruby_class
+    }
+
     fn execute(
-        rb_self: Obj<Self>,
+        &self,
         query: String,
         operation_name: Option<String>,
         variable_values: RHash,
         initial_value: Value,
     ) -> Result<ExecutionResult, Error> {
         ExecutionEngine::execute_request(
-            rb_self,
+            self,
             query.as_str(),
             operation_name.as_deref(),
             variable_values,
@@ -162,13 +178,15 @@ impl DataTypeFunctions for SchemaDefinition {
             mutation.mark();
         }
         self.directives.mark();
+        gc::mark(self.ruby_class);
         self.contained_types.values().for_each(TypeDefinition::mark);
         self.contained_directives
             .values()
             .for_each(WrappedDefinition::mark);
         self.interface_implementors
             .values()
-            .for_each(|interfaces| interfaces.iter().for_each(WrappedDefinition::mark));
+            .flatten()
+            .for_each(WrappedDefinition::mark);
     }
 }
 
@@ -362,29 +380,23 @@ impl From<&BaseOutputType> for TypeDefinition {
     }
 }
 
-impl From<&TypeDefinition> for Value {
-    fn from(value: &TypeDefinition) -> Self {
-        match value {
-            TypeDefinition::BuiltinScalar(bstd) => Scalar::from(*bstd).into(),
-            TypeDefinition::CustomScalar(cstd) => cstd.into(),
-            TypeDefinition::Enum(etd) => etd.into(),
-            TypeDefinition::InputObject(iotd) => iotd.into(),
-            TypeDefinition::Interface(itd) => itd.into(),
-            TypeDefinition::Object(otd) => otd.into(),
-            TypeDefinition::Union(utd) => utd.into(),
+impl IntoValue for TypeDefinition {
+    fn into_value_with(self, handle: &Ruby) -> Value {
+        match self {
+            Self::BuiltinScalar(bstd) => Scalar::from(bstd).into_value_with(handle),
+            Self::CustomScalar(cstd) => cstd.into_value_with(handle),
+            Self::Enum(etd) => etd.into_value_with(handle),
+            Self::InputObject(iotd) => iotd.into_value_with(handle),
+            Self::Interface(itd) => itd.into_value_with(handle),
+            Self::Object(otd) => otd.into_value_with(handle),
+            Self::Union(utd) => utd.into_value_with(handle),
         }
     }
 }
 
-impl IntoValue for TypeDefinition {
-    fn into_value_with(self, _handle: &Ruby) -> Value {
-        Value::from(&self)
-    }
-}
-
 impl IntoValue for &TypeDefinition {
-    fn into_value_with(self, _handle: &Ruby) -> Value {
-        Value::from(self)
+    fn into_value_with(self, handle: &Ruby) -> Value {
+        self.clone().into_value_with(handle)
     }
 }
 
@@ -549,10 +561,7 @@ pub fn init() -> Result<(), Error> {
     class.define_method("to_definition", method!(SchemaDefinition::to_definition, 0))?;
     class.define_method(
         "type",
-        method!(
-            |sd: &SchemaDefinition, name: String| sd.r#type(&name).map(Value::from),
-            1
-        ),
+        method!(|sd: &SchemaDefinition, name: String| sd.r#type(&name), 1),
     )?;
     class.define_method(
         "description",

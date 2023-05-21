@@ -93,7 +93,7 @@ impl<T: HasDefinitionWrapper> From<&WrappedDefinition<T>> for Value {
 }
 
 impl<T: HasDefinitionWrapper> IntoValue for &WrappedDefinition<T> {
-    fn into_value_with(self, _handle: &Ruby) -> Value {
-        **self.get()
+    fn into_value_with(self, handle: &Ruby) -> Value {
+        (*self.get()).into_value_with(handle)
     }
 }

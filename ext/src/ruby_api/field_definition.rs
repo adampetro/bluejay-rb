@@ -2,7 +2,7 @@ use crate::ruby_api::{root, ArgumentsDefinition, Directives, OutputType};
 use convert_case::{Case, Casing};
 use magnus::{
     function, gc, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,
-    DataTypeFunctions, Error, Module, Object, RArray, RHash, RString, TypedData, QNIL,
+    DataTypeFunctions, Error, Module, Object, RArray, RHash, RString, TypedData,
 };
 
 #[derive(Debug, TypedData)]
@@ -48,10 +48,10 @@ impl FieldDefinition {
         let directives = directives.try_into()?;
         let is_builtin = name.starts_with("__");
         let ruby_resolver_method_name = resolver_method_name
-            .and_then(|r| r)
+            .flatten()
             .unwrap_or_else(|| name.to_case(Case::Snake));
         let extra_resolver_args = match name.as_str() {
-            "__schema" | "__type" => vec![ExtraResolverArg::SchemaDefinition],
+            "__schema" | "__type" => vec![ExtraResolverArg::SchemaClass],
             _ => vec![],
         };
         Ok(Self {
@@ -145,7 +145,7 @@ impl bluejay_core::definition::FieldDefinition for FieldDefinition {
 
 #[derive(Debug)]
 pub enum ExtraResolverArg {
-    SchemaDefinition,
+    SchemaClass,
 }
 
 pub fn init() -> Result<(), Error> {
@@ -180,7 +180,7 @@ pub fn init() -> Result<(), Error> {
         ),
     )?;
     class.define_method("deprecated?", method!(|_: &FieldDefinition| false, 0))?;
-    class.define_method("deprecation_reason", method!(|_: &FieldDefinition| QNIL, 0))?;
+    class.define_method("deprecation_reason", method!(|_: &FieldDefinition| (), 0))?;
     class.define_method("description", method!(FieldDefinition::description, 0))?;
 
     Ok(())

@@ -1,14 +1,13 @@
 use crate::execution::FieldError;
 use crate::ruby_api::{CoercionError, ExecutionError as RubyExecutionError};
 use bluejay_parser::Error as ParseError;
-use magnus::Error as MagnusError;
 
 #[derive(Debug)]
 pub enum ExecutionError<'a> {
     NoOperationWithName { name: &'a str },
     CannotUseAnonymousOperation,
     RequiredVariableMissingValue { name: &'a str },
-    ApplicationError(MagnusError),
+    ApplicationError(String),
     CoercionError(CoercionError),
     ParseError(ParseError),
     FieldError(FieldError),

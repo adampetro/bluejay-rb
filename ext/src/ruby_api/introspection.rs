@@ -2,7 +2,7 @@ use crate::ruby_api::{
     EnumValueDefinitions, FieldsDefinition, InputFieldsDefinition, InterfaceImplementations,
     UnionMemberTypes,
 };
-use magnus::IntoValue;
+use magnus::{typed_data::Obj, DataType, RClass, TypedData};
 use strum::IntoStaticStr;
 
 #[derive(IntoStaticStr, Clone, Copy)]
@@ -19,7 +19,7 @@ pub enum TypeKind {
 }
 
 pub trait Type {
-    type OfType: Type + IntoValue;
+    type OfType: Type + TypedData;
 
     fn description(&self) -> Option<&str> {
         None
@@ -40,7 +40,7 @@ pub trait Type {
     fn name(&self) -> Option<&str> {
         None
     }
-    fn of_type(&self) -> Option<Self::OfType> {
+    fn of_type(&self) -> Option<Obj<Self::OfType>> {
         None
     }
     fn possible_types(&self) -> Option<UnionMemberTypes> {
@@ -53,8 +53,12 @@ pub trait Type {
 
 pub enum Never {}
 
-impl IntoValue for Never {
-    fn into_value_with(self, _: &magnus::Ruby) -> magnus::Value {
+unsafe impl TypedData for Never {
+    fn class() -> RClass {
+        unreachable!()
+    }
+
+    fn data_type() -> &'static DataType {
         unreachable!()
     }
 }

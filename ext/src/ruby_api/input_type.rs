@@ -715,14 +715,16 @@ impl introspection::Type for InputType {
         }
     }
 
-    fn of_type(&self) -> Option<Self::OfType> {
+    fn of_type(&self) -> Option<Obj<Self::OfType>> {
         match self {
-            Self::Base(base, required) => required.then(|| Self::Base(base.clone(), false)),
+            Self::Base(base, required) => {
+                required.then(|| Obj::wrap(Self::Base(base.clone(), false)))
+            }
             Self::List(inner, required) => {
                 if *required {
-                    Some(Self::List(*inner, false))
+                    Some(Obj::wrap(Self::List(*inner, false)))
                 } else {
-                    Some(inner.get().clone())
+                    Some(*inner)
                 }
             }
         }

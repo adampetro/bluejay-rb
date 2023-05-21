@@ -9,9 +9,10 @@ module Bluejay
         query: T.class_of(QueryRoot),
         mutation: T.nilable(T.class_of(ObjectType)),
         directives: T::Array[Directive],
+        ruby_class: T.class_of(Schema),
       ).void
     end
-    def initialize(description:, query:, mutation:, directives:); end
+    def initialize(description:, query:, mutation:, directives:, ruby_class:); end
 
     sig do
       params(

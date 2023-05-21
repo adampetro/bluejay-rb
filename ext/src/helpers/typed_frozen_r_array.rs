@@ -95,7 +95,7 @@ impl<T: TypedData> FromIterator<T> for TypedFrozenRArray<Obj<T>> {
 }
 
 impl<T: TryConvert> IntoValue for TypedFrozenRArray<T> {
-    fn into_value_with(self, _handle: &Ruby) -> Value {
-        *self.data
+    fn into_value_with(self, handle: &Ruby) -> Value {
+        self.data.into_value_with(handle)
     }
 }

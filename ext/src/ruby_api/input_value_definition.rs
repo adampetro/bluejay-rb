@@ -81,6 +81,9 @@ impl DataTypeFunctions for InputValueDefinition {
     fn mark(&self) {
         gc::mark(self.r#type);
         self.directives.mark();
+        if let Some(default_value) = &self.default_value {
+            default_value.mark();
+        }
     }
 }
 

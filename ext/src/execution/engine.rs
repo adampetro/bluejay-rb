@@ -13,11 +13,11 @@ use bluejay_parser::ast::executable::{
     ExecutableDocument, Field, OperationDefinition, Selection, SelectionSet,
 };
 use bluejay_parser::ast::{Directive, VariableArguments, VariableValue};
-use magnus::{typed_data::Obj, ArgList, Error, RArray, RHash, Value, QNIL};
+use magnus::{ArgList, Error, RArray, RHash, Value, QNIL};
 use std::collections::{BTreeMap, HashSet};
 
 pub struct Engine<'a> {
-    schema: Obj<SchemaDefinition>,
+    schema: &'a SchemaDefinition,
     document: &'a ExecutableDocument<'a>,
     variables: &'a RHash,
     key_store: KeyStore<'a>,
@@ -25,7 +25,7 @@ pub struct Engine<'a> {
 
 impl<'a> Engine<'a> {
     pub fn execute_request(
-        schema: Obj<SchemaDefinition>,
+        schema: &SchemaDefinition,
         query: &str,
         operation_name: Option<&str>,
         variable_values: RHash,
@@ -52,7 +52,7 @@ impl<'a> Engine<'a> {
         };
 
         let variables =
-            match Self::get_variable_values(schema.get(), operation_definition, variable_values) {
+            match Self::get_variable_values(schema, operation_definition, variable_values) {
                 Ok(cvv) => cvv,
                 Err(errors) => {
                     return Ok(Self::execution_result(Default::default(), errors));
@@ -135,7 +135,9 @@ impl<'a> Engine<'a> {
                                     .into_iter()
                                     .map(ExecutionError::CoercionError),
                             ),
-                            Err(error) => errors.push(ExecutionError::ApplicationError(error)),
+                            Err(error) => {
+                                errors.push(ExecutionError::ApplicationError(error.to_string()))
+                            }
                         }
                     }
                     _ => {
@@ -158,7 +160,9 @@ impl<'a> Engine<'a> {
                                             .map(ExecutionError::CoercionError),
                                     );
                                 }
-                                Err(error) => errors.push(ExecutionError::ApplicationError(error)),
+                                Err(error) => {
+                                    errors.push(ExecutionError::ApplicationError(error.to_string()))
+                                }
                             }
                         }
                     }
@@ -182,7 +186,7 @@ impl<'a> Engine<'a> {
         query: &'a OperationDefinition,
         initial_value: Value,
     ) -> ExecutionResult {
-        let query_type = self.schema.get().query();
+        let query_type = self.schema.query();
         let query_type = query_type.get();
         let selection_set = query.as_ref().selection_set();
 
@@ -348,7 +352,7 @@ impl<'a> Engine<'a> {
         object_type: &ObjectTypeDefinition,
         fragment_type_name: &str,
     ) -> bool {
-        let fragment_type = self.schema.get().r#type(fragment_type_name).unwrap();
+        let fragment_type = self.schema.r#type(fragment_type_name).unwrap();
 
         match fragment_type {
             TypeDefinition::Object(otd) => {
@@ -407,7 +411,9 @@ impl<'a> Engine<'a> {
         }
         for extra_resolver_arg in field_definition.extra_resolver_args() {
             match extra_resolver_arg {
-                ExtraResolverArg::SchemaDefinition => coerced_args.push(self.schema).unwrap(),
+                ExtraResolverArg::SchemaClass => {
+                    coerced_args.push(self.schema.ruby_class()).unwrap()
+                }
             }
         }
 
@@ -452,7 +458,9 @@ impl<'a> Engine<'a> {
                             .into_iter()
                             .map(ExecutionError::CoercionError)
                             .collect()),
-                        Err(error) => Err(vec![ExecutionError::ApplicationError(error)]),
+                        Err(error) => {
+                            Err(vec![ExecutionError::ApplicationError(error.to_string())])
+                        }
                     }
                 } else {
                     Ok(*QNIL)
@@ -474,7 +482,7 @@ impl<'a> Engine<'a> {
                 field_definition.ruby_resolver_method_name(),
                 argument_values,
             )
-            .map_err(ExecutionError::ApplicationError)
+            .map_err(|error| ExecutionError::ApplicationError(error.to_string()))
     }
 
     fn complete_value(
@@ -581,7 +589,7 @@ impl<'a> Engine<'a> {
     ) -> &'a ObjectTypeDefinition {
         // TODO: change to return Result<_, FieldError>
         let typename: String = object_value.funcall("resolve_typename", ()).unwrap();
-        let object_type = match self.schema.get().r#type(typename.as_str()) {
+        let object_type = match self.schema.r#type(typename.as_str()) {
             Some(TypeDefinition::Object(otd)) => otd.as_ref(),
             _ => panic!(),
         };
@@ -599,7 +607,7 @@ impl<'a> Engine<'a> {
     ) -> &'a ObjectTypeDefinition {
         // TODO: change to return Result<_, FieldError>
         let typename: String = object_value.funcall("resolve_typename", ()).unwrap();
-        let object_type = match self.schema.get().r#type(typename.as_str()) {
+        let object_type = match self.schema.r#type(typename.as_str()) {
             Some(TypeDefinition::Object(otd)) => otd.as_ref(),
             _ => panic!(),
         };
@@ -614,11 +622,7 @@ impl<'a> Engine<'a> {
         &'a self,
         directive: &'a Directive<'a, false>,
     ) -> Result<Value, Vec<ExecutionError<'a>>> {
-        let directive_definition_obj = self
-            .schema
-            .get()
-            .directive(directive.name().as_ref())
-            .unwrap();
+        let directive_definition_obj = self.schema.directive(directive.name().as_ref()).unwrap();
         let directive_definition = directive_definition_obj.get();
 
         let directive = if directive_definition.arguments_definition().is_empty() {

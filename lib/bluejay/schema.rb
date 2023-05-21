@@ -82,7 +82,7 @@ module Bluejay
             end
           end
           const_set(:Root, interface)
-          SchemaDefinition.new(description:, query:, mutation:, directives:)
+          SchemaDefinition.new(description:, query:, mutation:, directives:, ruby_class: self)
         end
       end
     end
