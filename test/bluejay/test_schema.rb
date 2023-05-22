@@ -60,8 +60,6 @@ module Bluejay
     end
 
     class MyEnumType < EnumType
-      extend(T::Sig)
-
       class << self
         extend(T::Sig)
 
@@ -70,6 +68,46 @@ module Bluejay
           [
             EnumValueDefinition.new(name: "ONE", deprecation_reason: "Testing deprecation"),
             EnumValueDefinition.new(name: "TWO"),
+          ]
+        end
+      end
+    end
+
+    class FooObjectType < ObjectType
+      class << self
+        extend(T::Sig)
+
+        sig { override.returns(T::Array[FieldDefinition]) }
+        def field_definitions
+          [
+            FieldDefinition.new(name: "foo", type: ot!(Scalar::String)),
+          ]
+        end
+      end
+    end
+
+    class BarObjectType < ObjectType
+      class << self
+        extend(T::Sig)
+
+        sig { override.returns(T::Array[FieldDefinition]) }
+        def field_definitions
+          [
+            FieldDefinition.new(name: "bar", type: ot!(Scalar::String)),
+          ]
+        end
+      end
+    end
+
+    class FooOrBarUnionType < UnionType
+      class << self
+        extend(T::Sig)
+
+        sig { override.returns(T::Array[UnionMemberType]) }
+        def member_types
+          [
+            UnionMemberType.new(type: FooObjectType),
+            UnionMemberType.new(type: BarObjectType),
           ]
         end
       end
@@ -106,6 +144,10 @@ module Bluejay
               type: ot(MyEnumType),
               deprecation_reason: "Testing deprecation",
             ),
+            FieldDefinition.new(
+              name: "fooOrBar",
+              type: ot!(FooOrBarUnionType),
+            ),
           ]
         end
       end
@@ -123,6 +165,26 @@ module Bluejay
     end
 
     module Domain
+      class Foo
+        class << self
+          extend(T::Sig)
+          include(FooObjectType::Interface)
+
+          sig { returns(String) }
+          def foo = "foo"
+        end
+      end
+
+      class Bar
+        class << self
+          extend(T::Sig)
+          include(BarObjectType::Interface)
+
+          sig { returns(String) }
+          def bar = "bar"
+        end
+      end
+
       class QueryRoot < T::Struct
         extend(T::Sig)
         include(TestSchema::QueryRoot::Interface)
@@ -141,6 +203,9 @@ module Bluejay
 
         sig { returns(T.nilable(String)) }
         def deprecated_field = nil
+
+        sig { returns(T.any(T.class_of(Foo), T.class_of(Bar))) }
+        def foo_or_bar = Foo
       end
 
       class SchemaRoot < T::Struct
@@ -163,6 +228,11 @@ module Bluejay
           otherHello: hello(name: { first: "John" last: "Smith" })
           today
           isToday(date: $date)
+          fooOrBar {
+            __typename
+            ...on FooObjectType { foo }
+            ...on BarObjectType { bar }
+          }
         }
       GQL
       root = Domain::SchemaRoot.new
@@ -182,6 +252,10 @@ module Bluejay
           "otherHello" => "Hello, John Smith!",\
           "today" => Date.today.iso8601,
           "isToday" => true,
+          "fooOrBar" => {
+            "__typename" => "FooObjectType",
+            "foo" => "foo",
+          },
         },
         result.value,
       )
@@ -210,6 +284,11 @@ module Bluejay
           __typename
           hello(name: $name)
           otherHello: hello(name: { first: "John" last: "Smith" })
+          fooOrBar {
+            __typename
+            ...on FooObjectType { foo }
+            ...on BarObjectType { bar }
+          }
         }
       GQL
 
@@ -226,7 +305,17 @@ module Bluejay
 
     def test_to_definition
       expected = <<~GQL
+        type BarObjectType {
+          bar: String!
+        }
+
         scalar Date @specifiedBy(url: "https://example.com")
+
+        type FooObjectType {
+          foo: String!
+        }
+
+        union FooOrBarUnionType = FooObjectType | BarObjectType
 
         enum MyEnumType {
           ONE @deprecated(reason: "Testing deprecation")
@@ -252,6 +341,8 @@ module Bluejay
           ): Boolean!
 
           deprecatedField: MyEnumType @deprecated(reason: "Testing deprecation")
+
+          fooOrBar: FooOrBarUnionType!
         }
 
         schema {

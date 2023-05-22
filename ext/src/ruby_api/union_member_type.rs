@@ -1,6 +1,10 @@
 use super::{object_type_definition::ObjectTypeDefinition, root};
 use crate::helpers::WrappedDefinition;
-use magnus::{function, DataTypeFunctions, Error, Module, Object, RClass, TypedData};
+use magnus::{
+    function,
+    scan_args::{get_kwargs, KwArgs},
+    DataTypeFunctions, Error, Module, Object, RClass, RHash, TypedData,
+};
 
 #[derive(Clone, Debug, TypedData)]
 #[magnus(class = "Bluejay::UnionMemberType", mark)]
@@ -9,7 +13,9 @@ pub struct UnionMemberType {
 }
 
 impl UnionMemberType {
-    pub fn new(r#type: RClass) -> Result<Self, Error> {
+    pub fn new(kw: RHash) -> Result<Self, Error> {
+        let args: KwArgs<(RClass,), (), ()> = get_kwargs(kw, &["type"], &[])?;
+        let (r#type,) = args.required;
         WrappedDefinition::new(r#type).map(|r#type| Self { r#type })
     }
 

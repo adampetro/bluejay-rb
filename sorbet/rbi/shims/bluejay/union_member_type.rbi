@@ -1,8 +1,9 @@
 # typed: strict
+# frozen_string_literal: true
 
 module Bluejay
   class UnionMemberType
     sig { params(type: T.class_of(ObjectType)).void }
-    def initialize(type); end
+    def initialize(type:); end
   end
 end

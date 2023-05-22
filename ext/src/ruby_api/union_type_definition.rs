@@ -1,5 +1,7 @@
 use crate::helpers::HasDefinitionWrapper;
-use crate::ruby_api::{introspection, root, Directives, ObjectTypeDefinition, UnionMemberTypes};
+use crate::ruby_api::{
+    introspection, root, Directives, FieldsDefinition, ObjectTypeDefinition, UnionMemberTypes,
+};
 use bluejay_core::AsIter;
 use magnus::{
     function, gc, memoize, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error,
@@ -13,23 +15,38 @@ pub struct UnionTypeDefinition {
     description: Option<String>,
     directives: Directives,
     member_types: UnionMemberTypes,
+    fields_definition: FieldsDefinition,
 }
 
 impl UnionTypeDefinition {
     fn new(kw: RHash) -> Result<Self, Error> {
-        let args: KwArgs<(String, RArray, Option<String>, RArray), (), ()> = get_kwargs(
+        let args: KwArgs<_, (), ()> = get_kwargs(
             kw,
-            &["name", "member_types", "description", "directives"],
+            &[
+                "name",
+                "member_types",
+                "description",
+                "directives",
+                "field_definitions",
+            ],
             &[],
         )?;
-        let (name, member_types, description, directives) = args.required;
+        let (name, member_types, description, directives, field_definitions): (
+            String,
+            RArray,
+            Option<String>,
+            RArray,
+            RArray,
+        ) = args.required;
         let member_types = UnionMemberTypes::new(member_types)?;
         let directives = directives.try_into()?;
+        let fields_definition = FieldsDefinition::new(field_definitions)?;
         Ok(Self {
             name,
             description,
             directives,
             member_types,
+            fields_definition,
         })
     }
 
@@ -72,6 +89,7 @@ impl DataTypeFunctions for UnionTypeDefinition {
     fn mark(&self) {
         gc::mark(self.member_types);
         self.directives.mark();
+        gc::mark(self.fields_definition);
     }
 }
 
@@ -84,6 +102,7 @@ impl HasDefinitionWrapper for UnionTypeDefinition {
 impl bluejay_core::definition::UnionTypeDefinition for UnionTypeDefinition {
     type UnionMemberTypes = UnionMemberTypes;
     type Directives = Directives;
+    type FieldsDefinition = FieldsDefinition;
 
     fn description(&self) -> Option<&str> {
         self.description.as_deref()
@@ -99,6 +118,10 @@ impl bluejay_core::definition::UnionTypeDefinition for UnionTypeDefinition {
 
     fn directives(&self) -> Option<&Self::Directives> {
         self.directives.to_option()
+    }
+
+    fn fields_definition(&self) -> &Self::FieldsDefinition {
+        &self.fields_definition
     }
 }
 

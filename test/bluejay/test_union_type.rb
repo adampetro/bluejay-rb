@@ -35,7 +35,7 @@ module Bluejay
         sig { override.returns(T::Array[UnionMemberType]) }
         def member_types
           [
-            UnionMemberType.new(MyObjectType),
+            UnionMemberType.new(type: MyObjectType),
           ]
         end
       end

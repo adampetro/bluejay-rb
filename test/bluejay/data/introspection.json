@@ -118,6 +118,37 @@
                 "__typename": "__Type",
                 "description": null,
                 "enumValues": null,
+                "fields": [
+                    {
+                        "__typename": "__Field",
+                        "args": [],
+                        "deprecationReason": null,
+                        "description": null,
+                        "isDeprecated": false,
+                        "name": "bar",
+                        "type": {
+                            "__typename": "__Type",
+                            "kind": "NON_NULL",
+                            "name": null,
+                            "ofType": {
+                                "kind": "SCALAR",
+                                "name": "String",
+                                "ofType": null
+                            }
+                        }
+                    }
+                ],
+                "inputFields": null,
+                "interfaces": [],
+                "kind": "OBJECT",
+                "name": "BarObjectType",
+                "possibleTypes": null,
+                "specifiedByURL": null
+            },
+            {
+                "__typename": "__Type",
+                "description": null,
+                "enumValues": null,
                 "fields": null,
                 "inputFields": null,
                 "interfaces": null,
@@ -137,6 +168,62 @@
                 "name": "Date",
                 "possibleTypes": null,
                 "specifiedByURL": "https://example.com"
+            },
+            {
+                "__typename": "__Type",
+                "description": null,
+                "enumValues": null,
+                "fields": [
+                    {
+                        "__typename": "__Field",
+                        "args": [],
+                        "deprecationReason": null,
+                        "description": null,
+                        "isDeprecated": false,
+                        "name": "foo",
+                        "type": {
+                            "__typename": "__Type",
+                            "kind": "NON_NULL",
+                            "name": null,
+                            "ofType": {
+                                "kind": "SCALAR",
+                                "name": "String",
+                                "ofType": null
+                            }
+                        }
+                    }
+                ],
+                "inputFields": null,
+                "interfaces": [],
+                "kind": "OBJECT",
+                "name": "FooObjectType",
+                "possibleTypes": null,
+                "specifiedByURL": null
+            },
+            {
+                "__typename": "__Type",
+                "description": null,
+                "enumValues": null,
+                "fields": null,
+                "inputFields": null,
+                "interfaces": null,
+                "kind": "UNION",
+                "name": "FooOrBarUnionType",
+                "possibleTypes": [
+                    {
+                        "__typename": "__Type",
+                        "kind": "OBJECT",
+                        "name": "FooObjectType",
+                        "ofType": null
+                    },
+                    {
+                        "__typename": "__Type",
+                        "kind": "OBJECT",
+                        "name": "BarObjectType",
+                        "ofType": null
+                    }
+                ],
+                "specifiedByURL": null
             },
             {
                 "__typename": "__Type",
@@ -313,6 +400,24 @@
                             "kind": "ENUM",
                             "name": "MyEnumType",
                             "ofType": null
+                        }
+                    },
+                    {
+                        "__typename": "__Field",
+                        "args": [],
+                        "deprecationReason": null,
+                        "description": null,
+                        "isDeprecated": false,
+                        "name": "fooOrBar",
+                        "type": {
+                            "__typename": "__Type",
+                            "kind": "NON_NULL",
+                            "name": null,
+                            "ofType": {
+                                "kind": "UNION",
+                                "name": "FooOrBarUnionType",
+                                "ofType": null
+                            }
                         }
                     }
                 ],

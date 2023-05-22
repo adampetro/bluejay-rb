@@ -33,7 +33,13 @@ module Bluejay
       sig { returns(UnionTypeDefinition) }
       def definition
         @definition ||= T.let(
-          UnionTypeDefinition.new(name: graphql_name, description:, member_types:, directives:),
+          UnionTypeDefinition.new(
+            name: graphql_name,
+            description:,
+            member_types:,
+            directives:,
+            field_definitions: [Builtin.typename_field_definition],
+          ),
           T.nilable(UnionTypeDefinition),
         )
       end

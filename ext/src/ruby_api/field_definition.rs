@@ -1,7 +1,9 @@
 use crate::ruby_api::{root, ArgumentsDefinition, DirectiveDefinition, Directives, OutputType};
 use convert_case::{Case, Casing};
 use magnus::{
-    function, gc, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,
+    function, gc, method,
+    scan_args::{get_kwargs, KwArgs},
+    typed_data::Obj,
     DataTypeFunctions, Error, Module, Object, RArray, RHash, RString, TypedData,
 };
 
