@@ -364,15 +364,8 @@ pub fn init() -> Result<(), Error> {
         "coerce_input",
         method!(
             |itd: &InputObjectTypeDefinition, input: Value| -> Result<RResult, Error> {
-                itd.coerce_ruby_const_value(input, &[]).map(|result| {
-                    result
-                        .map_err(|errors| {
-                            let arr = RArray::from_iter(errors);
-                            let _ = arr.len();
-                            arr
-                        })
-                        .into()
-                })
+                itd.coerce_ruby_const_value(input, &[])
+                    .map(|result| result.map_err(RArray::from_iter).into())
             },
             1
         ),
