@@ -175,6 +175,10 @@ pub fn init() -> Result<(), Error> {
             0
         ),
     )?;
+    class.define_method(
+        "resolve_typename",
+        method!(|_: &DirectiveDefinition| "__Directive", 0),
+    )?;
 
     Ok(())
 }

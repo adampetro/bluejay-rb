@@ -77,6 +77,7 @@ impl Type for Never {
 
 macro_rules! implement_type {
     ($t:ty, $class:ident) => {
+        $class.define_method("resolve_typename", magnus::method!(|_: &$t| "__Type", 0))?;
         $class.define_method(
             "description",
             magnus::method!(<$t as crate::ruby_api::introspection::Type>::description, 0),

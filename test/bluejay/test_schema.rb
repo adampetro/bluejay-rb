@@ -266,6 +266,7 @@ module Bluejay
       query = <<~GQL
         query IntrospectionQuery {
           __schema {
+            __typename
             queryType { name }
             mutationType { name }
             subscriptionType { name }
@@ -273,6 +274,7 @@ module Bluejay
               ...FullType
             }
             directives {
+              __typename
               name
               description
               args {
@@ -284,10 +286,12 @@ module Bluejay
         }
 
         fragment FullType on __Type {
+          __typename
           kind
           name
           description
           fields(includeDeprecated: true) {
+            __typename
             name
             description
             args {
@@ -318,6 +322,7 @@ module Bluejay
         }
 
         fragment InputValue on __InputValue {
+          __typename
           name
           description
           type { ...TypeRef }
@@ -325,6 +330,7 @@ module Bluejay
         }
 
         fragment TypeRef on __Type {
+          __typename
           kind
           name
           ofType {

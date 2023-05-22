@@ -104,6 +104,10 @@ pub fn init() -> Result<(), Error> {
         "deprecation_reason",
         method!(EnumValueDefinition::deprecation_reason, 0),
     )?;
+    class.define_method(
+        "resolve_typename",
+        method!(|_: &EnumValueDefinition| "__EnumValue", 0),
+    )?;
 
     Ok(())
 }

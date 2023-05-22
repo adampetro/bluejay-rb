@@ -211,6 +211,10 @@ pub fn init() -> Result<(), Error> {
         method!(FieldDefinition::deprecation_reason, 0),
     )?;
     class.define_method("description", method!(FieldDefinition::description, 0))?;
+    class.define_method(
+        "resolve_typename",
+        method!(|_: &FieldDefinition| "__Field", 0),
+    )?;
 
     Ok(())
 }

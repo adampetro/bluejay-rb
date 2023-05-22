@@ -130,6 +130,10 @@ pub fn init() -> Result<(), Error> {
             0
         ),
     )?;
+    class.define_method(
+        "resolve_typename",
+        method!(|_: &InputValueDefinition| "__InputValue", 0),
+    )?;
 
     Ok(())
 }

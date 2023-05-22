@@ -1,13 +1,17 @@
 {
     "__schema": {
+        "__typename": "__Schema",
         "directives": [
             {
+                "__typename": "__Directive",
                 "args": [
                     {
+                        "__typename": "__InputValue",
                         "defaultValue": null,
                         "description": null,
                         "name": "reason",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "SCALAR",
                             "name": "String",
                             "ofType": null
@@ -22,12 +26,15 @@
                 "name": "deprecated"
             },
             {
+                "__typename": "__Directive",
                 "args": [
                     {
+                        "__typename": "__InputValue",
                         "defaultValue": null,
                         "description": null,
                         "name": "if",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "NON_NULL",
                             "name": null,
                             "ofType": {
@@ -47,12 +54,15 @@
                 "name": "include"
             },
             {
+                "__typename": "__Directive",
                 "args": [
                     {
+                        "__typename": "__InputValue",
                         "defaultValue": null,
                         "description": null,
                         "name": "if",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "NON_NULL",
                             "name": null,
                             "ofType": {
@@ -72,12 +82,15 @@
                 "name": "skip"
             },
             {
+                "__typename": "__Directive",
                 "args": [
                     {
+                        "__typename": "__InputValue",
                         "defaultValue": null,
                         "description": null,
                         "name": "url",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "NON_NULL",
                             "name": null,
                             "ofType": {
@@ -102,6 +115,7 @@
         "subscriptionType": null,
         "types": [
             {
+                "__typename": "__Type",
                 "description": null,
                 "enumValues": null,
                 "fields": null,
@@ -113,6 +127,7 @@
                 "specifiedByURL": null
             },
             {
+                "__typename": "__Type",
                 "description": null,
                 "enumValues": null,
                 "fields": null,
@@ -124,6 +139,7 @@
                 "specifiedByURL": "https://example.com"
             },
             {
+                "__typename": "__Type",
                 "description": null,
                 "enumValues": [
                     {
@@ -148,15 +164,18 @@
                 "specifiedByURL": null
             },
             {
+                "__typename": "__Type",
                 "description": null,
                 "enumValues": null,
                 "fields": null,
                 "inputFields": [
                     {
+                        "__typename": "__InputValue",
                         "defaultValue": null,
                         "description": null,
                         "name": "first",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "NON_NULL",
                             "name": null,
                             "ofType": {
@@ -167,10 +186,12 @@
                         }
                     },
                     {
+                        "__typename": "__InputValue",
                         "defaultValue": null,
                         "description": null,
                         "name": "last",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "NON_NULL",
                             "name": null,
                             "ofType": {
@@ -188,16 +209,20 @@
                 "specifiedByURL": null
             },
             {
+                "__typename": "__Type",
                 "description": null,
                 "enumValues": null,
                 "fields": [
                     {
+                        "__typename": "__Field",
                         "args": [
                             {
+                                "__typename": "__InputValue",
                                 "defaultValue": null,
                                 "description": null,
                                 "name": "name",
                                 "type": {
+                                    "__typename": "__Type",
                                     "kind": "NON_NULL",
                                     "name": null,
                                     "ofType": {
@@ -213,6 +238,7 @@
                         "isDeprecated": false,
                         "name": "hello",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "NON_NULL",
                             "name": null,
                             "ofType": {
@@ -223,12 +249,14 @@
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "today",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "NON_NULL",
                             "name": null,
                             "ofType": {
@@ -239,12 +267,15 @@
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [
                             {
+                                "__typename": "__InputValue",
                                 "defaultValue": null,
                                 "description": null,
                                 "name": "date",
                                 "type": {
+                                    "__typename": "__Type",
                                     "kind": "NON_NULL",
                                     "name": null,
                                     "ofType": {
@@ -260,6 +291,7 @@
                         "isDeprecated": false,
                         "name": "isToday",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "NON_NULL",
                             "name": null,
                             "ofType": {
@@ -270,12 +302,14 @@
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": "Testing deprecation",
                         "description": null,
                         "isDeprecated": true,
                         "name": "deprecatedField",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "ENUM",
                             "name": "MyEnumType",
                             "ofType": null
@@ -290,6 +324,7 @@
                 "specifiedByURL": null
             },
             {
+                "__typename": "__Type",
                 "description": null,
                 "enumValues": null,
                 "fields": null,
@@ -301,16 +336,19 @@
                 "specifiedByURL": null
             },
             {
+                "__typename": "__Type",
                 "description": null,
                 "enumValues": null,
                 "fields": [
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "name",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "NON_NULL",
                             "name": null,
                             "ofType": {
@@ -321,24 +359,28 @@
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "description",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "SCALAR",
                             "name": "String",
                             "ofType": null
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "locations",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "NON_NULL",
                             "name": null,
                             "ofType": {
@@ -356,12 +398,14 @@
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "args",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "NON_NULL",
                             "name": null,
                             "ofType": {
@@ -379,12 +423,14 @@
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "isRepeatable",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "NON_NULL",
                             "name": null,
                             "ofType": {
@@ -403,6 +449,7 @@
                 "specifiedByURL": null
             },
             {
+                "__typename": "__Type",
                 "description": null,
                 "enumValues": [
                     {
@@ -529,16 +576,19 @@
                 "specifiedByURL": null
             },
             {
+                "__typename": "__Type",
                 "description": null,
                 "enumValues": null,
                 "fields": [
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "name",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "NON_NULL",
                             "name": null,
                             "ofType": {
@@ -549,24 +599,28 @@
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "description",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "SCALAR",
                             "name": "String",
                             "ofType": null
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "isDeprecated",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "NON_NULL",
                             "name": null,
                             "ofType": {
@@ -577,12 +631,14 @@
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "deprecationReason",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "SCALAR",
                             "name": "String",
                             "ofType": null
@@ -597,16 +653,19 @@
                 "specifiedByURL": null
             },
             {
+                "__typename": "__Type",
                 "description": null,
                 "enumValues": null,
                 "fields": [
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "name",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "NON_NULL",
                             "name": null,
                             "ofType": {
@@ -617,24 +676,28 @@
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "description",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "SCALAR",
                             "name": "String",
                             "ofType": null
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "args",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "NON_NULL",
                             "name": null,
                             "ofType": {
@@ -652,12 +715,14 @@
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "type",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "NON_NULL",
                             "name": null,
                             "ofType": {
@@ -668,12 +733,14 @@
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "isDeprecated",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "NON_NULL",
                             "name": null,
                             "ofType": {
@@ -684,12 +751,14 @@
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "deprecationReason",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "SCALAR",
                             "name": "String",
                             "ofType": null
@@ -704,40 +773,47 @@
                 "specifiedByURL": null
             },
             {
+                "__typename": "__Type",
                 "description": null,
                 "enumValues": null,
                 "fields": [
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "description",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "SCALAR",
                             "name": "String",
                             "ofType": null
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "name",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "SCALAR",
                             "name": "String",
                             "ofType": null
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "type",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "NON_NULL",
                             "name": null,
                             "ofType": {
@@ -748,12 +824,14 @@
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "defaultValue",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "SCALAR",
                             "name": "String",
                             "ofType": null
@@ -768,28 +846,33 @@
                 "specifiedByURL": null
             },
             {
+                "__typename": "__Type",
                 "description": null,
                 "enumValues": null,
                 "fields": [
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "description",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "SCALAR",
                             "name": "String",
                             "ofType": null
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "types",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "NON_NULL",
                             "name": null,
                             "ofType": {
@@ -807,12 +890,14 @@
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "queryType",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "NON_NULL",
                             "name": null,
                             "ofType": {
@@ -823,36 +908,42 @@
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "mutationType",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "OBJECT",
                             "name": "__Type",
                             "ofType": null
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "subscriptionType",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "OBJECT",
                             "name": "__Type",
                             "ofType": null
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "directives",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "NON_NULL",
                             "name": null,
                             "ofType": {
@@ -878,16 +969,19 @@
                 "specifiedByURL": null
             },
             {
+                "__typename": "__Type",
                 "description": null,
                 "enumValues": null,
                 "fields": [
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "kind",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "NON_NULL",
                             "name": null,
                             "ofType": {
@@ -898,36 +992,43 @@
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "name",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "SCALAR",
                             "name": "String",
                             "ofType": null
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "description",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "SCALAR",
                             "name": "String",
                             "ofType": null
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [
                             {
+                                "__typename": "__InputValue",
                                 "defaultValue": null,
                                 "description": null,
                                 "name": "includeDeprecated",
                                 "type": {
+                                    "__typename": "__Type",
                                     "kind": "SCALAR",
                                     "name": "Boolean",
                                     "ofType": null
@@ -939,6 +1040,7 @@
                         "isDeprecated": false,
                         "name": "fields",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "LIST",
                             "name": null,
                             "ofType": {
@@ -953,12 +1055,14 @@
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "interfaces",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "LIST",
                             "name": null,
                             "ofType": {
@@ -973,12 +1077,14 @@
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "possibleTypes",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "LIST",
                             "name": null,
                             "ofType": {
@@ -993,12 +1099,15 @@
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [
                             {
+                                "__typename": "__InputValue",
                                 "defaultValue": null,
                                 "description": null,
                                 "name": "includeDeprecated",
                                 "type": {
+                                    "__typename": "__Type",
                                     "kind": "SCALAR",
                                     "name": "Boolean",
                                     "ofType": null
@@ -1010,6 +1119,7 @@
                         "isDeprecated": false,
                         "name": "enumValues",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "LIST",
                             "name": null,
                             "ofType": {
@@ -1024,12 +1134,14 @@
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "inputFields",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "LIST",
                             "name": null,
                             "ofType": {
@@ -1044,24 +1156,28 @@
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "ofType",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "OBJECT",
                             "name": "__Type",
                             "ofType": null
                         }
                     },
                     {
+                        "__typename": "__Field",
                         "args": [],
                         "deprecationReason": null,
                         "description": null,
                         "isDeprecated": false,
                         "name": "specifiedByURL",
                         "type": {
+                            "__typename": "__Type",
                             "kind": "SCALAR",
                             "name": "String",
                             "ofType": null
@@ -1076,6 +1192,7 @@
                 "specifiedByURL": null
             },
             {
+                "__typename": "__Type",
                 "description": null,
                 "enumValues": [
                     {

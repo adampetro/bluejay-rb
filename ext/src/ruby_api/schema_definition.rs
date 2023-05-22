@@ -584,6 +584,10 @@ pub fn init() -> Result<(), Error> {
             0
         ),
     )?;
+    class.define_method(
+        "resolve_typename",
+        method!(|_: &SchemaDefinition| "__Schema", 0),
+    )?;
 
     Ok(())
 }
