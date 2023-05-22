@@ -264,6 +264,68 @@ Some benchmarks comparing the performance of `bluejay-rb` against `graphql-ruby`
   ```
 </details>
 
+<details>
+  <summary>Schema dump (Ruby 3.2, YJIT enabled)</summary>
+
+  ```
+  Profiling IPS:
+  Warming up --------------------------------------
+              graphql   255.000  i/100ms
+              bluejay    16.141k i/100ms
+  Calculating -------------------------------------
+              graphql      2.527k (± 2.7%) i/s -     12.750k in   5.050419s
+              bluejay    161.835k (± 1.7%) i/s -    823.191k in   5.088056s
+
+  Comparison:
+              bluejay:   161835.1 i/s
+              graphql:     2526.5 i/s - 64.05x  (± 0.00) slower
+
+  Profiling Ruby memory allocations:
+  Calculating -------------------------------------
+              graphql    57.528k memsize (     0.000  retained)
+                        527.000  objects (     0.000  retained)
+                          50.000  strings (     0.000  retained)
+              bluejay   640.000  memsize (     0.000  retained)
+                          1.000  objects (     0.000  retained)
+                          1.000  strings (     0.000  retained)
+
+  Comparison:
+              bluejay:        640 allocated
+              graphql:      57528 allocated - 89.89x more
+  ```
+</details>
+
+<details>
+  <summary>Schema dump (Ruby 3.2, YJIT disabled)</summary>
+
+  ```
+  Profiling IPS:
+  Warming up --------------------------------------
+              graphql   192.000  i/100ms
+              bluejay    16.315k i/100ms
+  Calculating -------------------------------------
+              graphql      1.908k (± 2.1%) i/s -      9.600k in   5.035105s
+              bluejay    161.043k (± 1.9%) i/s -    815.750k in   5.067302s
+
+  Comparison:
+              bluejay:   161043.4 i/s
+              graphql:     1907.5 i/s - 84.43x  (± 0.00) slower
+
+  Profiling Ruby memory allocations:
+  Calculating -------------------------------------
+              graphql    57.528k memsize (   944.000  retained)
+                        527.000  objects (    12.000  retained)
+                          50.000  strings (     4.000  retained)
+              bluejay   640.000  memsize (     0.000  retained)
+                          1.000  objects (     0.000  retained)
+                          1.000  strings (     0.000  retained)
+
+  Comparison:
+              bluejay:        640 allocated
+              graphql:      57528 allocated - 89.89x more
+  ```
+</details>
+
 ## Installation
 
 Install the gem and add to the application's Gemfile by executing:
