@@ -43,6 +43,7 @@ jobs:
 
       - name: Run benchmarks
         run: bundle exec rake bench:all
+        if: matrix.ruby != "head" # issue with graphql-ruby C parser on Ruby head
 
       - name: Lint ruby
         run: bin/style
