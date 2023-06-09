@@ -43,19 +43,22 @@ jobs:
 
       - name: Run benchmarks
         run: bundle exec rake bench:all
-        if: matrix.ruby != "head" # issue with graphql-ruby C parser on Ruby head
+        if: matrix.ruby != 'head' # issue with graphql-ruby C parser on Ruby head
 
       - name: Lint ruby
         run: bin/style
+        if: matrix.ruby != 'head' # issue with graphql-ruby C parser on Ruby head
 
       - name: Run ruby typecheck
         run: bin/typecheck
 
       - name: Tapioca verify gem RBIs
         run: bin/tapioca gem --verify
+        if: matrix.ruby != 'head' # issue with graphql-ruby C parser on Ruby head
 
       - name: Tapioca verify DSL RBIs
         run: bin/tapioca dsl --verify
+        if: matrix.ruby != 'head' # issue with graphql-ruby C parser on Ruby head
 
       - name: Lint rust
         run: cargo clippy -- -D warnings && cargo fmt --check
@@ -78,10 +81,12 @@ jobs:
       - name: Tapioca verify example gem RBIs
         working-directory: example
         run: bin/tapioca gem --verify
+        if: matrix.ruby != 'head' # issue with graphql-ruby C parser on Ruby head
 
       - name: Tapioca verify example DSL RBIs
         working-directory: example
         run: bin/tapioca dsl --verify
+        if: matrix.ruby != 'head' # issue with graphql-ruby C parser on Ruby head
 
   memcheck:
     name: Memcheck
