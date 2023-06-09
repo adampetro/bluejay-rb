@@ -14,14 +14,17 @@ use bluejay_parser::ast::executable::{
     ExecutableDocument, Field, OperationDefinition, Selection, SelectionSet,
 };
 use bluejay_parser::ast::{Directive, VariableArguments, VariableValue};
-use magnus::{ArgList, Error, RArray, RHash, Value, QNIL};
+use magnus::{ArgList, Error, RArray, RHash, TryConvert, Value, QNIL};
+use std::cell::Cell;
 use std::collections::{BTreeMap, HashSet};
+use std::time::{Duration, Instant};
 
 pub struct Engine<'a> {
     schema: &'a SchemaDefinition,
     document: &'a ExecutableDocument<'a>,
     variables: &'a RHash,
     key_store: KeyStore<'a>,
+    ruby_duration: Cell<Duration>,
 }
 
 impl<'a> Engine<'a> {
@@ -41,6 +44,7 @@ impl<'a> Engine<'a> {
                         .into_iter()
                         .map(ExecutionError::ParseError)
                         .collect(),
+                    Duration::ZERO,
                 ));
             }
         };
@@ -48,7 +52,11 @@ impl<'a> Engine<'a> {
         let operation_definition = match Self::get_operation(&document, operation_name) {
             Ok(od) => od,
             Err(error) => {
-                return Ok(Self::execution_result(Default::default(), vec![error]));
+                return Ok(Self::execution_result(
+                    Default::default(),
+                    vec![error],
+                    Duration::ZERO,
+                ));
             }
         };
 
@@ -56,7 +64,11 @@ impl<'a> Engine<'a> {
             match Self::get_variable_values(schema, operation_definition, variable_values) {
                 Ok(cvv) => cvv,
                 Err(errors) => {
-                    return Ok(Self::execution_result(Default::default(), errors));
+                    return Ok(Self::execution_result(
+                        Default::default(),
+                        errors,
+                        Duration::ZERO,
+                    ));
                 }
             };
 
@@ -65,11 +77,12 @@ impl<'a> Engine<'a> {
             document: &document,
             variables: &variables,
             key_store: KeyStore::new(),
+            ruby_duration: Cell::new(Duration::ZERO),
         };
 
         match operation_definition.as_ref().operation_type() {
             OperationType::Query => {
-                let query_root = initial_value.funcall("query", ())?;
+                let query_root = instance.call_ruby(initial_value, "query", ())?;
                 Ok(instance.execute_query(operation_definition, query_root))
             }
             OperationType::Mutation => {
@@ -178,8 +191,12 @@ impl<'a> Engine<'a> {
         }
     }
 
-    fn execution_result(value: Value, errors: Vec<ExecutionError>) -> ExecutionResult {
-        ExecutionResult::new(value, errors)
+    fn execution_result(
+        value: Value,
+        errors: Vec<ExecutionError>,
+        ruby_duration: Duration,
+    ) -> ExecutionResult {
+        ExecutionResult::new(value, errors, ruby_duration)
     }
 
     fn execute_query(
@@ -194,7 +211,7 @@ impl<'a> Engine<'a> {
         let (value, errors) =
             self.execute_selection_set(selection_set.iter(), query_type, initial_value);
 
-        Self::execution_result(value, errors)
+        Self::execution_result(value, errors, self.ruby_duration.get())
     }
 
     fn execute_selection_set(
@@ -253,7 +270,7 @@ impl<'a> Engine<'a> {
                 if directive.name().as_ref() == "skip" {
                     self.coerce_directive(directive)
                         .map(|coerced_directive| -> bool {
-                            coerced_directive.funcall("if_arg", ()).unwrap()
+                            self.call_ruby(coerced_directive, "if_arg", ()).unwrap()
                         })
                         .unwrap_or(false)
                 } else {
@@ -265,7 +282,7 @@ impl<'a> Engine<'a> {
                 if directive.name().as_ref() == "include" {
                     self.coerce_directive(directive)
                         .map(|coerced_directive| -> bool {
-                            coerced_directive.funcall("if_arg", ()).unwrap()
+                            self.call_ruby(coerced_directive, "if_arg", ()).unwrap()
                         })
                         .unwrap_or(true)
                 } else {
@@ -478,12 +495,29 @@ impl<'a> Engine<'a> {
         argument_values: impl ArgList,
     ) -> Result<Value, ExecutionError<'a>> {
         // TODO: use object_type somehow?
-        object_value
-            .funcall(
-                field_definition.ruby_resolver_method_name(),
-                argument_values,
-            )
-            .map_err(|error| ExecutionError::ApplicationError(error.to_string()))
+        self.call_ruby(
+            object_value,
+            field_definition.ruby_resolver_method_name(),
+            argument_values,
+        )
+        .map_err(|error| ExecutionError::ApplicationError(error.to_string()))
+    }
+
+    fn call_ruby<T: TryConvert>(
+        &self,
+        value: Value,
+        method: &str,
+        args: impl magnus::ArgList,
+    ) -> Result<T, Error> {
+        let start = Instant::now();
+        let result = value.funcall(method, args);
+        self.ruby_duration.set(
+            self.ruby_duration
+                .get()
+                .checked_add(start.elapsed())
+                .expect("Overflow adding elapsed time"),
+        );
+        result
     }
 
     fn complete_value(
@@ -589,7 +623,9 @@ impl<'a> Engine<'a> {
         object_value: Value,
     ) -> &'a ObjectTypeDefinition {
         // TODO: change to return Result<_, FieldError>
-        let typename: String = object_value.funcall("resolve_typename", ()).unwrap();
+        let typename: String = self
+            .call_ruby(object_value, "resolve_typename", ())
+            .unwrap();
         let object_type = match self.schema.r#type(typename.as_str()) {
             Some(TypeDefinition::Object(otd)) => otd.as_ref(),
             _ => panic!(),
@@ -607,7 +643,9 @@ impl<'a> Engine<'a> {
         object_value: Value,
     ) -> &'a ObjectTypeDefinition {
         // TODO: change to return Result<_, FieldError>
-        let typename: String = object_value.funcall("resolve_typename", ()).unwrap();
+        let typename: String = self
+            .call_ruby(object_value, "resolve_typename", ())
+            .unwrap();
         let object_type = match self.schema.r#type(typename.as_str()) {
             Some(TypeDefinition::Object(otd)) => otd.as_ref(),
             _ => panic!(),
