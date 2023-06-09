@@ -7,31 +7,31 @@
 # source://graphql-c_parser//lib/graphql/c_parser/version.rb#3
 module GraphQL
   class << self
-    # source://graphql/2.0.20/lib/graphql.rb#35
+    # source://graphql/2.0.22/lib/graphql.rb#35
     def default_parser; end
 
-    # source://graphql/2.0.20/lib/graphql.rb#39
+    # source://graphql/2.0.22/lib/graphql.rb#39
     def default_parser=(_arg0); end
 
-    # source://graphql/2.0.20/lib/graphql.rb#45
+    # source://graphql/2.0.22/lib/graphql.rb#45
     def parse(graphql_string, trace: T.unsafe(nil)); end
 
-    # source://graphql/2.0.20/lib/graphql.rb#52
+    # source://graphql/2.0.22/lib/graphql.rb#52
     def parse_file(filename); end
 
     # source://graphql-c_parser//lib/graphql/c_parser.rb#77
     def parse_with_c(string, filename: T.unsafe(nil), trace: T.unsafe(nil)); end
 
-    # source://graphql/2.0.20/lib/graphql.rb#62
+    # source://graphql/2.0.22/lib/graphql.rb#62
     def parse_with_racc(string, filename: T.unsafe(nil), trace: T.unsafe(nil)); end
 
-    # source://graphql/2.0.20/lib/graphql.rb#58
+    # source://graphql/2.0.22/lib/graphql.rb#58
     def scan(graphql_string); end
 
     # source://graphql-c_parser//lib/graphql/c_parser.rb#73
     def scan_with_c(graphql_string); end
 
-    # source://graphql/2.0.20/lib/graphql.rb#66
+    # source://graphql/2.0.22/lib/graphql.rb#66
     def scan_with_ruby(graphql_string); end
   end
 end
@@ -92,5 +92,5 @@ end
 # source://graphql-c_parser//lib/graphql/c_parser/version.rb#5
 GraphQL::CParser::VERSION = T.let(T.unsafe(nil), String)
 
-# source://graphql/2.0.20/lib/graphql/version.rb#3
+# source://graphql/2.0.22/lib/graphql/version.rb#3
 GraphQL::VERSION = T.let(T.unsafe(nil), String)

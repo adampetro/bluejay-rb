@@ -9,7 +9,7 @@ group :development do
   gem "benchmark-ips"
   gem "benchmark-memory"
   gem "graphql", "~> 2.0.22"
-  gem "graphql-c_parser", git: "https://github.com/rmosolgo/graphql-ruby"
+  gem "graphql-c_parser", "~> 1.0.2"
   gem "minitest", "~> 5.0"
   gem "pry"
   gem "pry-nav"
