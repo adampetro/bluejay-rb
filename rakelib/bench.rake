@@ -70,8 +70,3 @@ end
 
 desc "Run all benchmarks"
 task bench: "bench:all"
-
-def interpolate_multiline_string(source_string, padding)
-  indented_lines = source_string.lines.map { |line| "#{padding}#{line.chomp}" }
-  indented_lines.join("\n")
-end
