@@ -109,6 +109,18 @@ pub fn init() -> Result<(), Error> {
             1
         ),
     )?;
+    r.define_module_function(
+        "ruby_from_rust",
+        function!(
+            |value: magnus::Value,
+             method: magnus::Symbol,
+             args: magnus::RArray|
+             -> Result<magnus::Value, magnus::Error> {
+                value.funcall(method, unsafe { args.as_slice() })
+            },
+            3
+        ),
+    )?;
 
     Ok(())
 }

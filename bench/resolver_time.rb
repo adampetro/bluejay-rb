@@ -3,6 +3,7 @@
 
 require "bluejay"
 require "sorbet-runtime"
+require_relative "bench"
 
 module Graph
   class Wrapper < ::Bluejay::ObjectType
