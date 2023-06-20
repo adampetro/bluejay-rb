@@ -23,23 +23,23 @@ Some benchmarks comparing the performance of `bluejay-rb` against `graphql-ruby`
   ```
   Profiling IPS:
   Warming up --------------------------------------
-               graphql   179.000  i/100ms
-               bluejay     1.195k i/100ms
+               graphql   177.000  i/100ms
+               bluejay     1.504k i/100ms
   Calculating -------------------------------------
-               graphql      1.844k (± 1.5%) i/s -      9.308k in   5.049845s
-               bluejay     11.932k (± 1.5%) i/s -     59.750k in   5.008661s
+               graphql      1.850k (± 3.4%) i/s -      9.381k in   5.077797s
+               bluejay     15.023k (± 1.5%) i/s -     75.200k in   5.006907s
   
   Comparison:
-               bluejay:    11932.0 i/s
-               graphql:     1843.6 i/s - 6.47x  (± 0.00) slower
+               bluejay:    15022.6 i/s
+               graphql:     1850.0 i/s - 8.12x  (± 0.00) slower
   
   Profiling Ruby memory allocations:
   Calculating -------------------------------------
-               graphql    46.560k memsize (   168.000  retained)
-                         421.000  objects (     1.000  retained)
+               graphql    46.560k memsize (     0.000  retained)
+                         421.000  objects (     0.000  retained)
                           12.000  strings (     0.000  retained)
-               bluejay     5.216k memsize (   208.000  retained)
-                          39.000  objects (     2.000  retained)
+               bluejay     5.216k memsize (    40.000  retained)
+                          39.000  objects (     1.000  retained)
                            0.000  strings (     0.000  retained)
   
   Comparison:
@@ -54,23 +54,23 @@ Some benchmarks comparing the performance of `bluejay-rb` against `graphql-ruby`
   ```
   Profiling IPS:
   Warming up --------------------------------------
-               graphql    78.000  i/100ms
-               bluejay     1.205k i/100ms
+               graphql    74.000  i/100ms
+               bluejay     1.555k i/100ms
   Calculating -------------------------------------
-               graphql    780.783  (± 1.4%) i/s -      3.978k in   5.095848s
-               bluejay     12.084k (± 1.7%) i/s -     61.455k in   5.087355s
+               graphql    762.448  (± 2.5%) i/s -      3.848k in   5.050512s
+               bluejay     15.395k (± 2.2%) i/s -     77.750k in   5.052958s
   
   Comparison:
-               bluejay:    12083.7 i/s
-               graphql:      780.8 i/s - 15.48x  (± 0.00) slower
+               bluejay:    15395.4 i/s
+               graphql:      762.4 i/s - 20.19x  (± 0.00) slower
   
   Profiling Ruby memory allocations:
   Calculating -------------------------------------
                graphql    46.560k memsize (    21.752k retained)
                          421.000  objects (   197.000  retained)
                           12.000  strings (    12.000  retained)
-               bluejay     5.216k memsize (   920.000  retained)
-                          39.000  objects (     6.000  retained)
+               bluejay     5.216k memsize (   336.000  retained)
+                          39.000  objects (     2.000  retained)
                            0.000  strings (     0.000  retained)
   
   Comparison:
@@ -85,15 +85,15 @@ Some benchmarks comparing the performance of `bluejay-rb` against `graphql-ruby`
   ```
   Profiling IPS:
   Warming up --------------------------------------
-               bluejay    39.110k i/100ms
-               graphql     6.624k i/100ms
+               bluejay    37.858k i/100ms
+               graphql     6.453k i/100ms
   Calculating -------------------------------------
-               bluejay    397.493k (± 2.8%) i/s -      1.995M in   5.022378s
-               graphql     66.486k (± 1.1%) i/s -    337.824k in   5.081785s
+               bluejay    375.305k (± 2.4%) i/s -      1.893M in   5.046960s
+               graphql     64.386k (± 0.7%) i/s -    322.650k in   5.011463s
   
   Comparison:
-               bluejay:   397492.6 i/s
-               graphql:    66485.9 i/s - 5.98x  (± 0.00) slower
+               bluejay:   375305.2 i/s
+               graphql:    64385.7 i/s - 5.83x  (± 0.00) slower
   
   Profiling Ruby memory allocations:
   Calculating -------------------------------------
@@ -116,15 +116,15 @@ Some benchmarks comparing the performance of `bluejay-rb` against `graphql-ruby`
   ```
   Profiling IPS:
   Warming up --------------------------------------
-               bluejay    37.989k i/100ms
-               graphql     5.789k i/100ms
+               bluejay    38.130k i/100ms
+               graphql     5.614k i/100ms
   Calculating -------------------------------------
-               bluejay    398.556k (± 1.9%) i/s -      2.013M in   5.053601s
-               graphql     53.100k (±11.1%) i/s -    266.294k in   5.082801s
+               bluejay    383.634k (± 1.0%) i/s -      1.945M in   5.069520s
+               graphql     55.521k (± 3.9%) i/s -    280.700k in   5.065237s
   
   Comparison:
-               bluejay:   398556.4 i/s
-               graphql:    53100.0 i/s - 7.51x  (± 0.00) slower
+               bluejay:   383633.7 i/s
+               graphql:    55520.6 i/s - 6.91x  (± 0.00) slower
   
   Profiling Ruby memory allocations:
   Calculating -------------------------------------
@@ -147,15 +147,15 @@ Some benchmarks comparing the performance of `bluejay-rb` against `graphql-ruby`
   ```
   Profiling IPS:
   Warming up --------------------------------------
-               bluejay   198.000  i/100ms
-               graphql    25.000  i/100ms
+               bluejay   202.000  i/100ms
+               graphql    29.000  i/100ms
   Calculating -------------------------------------
-               bluejay      1.784k (±11.5%) i/s -      8.910k in   5.072242s
-               graphql    264.855  (±12.5%) i/s -      1.300k in   5.004887s
+               bluejay      2.035k (± 1.0%) i/s -     10.302k in   5.063196s
+               graphql    290.481  (± 3.1%) i/s -      1.479k in   5.097784s
   
   Comparison:
-               bluejay:     1783.6 i/s
-               graphql:      264.9 i/s - 6.73x  (± 0.00) slower
+               bluejay:     2034.9 i/s
+               graphql:      290.5 i/s - 7.01x  (± 0.00) slower
   
   Profiling Ruby memory allocations:
   Calculating -------------------------------------
@@ -178,15 +178,15 @@ Some benchmarks comparing the performance of `bluejay-rb` against `graphql-ruby`
   ```
   Profiling IPS:
   Warming up --------------------------------------
-               bluejay   181.000  i/100ms
-               graphql    18.000  i/100ms
+               bluejay   204.000  i/100ms
+               graphql    25.000  i/100ms
   Calculating -------------------------------------
-               bluejay      1.681k (±11.2%) i/s -      8.326k in   5.026915s
-               graphql    257.161  (± 4.7%) i/s -      1.296k in   5.051135s
+               bluejay      2.023k (± 1.0%) i/s -     10.200k in   5.043670s
+               graphql    251.365  (± 4.4%) i/s -      1.275k in   5.084231s
   
   Comparison:
-               bluejay:     1680.6 i/s
-               graphql:      257.2 i/s - 6.54x  (± 0.00) slower
+               bluejay:     2022.5 i/s
+               graphql:      251.4 i/s - 8.05x  (± 0.00) slower
   
   Profiling Ruby memory allocations:
   Calculating -------------------------------------
@@ -209,20 +209,20 @@ Some benchmarks comparing the performance of `bluejay-rb` against `graphql-ruby`
   ```
   Profiling IPS:
   Warming up --------------------------------------
-               graphql   373.000  i/100ms
-               bluejay     5.226k i/100ms
+               graphql   465.000  i/100ms
+               bluejay     5.625k i/100ms
   Calculating -------------------------------------
-               graphql      4.186k (±12.7%) i/s -     20.515k in   5.003778s
-               bluejay     53.997k (± 4.1%) i/s -    271.752k in   5.041918s
+               graphql      4.669k (± 1.9%) i/s -     23.715k in   5.080598s
+               bluejay     55.302k (± 1.4%) i/s -    281.250k in   5.086730s
   
   Comparison:
-               bluejay:    53996.8 i/s
-               graphql:     4185.7 i/s - 12.90x  (± 0.00) slower
+               bluejay:    55302.4 i/s
+               graphql:     4669.5 i/s - 11.84x  (± 0.00) slower
   
   Profiling Ruby memory allocations:
   Calculating -------------------------------------
-               graphql    33.392k memsize (    12.200k retained)
-                         383.000  objects (   152.000  retained)
+               graphql    33.392k memsize (    12.160k retained)
+                         383.000  objects (   151.000  retained)
                           17.000  strings (    13.000  retained)
                bluejay    40.000  memsize (    40.000  retained)
                            1.000  objects (     1.000  retained)
@@ -240,15 +240,15 @@ Some benchmarks comparing the performance of `bluejay-rb` against `graphql-ruby`
   ```
   Profiling IPS:
   Warming up --------------------------------------
-               graphql   282.000  i/100ms
-               bluejay     5.359k i/100ms
+               graphql   294.000  i/100ms
+               bluejay     5.608k i/100ms
   Calculating -------------------------------------
-               graphql      2.952k (± 5.0%) i/s -     14.946k in   5.075507s
-               bluejay     54.661k (± 4.8%) i/s -    273.309k in   5.012009s
+               graphql      3.022k (± 1.3%) i/s -     15.288k in   5.059873s
+               bluejay     55.294k (± 3.6%) i/s -    280.400k in   5.079344s
   
   Comparison:
-               bluejay:    54661.4 i/s
-               graphql:     2952.1 i/s - 18.52x  (± 0.00) slower
+               bluejay:    55294.2 i/s
+               graphql:     3021.9 i/s - 18.30x  (± 0.00) slower
   
   Profiling Ruby memory allocations:
   Calculating -------------------------------------
@@ -271,15 +271,15 @@ Some benchmarks comparing the performance of `bluejay-rb` against `graphql-ruby`
   ```
   Profiling IPS:
   Warming up --------------------------------------
-               graphql   242.000  i/100ms
-               bluejay    14.911k i/100ms
+               graphql   263.000  i/100ms
+               bluejay    15.639k i/100ms
   Calculating -------------------------------------
-               graphql      2.476k (± 8.0%) i/s -     12.342k in   5.024615s
-               bluejay    153.374k (± 3.3%) i/s -    775.372k in   5.061101s
+               graphql      2.607k (± 2.0%) i/s -     13.150k in   5.046483s
+               bluejay    151.815k (± 3.1%) i/s -    766.311k in   5.053265s
   
   Comparison:
-               bluejay:   153373.7 i/s
-               graphql:     2475.5 i/s - 61.96x  (± 0.00) slower
+               bluejay:   151815.3 i/s
+               graphql:     2606.9 i/s - 58.24x  (± 0.00) slower
   
   Profiling Ruby memory allocations:
   Calculating -------------------------------------
@@ -302,15 +302,15 @@ Some benchmarks comparing the performance of `bluejay-rb` against `graphql-ruby`
   ```
   Profiling IPS:
   Warming up --------------------------------------
-               graphql   113.000  i/100ms
-               bluejay    12.558k i/100ms
+               graphql   198.000  i/100ms
+               bluejay    14.721k i/100ms
   Calculating -------------------------------------
-               graphql      1.703k (± 9.7%) i/s -      8.475k in   5.026214s
-               bluejay    141.316k (± 7.4%) i/s -    703.248k in   5.010912s
+               graphql      2.003k (± 1.3%) i/s -     10.098k in   5.042412s
+               bluejay    155.296k (± 2.7%) i/s -    780.213k in   5.028210s
   
   Comparison:
-               bluejay:   141315.8 i/s
-               graphql:     1703.4 i/s - 82.96x  (± 0.00) slower
+               bluejay:   155295.8 i/s
+               graphql:     2002.9 i/s - 77.53x  (± 0.00) slower
   
   Profiling Ruby memory allocations:
   Calculating -------------------------------------
