@@ -261,6 +261,24 @@ module Bluejay
       )
     end
 
+    def test_execute_preserves_query_order
+      query = <<~GQL
+        {
+          otherHello: hello(name: { first: "John" last: "Smith" })
+          hello(name: { first: "John" last: "Smith" })
+        }
+      GQL
+      root = Domain::SchemaRoot.new
+
+      result = MySchema.execute(query:, initial_value: root)
+
+      assert_empty(result.errors)
+      assert_equal(
+        '{"otherHello":"Hello, John Smith!","hello":"Hello, John Smith!"}',
+        result.value.to_json,
+      )
+    end
+
     def test_execute_custom_scalar_coerce_result_error
       query = "{ today }"
       root = Domain::SchemaRoot.new(query: Domain::QueryRoot.new(today: Date.today.next_day))

@@ -12,13 +12,14 @@ use bluejay_core::executable::{
 use bluejay_core::{AsIter, Directive as CoreDirective, OperationType};
 use bluejay_parser::ast::executable::{ExecutableDocument, Field, OperationDefinition, Selection};
 use bluejay_parser::ast::{Directive, VariableArguments, VariableValue};
+use indexmap::IndexMap;
 use magnus::{ArgList, Error, RArray, RHash, Value, QNIL};
 use std::cell::RefCell;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 type CollectFieldsCache<'a> =
-    RefCell<HashMap<SelectionSetProvider<'a>, Rc<BTreeMap<&'a str, Rc<Vec<&'a Field<'a>>>>>>>;
+    RefCell<HashMap<SelectionSetProvider<'a>, Rc<IndexMap<&'a str, Rc<Vec<&'a Field<'a>>>>>>>;
 
 pub struct Engine<'a> {
     schema: &'a SchemaDefinition,
@@ -252,7 +253,7 @@ impl<'a> Engine<'a> {
         object_type: &ObjectTypeDefinition,
         selection_set_provider: SelectionSetProvider<'a>,
         visited_fragments: &mut HashSet<&'a str>,
-    ) -> Rc<BTreeMap<&'a str, Rc<Vec<&'a Field>>>> {
+    ) -> Rc<IndexMap<&'a str, Rc<Vec<&'a Field>>>> {
         if let Some(cached) = self
             .collect_fields_cache
             .borrow()
@@ -261,7 +262,7 @@ impl<'a> Engine<'a> {
             return cached.clone();
         }
 
-        let mut grouped_fields: BTreeMap<&'a str, Rc<Vec<&'a Field>>> = BTreeMap::new();
+        let mut grouped_fields: IndexMap<&'a str, Rc<Vec<&'a Field>>> = IndexMap::new();
 
         for selection in selection_set_provider.selection_set() {
             let should_skip = selection.as_ref().directives().iter().any(|directive| {

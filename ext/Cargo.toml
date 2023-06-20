@@ -14,6 +14,7 @@ once_cell = "1.17"
 convert_case = "0.6.0"
 itertools = "0.10.5"
 strum = { version = "0.24", features = ["derive"] }
+indexmap = "1.9.3"
 bluejay-parser = { git = "https://github.com/adampetro/bluejay", rev = "fcca1c4e602359f49c592f1551582c79336b4f11" }
 bluejay-core = { git = "https://github.com/adampetro/bluejay", rev = "fcca1c4e602359f49c592f1551582c79336b4f11" }
 bluejay-printer = { git = "https://github.com/adampetro/bluejay", rev = "fcca1c4e602359f49c592f1551582c79336b4f11" }
