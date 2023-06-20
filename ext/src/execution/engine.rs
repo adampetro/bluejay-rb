@@ -1,4 +1,4 @@
-use crate::execution::{CoerceResult, ExecutionError, FieldError, KeyStore};
+use crate::execution::{CoerceResult, ExecutionError, FieldError, KeyStore, SelectionSetProvider};
 use crate::helpers::RArrayIter;
 use crate::ruby_api::{
     BaseInputType, BaseOutputType, CoerceInput, ExecutionResult, ExtraResolverArg, FieldDefinition,
@@ -10,18 +10,22 @@ use bluejay_core::executable::{
     OperationDefinition as CoreOperationDefinition, Selection as CoreSelection, VariableType,
 };
 use bluejay_core::{AsIter, Directive as CoreDirective, OperationType};
-use bluejay_parser::ast::executable::{
-    ExecutableDocument, Field, OperationDefinition, Selection, SelectionSet,
-};
+use bluejay_parser::ast::executable::{ExecutableDocument, Field, OperationDefinition, Selection};
 use bluejay_parser::ast::{Directive, VariableArguments, VariableValue};
 use magnus::{ArgList, Error, RArray, RHash, Value, QNIL};
-use std::collections::{BTreeMap, HashSet};
+use std::cell::RefCell;
+use std::collections::{BTreeMap, HashMap, HashSet};
+use std::rc::Rc;
+
+type CollectFieldsCache<'a> =
+    RefCell<HashMap<SelectionSetProvider<'a>, Rc<BTreeMap<&'a str, Rc<Vec<&'a Field<'a>>>>>>>;
 
 pub struct Engine<'a> {
     schema: &'a SchemaDefinition,
     document: &'a ExecutableDocument<'a>,
     variables: &'a RHash,
     key_store: KeyStore<'a>,
+    collect_fields_cache: CollectFieldsCache<'a>,
 }
 
 impl<'a> Engine<'a> {
@@ -65,6 +69,7 @@ impl<'a> Engine<'a> {
             document: &document,
             variables: &variables,
             key_store: KeyStore::new(),
+            collect_fields_cache: Default::default(),
         };
 
         match operation_definition.as_ref().operation_type() {
@@ -189,17 +194,19 @@ impl<'a> Engine<'a> {
     ) -> ExecutionResult {
         let query_type = self.schema.query();
         let query_type = query_type.get();
-        let selection_set = query.as_ref().selection_set();
 
-        let (value, errors) =
-            self.execute_selection_set(selection_set.iter(), query_type, initial_value);
+        let (value, errors) = self.execute_selection_set(
+            SelectionSetProvider::SelectionSet(query.selection_set()),
+            query_type,
+            initial_value,
+        );
 
         Self::execution_result(value, errors)
     }
 
     fn execute_selection_set(
         &'a self,
-        selection_set: impl Iterator<Item = &'a Selection<'a>>,
+        selection_set: SelectionSetProvider<'a>,
         object_type: &ObjectTypeDefinition,
         object_value: Value,
     ) -> (Value, Vec<ExecutionError<'a>>) {
@@ -211,7 +218,7 @@ impl<'a> Engine<'a> {
         let mut errors = Vec::new();
         let mut has_null_for_required = false;
 
-        for (response_key, fields) in grouped_field_set {
+        for (&response_key, fields) in grouped_field_set.as_ref() {
             let field_name = fields.first().unwrap().name().as_ref();
             let field_definition = object_type.field_definition(field_name).unwrap_or_else(|| {
                 panic!(
@@ -220,7 +227,7 @@ impl<'a> Engine<'a> {
                 )
             });
             let (response_value, mut errs) =
-                self.execute_field(object_type, object_value, field_definition, &fields);
+                self.execute_field(object_type, object_value, field_definition, fields.clone());
             if field_definition.r#type().as_ref().is_required() && response_value.is_nil() {
                 has_null_for_required = true;
             }
@@ -243,12 +250,20 @@ impl<'a> Engine<'a> {
     fn collect_fields(
         &'a self,
         object_type: &ObjectTypeDefinition,
-        selection_set: impl Iterator<Item = &'a Selection<'a>>,
+        selection_set_provider: SelectionSetProvider<'a>,
         visited_fragments: &mut HashSet<&'a str>,
-    ) -> BTreeMap<&'a str, Vec<&'a Field>> {
-        let mut grouped_fields: BTreeMap<&'a str, Vec<&'a Field>> = BTreeMap::new();
+    ) -> Rc<BTreeMap<&'a str, Rc<Vec<&'a Field>>>> {
+        if let Some(cached) = self
+            .collect_fields_cache
+            .borrow()
+            .get(&selection_set_provider)
+        {
+            return cached.clone();
+        }
 
-        for selection in selection_set {
+        let mut grouped_fields: BTreeMap<&'a str, Rc<Vec<&'a Field>>> = BTreeMap::new();
+
+        for selection in selection_set_provider.selection_set() {
             let should_skip = selection.as_ref().directives().iter().any(|directive| {
                 if directive.name().as_ref() == "skip" {
                     self.coerce_directive(directive)
@@ -280,7 +295,8 @@ impl<'a> Engine<'a> {
             match selection {
                 Selection::Field(field) => {
                     let response_key = field.response_key();
-                    let entry_for_response_key = grouped_fields.entry(response_key).or_default();
+                    let entry_for_response_key =
+                        Rc::get_mut(grouped_fields.entry(response_key).or_default()).unwrap();
                     entry_for_response_key.push(field);
                 }
                 Selection::FragmentSpread(fragment_spread) => {
@@ -309,13 +325,14 @@ impl<'a> Engine<'a> {
 
                         let fragment_grouped_field_set = self.collect_fields(
                             object_type,
-                            fragment_selection_set.iter(),
+                            SelectionSetProvider::SelectionSet(fragment_selection_set),
                             visited_fragments,
                         );
 
-                        for (response_key, fragment_group) in &fragment_grouped_field_set {
+                        for (response_key, fragment_group) in fragment_grouped_field_set.as_ref() {
                             let group_for_response_key =
-                                grouped_fields.entry(response_key).or_default();
+                                Rc::get_mut(grouped_fields.entry(response_key).or_default())
+                                    .unwrap();
                             group_for_response_key.extend_from_slice(fragment_group);
                         }
                     }
@@ -332,20 +349,26 @@ impl<'a> Engine<'a> {
 
                     let fragment_grouped_field_set = self.collect_fields(
                         object_type,
-                        fragment_selection_set.iter(),
+                        SelectionSetProvider::SelectionSet(fragment_selection_set),
                         visited_fragments,
                     );
 
-                    for (response_key, fragment_group) in &fragment_grouped_field_set {
+                    for (response_key, fragment_group) in fragment_grouped_field_set.as_ref() {
                         let group_for_response_key =
-                            grouped_fields.entry(response_key).or_default();
+                            Rc::get_mut(grouped_fields.entry(response_key).or_default()).unwrap();
                         group_for_response_key.extend_from_slice(fragment_group);
                     }
                 }
             }
         }
 
-        grouped_fields
+        let wrapped = Rc::new(grouped_fields);
+
+        self.collect_fields_cache
+            .borrow_mut()
+            .insert(selection_set_provider, wrapped.clone());
+
+        wrapped
     }
 
     fn does_fragment_type_apply(
@@ -374,7 +397,7 @@ impl<'a> Engine<'a> {
         object_type: &ObjectTypeDefinition,
         object_value: Value,
         field_definition: &FieldDefinition,
-        fields: &[&'a Field],
+        fields: Rc<Vec<&'a Field>>,
     ) -> (Value, Vec<ExecutionError<'a>>) {
         let field = fields.first().unwrap();
 
@@ -489,7 +512,7 @@ impl<'a> Engine<'a> {
     fn complete_value(
         &'a self,
         field_type: &OutputType,
-        fields: &[&'a Field],
+        fields: Rc<Vec<&'a Field>>,
         result: Value,
     ) -> (Value, Vec<ExecutionError<'a>>) {
         if field_type.as_ref().is_required() && result.is_nil() {
@@ -518,18 +541,15 @@ impl<'a> Engine<'a> {
                     Err(error) => (*QNIL, vec![ExecutionError::FieldError(error)]),
                 },
                 BaseOutputType::Object(otd) => {
-                    let sub_selection_set = Self::merge_selection_sets(fields);
-                    self.execute_selection_set(sub_selection_set, otd.as_ref(), result)
+                    self.execute_selection_set(fields.into(), otd.as_ref(), result)
                 }
                 BaseOutputType::Interface(itd) => {
                     let object_type = self.resolve_interface_type(itd.as_ref(), result);
-                    let sub_selection_set = Self::merge_selection_sets(fields);
-                    self.execute_selection_set(sub_selection_set, object_type, result)
+                    self.execute_selection_set(fields.into(), object_type, result)
                 }
                 BaseOutputType::Union(utd) => {
                     let object_type = self.resolve_union_type(utd.as_ref(), result);
-                    let sub_selection_set = Self::merge_selection_sets(fields);
-                    self.execute_selection_set(sub_selection_set, object_type, result)
+                    self.execute_selection_set(fields.into(), object_type, result)
                 }
             },
             OutputTypeReference::List(inner, _) => {
@@ -538,7 +558,7 @@ impl<'a> Engine<'a> {
                     let mut errors: Vec<ExecutionError<'a>> = Vec::new();
                     let mut has_null = false;
                     for item in RArrayIter::from(&arr) {
-                        let (value, mut errs) = self.complete_value(inner, fields, item);
+                        let (value, mut errs) = self.complete_value(inner, fields.clone(), item);
                         completed.push(value).unwrap(); // TODO: make sure unwrapping is ok here
                         errors.append(&mut errs);
                         if value.is_nil() {
@@ -560,27 +580,6 @@ impl<'a> Engine<'a> {
                 }
             }
         }
-    }
-
-    fn merge_selection_sets<'b>(
-        fields: impl IntoIterator<Item = &'b &'a Field<'a>>,
-    ) -> impl Iterator<Item = &'a Selection<'a>>
-    where
-        'a: 'b,
-    {
-        fields
-            .into_iter()
-            .copied()
-            .filter_map(
-                |field| {
-                    field.selection_set().map(
-                        |selection_set: &'a SelectionSet<'a>| -> <SelectionSet<'a> as AsIter>::Iterator<'a> {
-                            selection_set.iter()
-                        },
-                    )
-                },
-            )
-            .flatten()
     }
 
     fn resolve_interface_type(

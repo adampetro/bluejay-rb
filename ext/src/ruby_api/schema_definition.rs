@@ -15,7 +15,7 @@ use bluejay_core::definition::{
 };
 use bluejay_core::{AsIter, BuiltinScalarDefinition};
 use bluejay_printer::definition::DisplaySchemaDefinition;
-use bluejay_validator::executable::{Cache as ValidationCache, RulesValidator};
+use bluejay_validator::executable::{BuiltinRulesValidator, Cache as ValidationCache};
 use magnus::IntoValue;
 use magnus::{
     exception, function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs,
@@ -131,8 +131,12 @@ impl SchemaDefinition {
             bluejay_parser::ast::executable::ExecutableDocument::parse(query.as_str())
         {
             RArray::from_iter(
-                RulesValidator::validate(&document, self, &ValidationCache::new(&document, self))
-                    .map(|error| -> Obj<ValidationError> { Obj::wrap(error.into()) }),
+                BuiltinRulesValidator::validate(
+                    &document,
+                    self,
+                    &ValidationCache::new(&document, self),
+                )
+                .map(|error| -> Obj<ValidationError> { Obj::wrap(error.into()) }),
             )
         } else {
             RArray::new()
