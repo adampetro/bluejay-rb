@@ -13,7 +13,7 @@ use bluejay_core::{AsIter, Directive as CoreDirective, OperationType};
 use bluejay_parser::ast::executable::{ExecutableDocument, Field, OperationDefinition, Selection};
 use bluejay_parser::ast::{Directive, VariableArguments, VariableValue};
 use indexmap::IndexMap;
-use magnus::{ArgList, Error, RArray, RHash, Value, QNIL};
+use magnus::{ArgList, Error, RArray, RHash, RString, Value, QNIL};
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
@@ -109,7 +109,13 @@ impl<'a> Engine<'a> {
         operation: &'b OperationDefinition<'b>,
         variable_values: RHash,
     ) -> Result<RHash, Vec<ExecutionError<'b>>> {
-        let coerced_variables = RHash::new();
+        let coerced_variables = RHash::with_capacity(
+            operation
+                .as_ref()
+                .variable_definitions()
+                .map(AsIter::len)
+                .unwrap_or_default(),
+        );
         let mut errors: Vec<ExecutionError<'b>> = Vec::new();
 
         if let Some(variable_definitions) = operation.as_ref().variable_definitions() {
@@ -211,41 +217,99 @@ impl<'a> Engine<'a> {
         object_type: &ObjectTypeDefinition,
         object_value: Value,
     ) -> (Value, Vec<ExecutionError<'a>>) {
-        let mut visited_fragments = HashSet::new();
         let grouped_field_set =
-            self.collect_fields(object_type, selection_set, &mut visited_fragments);
+            self.collect_fields(object_type, selection_set, &mut HashSet::new());
 
-        let result_map = RHash::new();
+        seq_macro::seq!(N in 2..=20 {
+            match grouped_field_set.len() {
+                0 => (*RHash::new(), Vec::new()),
+                #(
+                    N => {
+                        #[allow(clippy::identity_op)]
+                        self.process_fields_with_bulk_insert(object_type, object_value, grouped_field_set, &mut [*QNIL; N * 2])
+                    },
+                )*
+                _ => {
+                    let result_map = RHash::with_capacity(grouped_field_set.len());
+                    let mut errors = Vec::new();
+                    let mut has_null_for_required = false;
+
+                    grouped_field_set.iter().for_each(|(response_key, fields)| {
+                        let (key, value, mut errs) = self.process_field(response_key, fields, object_type, object_value, &mut has_null_for_required);
+                        errors.append(&mut errs);
+                        result_map.aset(key, value).unwrap();
+                    });
+
+                    if has_null_for_required {
+                        (*QNIL, errors)
+                    } else {
+                        (*result_map, errors)
+                    }
+                },
+            }
+        })
+    }
+
+    fn process_fields_with_bulk_insert(
+        &'a self,
+        object_type: &ObjectTypeDefinition,
+        object_value: Value,
+        grouped_field_set: Rc<IndexMap<&'a str, Rc<Vec<&'a Field<'a>>>>>,
+        arr: &mut [Value],
+    ) -> (Value, Vec<ExecutionError<'a>>) {
         let mut errors = Vec::new();
         let mut has_null_for_required = false;
 
-        for (&response_key, fields) in grouped_field_set.as_ref() {
-            let field_name = fields.first().unwrap().name().as_ref();
-            let field_definition = object_type.field_definition(field_name).unwrap_or_else(|| {
-                panic!(
-                    "No field definition with name {field_name} on type {}",
-                    object_type.name()
-                )
+        grouped_field_set
+            .iter()
+            .enumerate()
+            .for_each(|(idx, (response_key, fields))| {
+                let (key, value, mut errs) = self.process_field(
+                    response_key,
+                    fields,
+                    object_type,
+                    object_value,
+                    &mut has_null_for_required,
+                );
+                arr[2 * idx] = *key;
+                arr[2 * idx + 1] = value;
+                errors.append(&mut errs);
             });
-            let (response_value, mut errs) =
-                self.execute_field(object_type, object_value, field_definition, fields.clone());
-            if field_definition.r#type().as_ref().is_required() && response_value.is_nil() {
-                has_null_for_required = true;
-            }
-            let key = if response_key == field_name {
-                field_definition.name_r_string()
-            } else {
-                self.key_store.get(response_key)
-            };
-            result_map.aset(key, response_value).unwrap();
-            errors.append(&mut errs);
-        }
 
         if has_null_for_required {
             (*QNIL, errors)
         } else {
+            let result_map = RHash::with_capacity(grouped_field_set.len());
+            result_map.bulk_insert(arr).unwrap();
             (*result_map, errors)
         }
+    }
+
+    fn process_field(
+        &'a self,
+        response_key: &'a str,
+        fields: &Rc<Vec<&'a Field<'a>>>,
+        object_type: &ObjectTypeDefinition,
+        object_value: Value,
+        has_null_for_required: &mut bool,
+    ) -> (RString, Value, Vec<ExecutionError<'a>>) {
+        let field_name = fields.first().unwrap().name().as_ref();
+        let field_definition = object_type.field_definition(field_name).unwrap_or_else(|| {
+            panic!(
+                "No field definition with name {field_name} on type {}",
+                object_type.name()
+            )
+        });
+        let (response_value, errs) =
+            self.execute_field(object_type, object_value, field_definition, fields.clone());
+        *has_null_for_required |=
+            field_definition.r#type().as_ref().is_required() && response_value.is_nil();
+        let key = if response_key == field_name {
+            field_definition.name_r_string()
+        } else {
+            self.key_store.get(response_key)
+        };
+        (key, response_value, errs)
     }
 
     fn collect_fields(
