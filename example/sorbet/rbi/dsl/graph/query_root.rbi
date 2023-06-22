@@ -14,5 +14,5 @@ module Graph::QueryRoot::Interface
   def resolve_typename; end
 
   sig { abstract.params(location: T.nilable(String)).returns(T::Array[Graph::Team::Interface]) }
-  def teams(location); end
+  def teams(location:); end
 end

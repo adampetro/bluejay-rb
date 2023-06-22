@@ -55,8 +55,9 @@ module Bluejay
       end
     end
 
-    define_method(:initialize) do |*args|
-      self.class.send(:definition).input_field_definitions.zip(args) do |ivd, arg|
+    define_method(:initialize) do |**kwargs|
+      self.class.send(:definition).input_field_definitions.each do |ivd|
+        arg = kwargs[ivd.ruby_name]
         instance_variable_set("@#{ivd.ruby_name}", arg)
       end
       freeze

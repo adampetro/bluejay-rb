@@ -75,7 +75,7 @@ module Bluejay
               include(Execution::InputCoercion::TestCustomScalarType::QueryRoot::Interface)
 
               sig { params(my_date: Date).returns(Date) }
-              def my_date(my_date)
+              def my_date(my_date:)
                 my_date
               end
             end

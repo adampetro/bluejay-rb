@@ -34,7 +34,7 @@ module Tapioca
           constant.field_definitions.each do |field_definition|
             # TODO: add extra args
             parameters = field_definition.argument_definitions.map do |argument_definition|
-              create_param(argument_definition.ruby_name, type: argument_definition.type.sorbet_type)
+              create_kw_param(argument_definition.ruby_name, type: argument_definition.type.sorbet_type)
             end
 
             return_type = field_definition.type.sorbet_type

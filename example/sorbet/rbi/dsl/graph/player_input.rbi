@@ -6,7 +6,7 @@
 
 class Graph::PlayerInput
   sig { params(first_name: String, last_name: String).void }
-  def initialize(first_name, last_name); end
+  def initialize(first_name:, last_name:); end
 
   sig { returns(String) }
   def first_name; end

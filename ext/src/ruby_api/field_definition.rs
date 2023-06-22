@@ -1,10 +1,12 @@
+use crate::helpers::NewInstanceKw;
 use crate::ruby_api::{root, ArgumentsDefinition, DirectiveDefinition, Directives, OutputType};
+use bluejay_core::AsIter;
 use convert_case::{Case, Casing};
 use magnus::{
-    function, gc, method,
+    function, gc, memoize, method,
     scan_args::{get_kwargs, KwArgs},
     typed_data::Obj,
-    DataTypeFunctions, Error, Module, Object, RArray, RHash, RString, TypedData,
+    DataTypeFunctions, Error, Module, Object, RArray, RHash, RString, Symbol, TypedData,
 };
 
 #[derive(Debug, TypedData)]
@@ -58,11 +60,18 @@ impl FieldDefinition {
         let directives = directives.unwrap_or_else(RArray::new);
         let deprecation_reason = deprecation_reason.flatten();
         if let Some(deprecation_reason) = deprecation_reason.as_deref() {
-            directives.push(
-                DirectiveDefinition::deprecated()
-                    .class()
-                    .new_instance((deprecation_reason,))?,
-            )?;
+            let directive_definition = DirectiveDefinition::deprecated();
+            let args = RHash::from_iter([(
+                directive_definition
+                    .as_ref()
+                    .arguments_definition()
+                    .iter()
+                    .next()
+                    .unwrap()
+                    .ruby_name(),
+                deprecation_reason,
+            )]);
+            directives.push(directive_definition.class().new_instance_kw(args)?)?;
         }
         let directives = directives.try_into()?;
         let is_builtin = name.starts_with("__");
@@ -174,6 +183,14 @@ impl bluejay_core::definition::FieldDefinition for FieldDefinition {
 #[derive(Debug)]
 pub enum ExtraResolverArg {
     SchemaClass,
+}
+
+impl ExtraResolverArg {
+    pub(crate) fn kwarg_name(&self) -> Symbol {
+        match self {
+            Self::SchemaClass => *memoize!(Symbol: Symbol::new("schema_class")),
+        }
+    }
 }
 
 pub fn init() -> Result<(), Error> {

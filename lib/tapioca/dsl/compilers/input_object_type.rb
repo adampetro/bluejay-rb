@@ -23,7 +23,7 @@ module Tapioca
       def decorate
         root.create_path(constant) do |klass|
           parameters = constant.input_field_definitions.map do |input_field_definition|
-            create_param(input_field_definition.ruby_name, type: input_field_definition.type.sorbet_type)
+            create_kw_param(input_field_definition.ruby_name, type: input_field_definition.type.sorbet_type)
           end
 
           klass.custom_create_method("initialize", parameters:, return_type: nil)

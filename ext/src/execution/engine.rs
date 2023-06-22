@@ -1,5 +1,5 @@
 use crate::execution::{CoerceResult, ExecutionError, FieldError, KeyStore, SelectionSetProvider};
-use crate::helpers::RArrayIter;
+use crate::helpers::{rhash_with_capacity, FuncallKw, NewInstanceKw, RArrayIter};
 use crate::ruby_api::{
     BaseInputType, BaseOutputType, CoerceInput, ExecutionResult, ExtraResolverArg, FieldDefinition,
     InputType, InputValueDefinition, InterfaceTypeDefinition, ObjectTypeDefinition, OutputType,
@@ -13,7 +13,7 @@ use bluejay_core::{AsIter, Directive as CoreDirective, OperationType};
 use bluejay_parser::ast::executable::{ExecutableDocument, Field, OperationDefinition, Selection};
 use bluejay_parser::ast::{Directive, VariableArguments, VariableValue};
 use indexmap::IndexMap;
-use magnus::{ArgList, Error, RArray, RHash, Value, QNIL};
+use magnus::{Error, RArray, RHash, Value, QNIL};
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
@@ -403,14 +403,17 @@ impl<'a> Engine<'a> {
         let field = fields.first().unwrap();
 
         if field_definition.resolver_arg_count() == 0 {
-            self.resolve_field_value(object_type, object_value, field_definition, ())
+            self.resolve_field_value(object_type, object_value, field_definition, None)
                 .map_err(|err| vec![err])
         } else {
             self.coerce_argument_values(field_definition, field)
                 .and_then(|argument_values| {
-                    self.resolve_field_value(object_type, object_value, field_definition, unsafe {
-                        argument_values.as_slice()
-                    })
+                    self.resolve_field_value(
+                        object_type,
+                        object_value,
+                        field_definition,
+                        Some(argument_values),
+                    )
                     .map_err(|err| vec![err])
                 })
         }
@@ -424,21 +427,23 @@ impl<'a> Engine<'a> {
         &'a self,
         field_definition: &FieldDefinition,
         field: &Field,
-    ) -> Result<RArray, Vec<ExecutionError<'a>>> {
-        let coerced_args = RArray::with_capacity(field_definition.resolver_arg_count());
+    ) -> Result<RHash, Vec<ExecutionError<'a>>> {
+        let coerced_args = rhash_with_capacity(field_definition.resolver_arg_count());
         let mut errors: Vec<ExecutionError<'a>> = Vec::new();
         let argument_definitions = field_definition.argument_definitions();
         for argument_definition in argument_definitions.iter() {
             match self.coerce_argument_value(argument_definition, field.arguments()) {
-                Ok(value) => coerced_args.push(value).unwrap(),
+                Ok(value) => coerced_args
+                    .aset(argument_definition.ruby_name(), value)
+                    .unwrap(),
                 Err(errs) => errors.extend(errs.into_iter()),
             }
         }
         for extra_resolver_arg in field_definition.extra_resolver_args() {
             match extra_resolver_arg {
-                ExtraResolverArg::SchemaClass => {
-                    coerced_args.push(self.schema.ruby_class()).unwrap()
-                }
+                ExtraResolverArg::SchemaClass => coerced_args
+                    .aset(extra_resolver_arg.kwarg_name(), self.schema.ruby_class())
+                    .unwrap(),
             }
         }
 
@@ -499,15 +504,16 @@ impl<'a> Engine<'a> {
         _object_type: &ObjectTypeDefinition,
         object_value: Value,
         field_definition: &FieldDefinition,
-        argument_values: impl ArgList,
+        argument_values: Option<RHash>,
     ) -> Result<Value, ExecutionError<'a>> {
         // TODO: use object_type somehow?
-        object_value
-            .funcall(
-                field_definition.ruby_resolver_method_name(),
-                argument_values,
-            )
-            .map_err(|error| ExecutionError::ApplicationError(error.to_string()))
+        match argument_values {
+            Some(kwargs) => {
+                object_value.funcall_kw(field_definition.ruby_resolver_method_name(), kwargs)
+            }
+            None => object_value.funcall(field_definition.ruby_resolver_method_name(), ()),
+        }
+        .map_err(|error| ExecutionError::ApplicationError(error.to_string()))
     }
 
     fn complete_value(
@@ -630,11 +636,13 @@ impl<'a> Engine<'a> {
             directive_definition.ruby_class().new_instance(()).unwrap()
         } else {
             let coerced_args =
-                RArray::with_capacity(directive_definition.arguments_definition().len());
+                rhash_with_capacity(directive_definition.arguments_definition().len());
             let mut errors = Vec::new();
             for argument_definition in directive_definition.arguments_definition().iter() {
                 match self.coerce_argument_value(argument_definition, directive.arguments()) {
-                    Ok(value) => coerced_args.push(value).unwrap(),
+                    Ok(value) => coerced_args
+                        .aset(argument_definition.ruby_name(), value)
+                        .unwrap(),
                     Err(errs) => errors.extend(errs.into_iter()),
                 }
             }
@@ -642,7 +650,7 @@ impl<'a> Engine<'a> {
             if errors.is_empty() {
                 directive_definition
                     .ruby_class()
-                    .new_instance(unsafe { coerced_args.as_slice() })
+                    .new_instance_kw(coerced_args)
                     .unwrap()
             } else {
                 return Err(errors);

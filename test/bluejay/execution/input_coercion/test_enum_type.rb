@@ -60,7 +60,7 @@ module Bluejay
               include(Execution::InputCoercion::TestEnumType::QueryRoot::Interface)
 
               sig { params(my_enum: String).returns(String) }
-              def my_enum(my_enum)
+              def my_enum(my_enum:)
                 my_enum
               end
             end

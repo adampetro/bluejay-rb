@@ -23,7 +23,7 @@ end
 
 Bench.all do |x|
   input = { "myArg" => ["a", "b", "c"], "myOtherArg" => 12 }
-  expected = MyInputObjectType.new(["a", "b", "c"], 12)
+  expected = MyInputObjectType.new(my_arg: ["a", "b", "c"], my_other_arg: 12)
   x.report(:bluejay) do
     result = MyInputObjectType.coerce_input(input)
     raise unless result.ok?

@@ -4,7 +4,7 @@ use bluejay_printer::value::DisplayValue;
 use convert_case::{Case, Casing};
 use magnus::{
     function, gc, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,
-    DataTypeFunctions, Error, Module, Object, RArray, RHash, TypedData,
+    DataTypeFunctions, Error, Module, Object, RArray, RHash, Symbol, TypedData,
 };
 
 #[derive(Debug, TypedData)]
@@ -15,7 +15,7 @@ pub struct InputValueDefinition {
     r#type: Obj<InputType>,
     directives: Directives,
     default_value: Option<WrappedValue>,
-    ruby_name: String,
+    ruby_name: Symbol,
 }
 
 impl InputValueDefinition {
@@ -34,6 +34,7 @@ impl InputValueDefinition {
         let description = description.unwrap_or_default();
         let directives = directives.try_into()?;
         let ruby_name = ruby_name.unwrap_or_else(|| name.to_case(Case::Snake));
+        let ruby_name = Symbol::new(ruby_name.as_str());
         Ok(Self {
             name,
             description,
@@ -68,8 +69,8 @@ impl InputValueDefinition {
         }
     }
 
-    pub(crate) fn ruby_name(&self) -> &str {
-        self.ruby_name.as_str()
+    pub(crate) fn ruby_name(&self) -> Symbol {
+        self.ruby_name
     }
 
     pub fn directives(&self) -> &Directives {
@@ -84,6 +85,7 @@ impl DataTypeFunctions for InputValueDefinition {
         if let Some(default_value) = &self.default_value {
             default_value.mark();
         }
+        gc::mark(self.ruby_name);
     }
 }
 

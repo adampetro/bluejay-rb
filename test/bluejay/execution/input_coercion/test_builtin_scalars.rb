@@ -72,27 +72,27 @@ module Bluejay
               include(Execution::InputCoercion::TestBuiltinScalars::QueryRoot::Interface)
 
               sig { params(int: Integer).returns(Integer) }
-              def int(int)
+              def int(int:)
                 int
               end
 
               sig { params(float: Float).returns(Float) }
-              def float(float)
+              def float(float:)
                 float
               end
 
               sig { params(id: T.any(String, Integer)).returns(T.any(String, Integer)) }
-              def id(id)
+              def id(id:)
                 id
               end
 
               sig { params(string: String).returns(String) }
-              def string(string)
+              def string(string:)
                 string
               end
 
               sig { params(boolean: T::Boolean).returns(T::Boolean) }
-              def boolean(boolean)
+              def boolean(boolean:)
                 boolean
               end
             end

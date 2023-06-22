@@ -51,12 +51,12 @@ module Bluejay
               include(Execution::InputCoercion::TestLists::QueryRoot::Interface)
 
               sig { params(int_list: T::Array[Integer]).returns(T::Array[Integer]) }
-              def int_list(int_list)
+              def int_list(int_list:)
                 int_list
               end
 
               sig { params(int_list_list: T::Array[T::Array[Integer]]).returns(T::Array[T::Array[Integer]]) }
-              def int_list_list(int_list_list)
+              def int_list_list(int_list_list:)
                 int_list_list
               end
             end

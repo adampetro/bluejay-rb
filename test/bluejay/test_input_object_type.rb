@@ -40,7 +40,14 @@ module Bluejay
       result = MyInputObjectType.coerce_input({ "myArg" => ["X"], "mySelf" => { "myArg" => "Y" }, "myEnum" => "ONE" })
 
       assert_predicate(result, :ok?)
-      assert_equal(MyInputObjectType.new(["X"], MyInputObjectType.new(["Y"], nil, nil), "ONE"), result.unwrap)
+      assert_equal(
+        MyInputObjectType.new(
+          my_arg: ["X"],
+          my_self: MyInputObjectType.new(my_arg: ["Y"], my_self: nil, my_enum: nil),
+          my_enum: "ONE",
+        ),
+        result.unwrap,
+      )
     end
 
     def test_coerce_input_extraneous_field
@@ -66,15 +73,19 @@ module Bluejay
     end
 
     def test_initialize_and_accessors
-      instance = MyInputObjectType.new(["X"], MyInputObjectType.new(["Y"], nil, nil), "ONE")
+      instance = MyInputObjectType.new(
+        my_arg: ["X"],
+        my_self: MyInputObjectType.new(my_arg: ["Y"], my_self: nil, my_enum: nil),
+        my_enum: "ONE",
+      )
 
       assert_equal(["X"], instance.my_arg)
-      assert_equal(MyInputObjectType.new(["Y"], nil, nil), instance.my_self)
+      assert_equal(MyInputObjectType.new(my_arg: ["Y"], my_self: nil, my_enum: nil), instance.my_self)
       assert_equal("ONE", instance.my_enum)
     end
 
     def test_initialize_freezes
-      assert_predicate(MyInputObjectType.new(["X"], nil, nil), :frozen?)
+      assert_predicate(MyInputObjectType.new(my_arg: ["X"], my_self: nil, my_enum: nil), :frozen?)
     end
   end
 end

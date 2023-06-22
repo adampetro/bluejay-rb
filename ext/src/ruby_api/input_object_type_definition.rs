@@ -1,4 +1,6 @@
-use crate::helpers::{public_name, HasDefinitionWrapper, Variables};
+use crate::helpers::{
+    public_name, rhash_with_capacity, HasDefinitionWrapper, NewInstanceKw, Variables,
+};
 use crate::ruby_api::{
     introspection, root, wrapped_value::value_inner_from_ruby_const_value, CoerceInput,
     CoercionError, Directives, InputFieldsDefinition, RResult, WrappedValue,
@@ -118,10 +120,11 @@ impl CoerceInput for InputObjectTypeDefinition {
         path: &[String],
     ) -> Result<Result<WrappedValue, Vec<CoercionError>>, Error> {
         if let Some(hash) = RHash::from_value(value) {
-            let args = RArray::with_capacity(self.input_fields_definition.len());
+            let args = rhash_with_capacity(self.input_fields_definition.len());
             let mut errors = Vec::new();
 
             for ivd in self.input_fields_definition.iter() {
+                let key = ivd.ruby_name();
                 let value = hash.get(ivd.name());
                 let required = ivd.is_required();
                 let default_value = ivd.default_value();
@@ -133,7 +136,7 @@ impl CoerceInput for InputObjectTypeDefinition {
                 } else {
                     match default_value {
                         Some(default_value) if value.is_none() => {
-                            args.push(default_value.to_value()).unwrap();
+                            args.aset(key, default_value.to_value()).unwrap();
                         }
                         _ => {
                             let mut inner_path = path.to_owned();
@@ -143,7 +146,7 @@ impl CoerceInput for InputObjectTypeDefinition {
                                 &inner_path,
                             )? {
                                 Ok(coerced_value) => {
-                                    args.push(coerced_value.to_value()).unwrap();
+                                    args.aset(key, coerced_value.to_value()).unwrap();
                                 }
                                 Err(errs) => {
                                     errors.extend(errs);
@@ -168,7 +171,7 @@ impl CoerceInput for InputObjectTypeDefinition {
             }));
 
             if errors.is_empty() {
-                let r_value = self.ruby_class.new_instance(unsafe { args.as_slice() })?;
+                let r_value = self.ruby_class.new_instance_kw(args)?;
 
                 let inner = value_inner_from_ruby_const_value(value)?;
 
@@ -195,10 +198,11 @@ impl CoerceInput for InputObjectTypeDefinition {
         variables: &impl Variables<CONST>,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         if let ParserValue::Object(o) = value {
-            let args = RArray::with_capacity(self.input_fields_definition.len());
+            let args = rhash_with_capacity(self.input_fields_definition.len());
             let mut errors = Vec::new();
 
             for ivd in self.input_fields_definition.iter() {
+                let key = ivd.ruby_name();
                 let value = o
                     .iter()
                     .find(|(name, _)| ivd.name() == name.as_str())
@@ -216,7 +220,7 @@ impl CoerceInput for InputObjectTypeDefinition {
                         }
                     }
                     (None, Some(default_value)) => {
-                        args.push(default_value.to_value()).unwrap();
+                        args.aset(key, default_value.to_value()).unwrap();
                     }
                     (Some(value), _) => {
                         let mut inner_path = path.to_owned();
@@ -226,7 +230,7 @@ impl CoerceInput for InputObjectTypeDefinition {
                             .coerce_parser_value(value, &inner_path, variables)?
                         {
                             Ok(coerced_value) => {
-                                args.push(coerced_value).unwrap();
+                                args.aset(key, coerced_value).unwrap();
                             }
                             Err(errs) => errors.extend(errs),
                         }
@@ -247,9 +251,7 @@ impl CoerceInput for InputObjectTypeDefinition {
             }));
 
             if errors.is_empty() {
-                self.ruby_class
-                    .new_instance(unsafe { args.as_slice() })
-                    .map(Ok)
+                self.ruby_class.new_instance_kw(args).map(Ok)
             } else {
                 Ok(Err(errors))
             }
@@ -267,10 +269,11 @@ impl CoerceInput for InputObjectTypeDefinition {
         path: &[String],
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         if let Some(hash) = RHash::from_value(value) {
-            let args = RArray::with_capacity(self.input_fields_definition.len());
+            let args = rhash_with_capacity(self.input_fields_definition.len());
             let mut errors = Vec::new();
 
             for ivd in self.input_fields_definition.iter() {
+                let key = ivd.ruby_name();
                 let value = hash.get(ivd.name());
                 let required = ivd.is_required();
                 let default_value = ivd.default_value();
@@ -282,7 +285,7 @@ impl CoerceInput for InputObjectTypeDefinition {
                 } else {
                     match default_value {
                         Some(default_value) if value.is_none() => {
-                            args.push(default_value.to_value()).unwrap();
+                            args.aset(key, default_value.to_value()).unwrap();
                         }
                         _ => {
                             let mut inner_path = path.to_owned();
@@ -292,7 +295,7 @@ impl CoerceInput for InputObjectTypeDefinition {
                                 &inner_path,
                             )? {
                                 Ok(coerced_value) => {
-                                    args.push(coerced_value.to_value()).unwrap();
+                                    args.aset(key, coerced_value.to_value()).unwrap();
                                 }
                                 Err(errs) => {
                                     errors.extend(errs);
@@ -317,9 +320,7 @@ impl CoerceInput for InputObjectTypeDefinition {
             }));
 
             if errors.is_empty() {
-                self.ruby_class
-                    .new_instance(unsafe { args.as_slice() })
-                    .map(Ok)
+                self.ruby_class.new_instance_kw(args).map(Ok)
             } else {
                 Ok(Err(errors))
             }

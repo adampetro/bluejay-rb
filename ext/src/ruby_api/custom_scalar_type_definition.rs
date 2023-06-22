@@ -1,9 +1,10 @@
 use crate::execution::{CoerceResult, FieldError};
-use crate::helpers::{value_from_core_value, HasDefinitionWrapper, Variables};
+use crate::helpers::{value_from_core_value, HasDefinitionWrapper, NewInstanceKw, Variables};
 use crate::ruby_api::{
     introspection, root, wrapped_value::value_inner_from_ruby_const_value, CoerceInput,
     CoercionError, DirectiveDefinition, Directives, RResult, WrappedValue,
 };
+use bluejay_core::AsIter;
 use bluejay_parser::ast::Value as ParserValue;
 use magnus::{
     function, memoize, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,
@@ -51,11 +52,18 @@ impl CustomScalarTypeDefinition {
             String,
         ) = args.required;
         if let Some(specified_by_url) = specified_by_url.as_deref() {
-            directives.push(
-                DirectiveDefinition::specified_by()
-                    .class()
-                    .new_instance((specified_by_url,))?,
-            )?;
+            let directive_definition = DirectiveDefinition::specified_by();
+            let args = RHash::from_iter([(
+                directive_definition
+                    .as_ref()
+                    .arguments_definition()
+                    .iter()
+                    .next()
+                    .unwrap()
+                    .ruby_name(),
+                specified_by_url,
+            )]);
+            directives.push(directive_definition.class().new_instance_kw(args)?)?;
         }
         let directives: Directives = directives.try_into()?;
         Ok(Self {

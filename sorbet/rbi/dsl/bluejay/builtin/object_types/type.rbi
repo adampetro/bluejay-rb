@@ -16,7 +16,7 @@ module Bluejay::Builtin::ObjectTypes::Type::Interface
         include_deprecated: T.nilable(T::Boolean)
       ).returns(T.nilable(T::Array[Bluejay::Builtin::ObjectTypes::EnumValue::Interface]))
   end
-  def enum_values(include_deprecated); end
+  def enum_values(include_deprecated:); end
 
   sig do
     abstract
@@ -24,7 +24,7 @@ module Bluejay::Builtin::ObjectTypes::Type::Interface
         include_deprecated: T.nilable(T::Boolean)
       ).returns(T.nilable(T::Array[Bluejay::Builtin::ObjectTypes::Field::Interface]))
   end
-  def fields(include_deprecated); end
+  def fields(include_deprecated:); end
 
   sig { abstract.returns(T.nilable(T::Array[Bluejay::Builtin::ObjectTypes::InputValue::Interface])) }
   def input_fields; end

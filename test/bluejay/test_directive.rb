@@ -24,13 +24,13 @@ module Bluejay
     end
 
     def test_initialize_and_accessors
-      instance = MyDirective.new("test")
+      instance = MyDirective.new(my_arg: "test")
 
       assert_equal("test", instance.my_arg)
     end
 
     def test_initialize_freezes
-      assert_predicate(MyDirective.new("test"), :frozen?)
+      assert_predicate(MyDirective.new(my_arg: "test"), :frozen?)
     end
   end
 end

@@ -192,12 +192,12 @@ module Bluejay
         const(:today, Date, factory: -> { Date.today })
 
         sig { params(name: NameInputObject).returns(String) }
-        def hello(name)
+        def hello(name:)
           "Hello, #{name.first} #{name.last}!"
         end
 
         sig { params(date: Date).returns(T::Boolean) }
-        def today?(date)
+        def today?(date:)
           date == Date.today
         end
 

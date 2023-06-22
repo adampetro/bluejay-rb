@@ -32,7 +32,7 @@ module Bluejay
     end
 
     def test_directives
-      directives = [MyDirective.new("test")]
+      directives = [MyDirective.new(my_arg: "test")]
       instance = FieldDefinition.new(name: "myField", type: ot!(Scalar::String), directives:)
 
       assert_equal(directives, instance.directives)

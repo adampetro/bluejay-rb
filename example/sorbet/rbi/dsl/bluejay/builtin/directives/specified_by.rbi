@@ -6,7 +6,7 @@
 
 class Bluejay::Builtin::Directives::SpecifiedBy
   sig { params(url: String).void }
-  def initialize(url); end
+  def initialize(url:); end
 
   sig { returns(String) }
   def url; end

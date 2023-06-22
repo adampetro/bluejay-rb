@@ -58,7 +58,7 @@ module Bluejay
               include(Execution::InputCoercion::TestInputObjectType::QueryRoot::Interface)
 
               sig { params(my_input_object: MyInputObject).returns(String) }
-              def my_input_object(my_input_object)
+              def my_input_object(my_input_object:)
                 "myString=`#{my_input_object.my_string}`, myInt=`#{my_input_object.my_int}`"
               end
             end

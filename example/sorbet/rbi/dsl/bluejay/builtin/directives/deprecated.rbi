@@ -6,7 +6,7 @@
 
 class Bluejay::Builtin::Directives::Deprecated
   sig { params(reason: T.nilable(String)).void }
-  def initialize(reason); end
+  def initialize(reason:); end
 
   sig { returns(T.nilable(String)) }
   def reason; end

@@ -1,5 +1,6 @@
+use crate::helpers::NewInstanceKw;
 use crate::ruby_api::{root, DirectiveDefinition, Directives};
-use bluejay_core::definition::EnumValueDefinition as CoreEnumValueDefinition;
+use bluejay_core::{definition::EnumValueDefinition as CoreEnumValueDefinition, AsIter};
 use magnus::{
     function, method, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error, Module,
     Object, RArray, RHash, TypedData,
@@ -30,11 +31,18 @@ impl EnumValueDefinition {
         let deprecation_reason = deprecation_reason.flatten();
         let directives = directives.unwrap_or_else(RArray::new);
         if let Some(deprecation_reason) = deprecation_reason.as_deref() {
-            directives.push(
-                DirectiveDefinition::deprecated()
-                    .class()
-                    .new_instance((deprecation_reason,))?,
-            )?;
+            let directive_definition = DirectiveDefinition::deprecated();
+            let args = RHash::from_iter([(
+                directive_definition
+                    .as_ref()
+                    .arguments_definition()
+                    .iter()
+                    .next()
+                    .unwrap()
+                    .ruby_name(),
+                deprecation_reason,
+            )]);
+            directives.push(directive_definition.class().new_instance_kw(args)?)?;
         }
         let directives = directives.try_into()?;
         Ok(Self {

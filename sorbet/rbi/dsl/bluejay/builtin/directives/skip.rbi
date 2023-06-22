@@ -6,7 +6,7 @@
 
 class Bluejay::Builtin::Directives::Skip
   sig { params(if_arg: T::Boolean).void }
-  def initialize(if_arg); end
+  def initialize(if_arg:); end
 
   sig { returns(T::Boolean) }
   def if_arg; end

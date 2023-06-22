@@ -24,7 +24,7 @@ module Tapioca
       def decorate
         root.create_path(constant) do |klass|
           parameters = constant.argument_definitions.map do |argument_definition|
-            create_param(argument_definition.ruby_name, type: argument_definition.type.sorbet_type)
+            create_kw_param(argument_definition.ruby_name, type: argument_definition.type.sorbet_type)
           end
 
           klass.custom_create_method("initialize", parameters:, return_type: nil)
