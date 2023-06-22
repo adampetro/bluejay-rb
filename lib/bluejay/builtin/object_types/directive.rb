@@ -23,7 +23,7 @@ module Bluejay
               FieldDefinition.new(
                 name: "isRepeatable",
                 type: ot!(Scalar::Boolean),
-                resolver_method_name: "repeatable?",
+                resolver_method_name: :repeatable?,
               ),
             ]
           end

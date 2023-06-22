@@ -137,7 +137,7 @@ module Bluejay
               argument_definitions: [
                 InputValueDefinition.new(name: "date", type: it!(DateScalar)),
               ],
-              resolver_method_name: "today?",
+              resolver_method_name: :today?,
             ),
             FieldDefinition.new(
               name: "deprecatedField",

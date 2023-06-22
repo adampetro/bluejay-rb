@@ -14,7 +14,7 @@ module Graph
           Bluejay::FieldDefinition.new(
             name: "currentTeam",
             type: ot(Team),
-            resolver_method_name: "resolve_current_team",
+            resolver_method_name: :resolve_current_team,
           ),
           Bluejay::FieldDefinition.new(name: "birthday", type: ot!(DateScalar)),
         ]

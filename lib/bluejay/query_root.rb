@@ -38,13 +38,13 @@ module Bluejay
             FieldDefinition.new(
               name: "__schema",
               type: ot!(Builtin::ObjectTypes::Schema),
-              resolver_method_name: "resolve_schema",
+              resolver_method_name: :resolve_schema,
             ),
             FieldDefinition.new(
               name: "__type",
               argument_definitions: [InputValueDefinition.new(name: "name", type: it!(Scalar::String))],
               type: ot(Builtin::ObjectTypes::Type),
-              resolver_method_name: "resolve_type",
+              resolver_method_name: :resolve_type,
             ),
           ]
           ObjectTypeDefinition.new(

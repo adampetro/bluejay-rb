@@ -15,7 +15,7 @@ module Bluejay
               type: Scalar::String,
               required: true,
             ),
-            resolver_method_name: "resolve_typename",
+            resolver_method_name: :resolve_typename,
           ),
           T.nilable(FieldDefinition),
         )

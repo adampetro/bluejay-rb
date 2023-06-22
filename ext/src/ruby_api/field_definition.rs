@@ -3,7 +3,7 @@ use crate::ruby_api::{root, ArgumentsDefinition, DirectiveDefinition, Directives
 use bluejay_core::AsIter;
 use convert_case::{Case, Casing};
 use magnus::{
-    function, gc, memoize, method,
+    exception, function, gc, memoize, method,
     scan_args::{get_kwargs, KwArgs},
     typed_data::Obj,
     DataTypeFunctions, Error, Module, Object, RArray, RHash, RString, Symbol, TypedData,
@@ -28,8 +28,9 @@ impl FieldDefinition {
     pub fn new(kw: RHash) -> Result<Self, Error> {
         let args: KwArgs<_, _, ()> = get_kwargs(
             kw,
-            &["name", "type"],
+            &["type"],
             &[
+                "name",
                 "argument_definitions",
                 "description",
                 "directives",
@@ -37,23 +38,53 @@ impl FieldDefinition {
                 "deprecation_reason",
             ],
         )?;
-        let (name_r_string, r#type): (RString, Obj<OutputType>) = args.required;
+        let (r#type,): (Obj<OutputType>,) = args.required;
         type OptionalArgs = (
+            Option<Option<RString>>,
             Option<RArray>,
             Option<Option<String>>,
             Option<RArray>,
-            Option<Option<String>>,
+            Option<Option<Symbol>>,
             Option<Option<String>>,
         );
         let (
+            name_r_string,
             argument_definitions,
             description,
             directives,
             resolver_method_name,
             deprecation_reason,
         ): OptionalArgs = args.optional;
+        let name_r_string = name_r_string.flatten();
+        let resolver_method_name = resolver_method_name.flatten();
+
+        let (name_r_string, name, ruby_resolver_method_name) =
+            match (name_r_string, resolver_method_name) {
+                (None, None) => {
+                    return Err(Error::new(
+                        exception::arg_error(),
+                        "Must provide a non-nil value for one of `name` or `resolver_method_name`",
+                    ));
+                }
+                (Some(name_r_string), Some(resolver_method_name)) => (
+                    name_r_string,
+                    name_r_string.to_string()?,
+                    resolver_method_name.to_string(),
+                ),
+                (Some(name_r_string), None) => {
+                    let name = name_r_string.to_string()?;
+                    let resolver_method_name = name.to_case(Case::Snake);
+                    (name_r_string, name, resolver_method_name)
+                }
+                (None, Some(resolver_method_name)) => {
+                    let resolver_method_name = resolver_method_name.to_string();
+                    let name = resolver_method_name.to_case(Case::Camel);
+                    let name_r_string = RString::new(&name);
+                    (name_r_string, name, resolver_method_name)
+                }
+            };
+
         name_r_string.freeze();
-        let name = name_r_string.to_string()?;
         let arguments_definition =
             ArgumentsDefinition::new(argument_definitions.unwrap_or_else(RArray::new))?;
         let description = description.unwrap_or_default();
@@ -75,9 +106,6 @@ impl FieldDefinition {
         }
         let directives = directives.try_into()?;
         let is_builtin = name.starts_with("__");
-        let ruby_resolver_method_name = resolver_method_name
-            .flatten()
-            .unwrap_or_else(|| name.to_case(Case::Snake));
         let extra_resolver_args = match name.as_str() {
             "__schema" | "__type" => vec![ExtraResolverArg::SchemaClass],
             _ => vec![],

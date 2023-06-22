@@ -21,7 +21,7 @@ module Bluejay
               FieldDefinition.new(
                 name: "isDeprecated",
                 type: ot!(Scalar::Boolean),
-                resolver_method_name: "deprecated?",
+                resolver_method_name: :deprecated?,
               ),
               FieldDefinition.new(name: "deprecationReason", type: ot(Scalar::String)),
             ]

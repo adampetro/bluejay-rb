@@ -16,14 +16,14 @@ module Bluejay
           sig { override.returns(T::Array[FieldDefinition]) }
           def field_definitions
             [
-              FieldDefinition.new(name: "name", type: ot!(Scalar::String), resolver_method_name: "name"),
+              FieldDefinition.new(name: "name", type: ot!(Scalar::String)),
               FieldDefinition.new(name: "description", type: ot(Scalar::String)),
               FieldDefinition.new(name: "args", type: lot!(ot!(InputValue))),
               FieldDefinition.new(name: "type", type: ot!(Type)),
               FieldDefinition.new(
                 name: "isDeprecated",
                 type: ot!(Scalar::Boolean),
-                resolver_method_name: "deprecated?",
+                resolver_method_name: :deprecated?,
               ),
               FieldDefinition.new(name: "deprecationReason", type: ot(Scalar::String)),
             ]

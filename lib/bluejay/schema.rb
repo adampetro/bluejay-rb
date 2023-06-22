@@ -53,7 +53,7 @@ module Bluejay
 
       protected
 
-      sig(:final) { override.void }
+      sig { override.void }
       def finalize
         definition
       end
