@@ -6,12 +6,13 @@ module Bluejay
     class << self
       extend(T::Sig)
       extend(T::Helpers)
+      include(Base::QueryRoot)
 
       abstract!
 
       private
 
-      sig { returns(ObjectTypeDefinition) }
+      sig { override.returns(ObjectTypeDefinition) }
       def definition
         @definition ||= T.let(nil, T.nilable(ObjectTypeDefinition))
         @definition ||= begin
@@ -27,26 +28,8 @@ module Bluejay
             interface_implementations.each do |interface_implementation|
               mod.include(interface_implementation.interface.const_get(:Interface))
             end
-
-            mod.define_method(:resolve_schema) { |schema_class:| schema_class.send(:definition) }
-            mod.define_method(:resolve_type) do |name:, schema_class:|
-              schema_class.send(:definition).type(name)
-            end
           end
           const_set(:Interface, interface)
-          introspection_field_definitions = [
-            FieldDefinition.new(
-              name: "__schema",
-              type: ot!(Builtin::ObjectTypes::Schema),
-              resolver_method_name: :resolve_schema,
-            ),
-            FieldDefinition.new(
-              name: "__type",
-              argument_definitions: [InputValueDefinition.new(name: "name", type: it!(Scalar::String))],
-              type: ot(Builtin::ObjectTypes::Type),
-              resolver_method_name: :resolve_type,
-            ),
-          ]
           ObjectTypeDefinition.new(
             name: graphql_name,
             description:,

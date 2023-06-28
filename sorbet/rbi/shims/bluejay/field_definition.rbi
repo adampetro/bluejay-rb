@@ -5,21 +5,26 @@ module Bluejay
   class FieldDefinition
     sig do
       params(
+        name: T.any(String, Symbol),
         type: OutputType,
-        name: T.nilable(String),
         argument_definitions: T::Array[InputValueDefinition],
         description: T.nilable(String),
         directives: T::Array[Directive],
+        resolver_strategy: ResolverStrategy,
         resolver_method_name: T.nilable(Symbol),
         deprecation_reason: T.nilable(String),
       ).void
     end
-    def initialize(type:, name: nil, argument_definitions: [], description: nil, directives: [],
-      resolver_method_name: nil, deprecation_reason: nil)
+    def initialize(name:, type:, argument_definitions: [], description: nil, directives: [],
+      resolver_strategy: ResolverStrategy::Object, resolver_method_name: nil,
+      deprecation_reason: nil)
     end
 
     sig { returns(String) }
     def name; end
+
+    sig { returns(ResolverStrategy) }
+    def resolver_strategy; end
 
     sig { returns(String) }
     def resolver_method_name; end

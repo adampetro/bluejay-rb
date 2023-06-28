@@ -16,7 +16,7 @@ module Bluejay
           sig { override.returns(T::Array[InputValueDefinition]) }
           def argument_definitions
             [
-              InputValueDefinition.new(name: "if", type: it!(Scalar::Boolean), ruby_name: "if_arg"),
+              InputValueDefinition.new(name: "if", type: it!(Scalar::Boolean), ruby_name: :if_arg),
             ]
           end
 

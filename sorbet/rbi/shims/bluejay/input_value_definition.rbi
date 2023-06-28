@@ -5,11 +5,11 @@ module Bluejay
   class InputValueDefinition
     sig do
       params(
-        name: String,
+        name: T.any(String, Symbol),
         type: InputType,
         description: T.nilable(String),
         directives: T::Array[Directive],
-        ruby_name: T.nilable(String),
+        ruby_name: T.nilable(Symbol),
       ).void
     end
     def initialize(name:, type:, description: nil, directives: [], ruby_name: nil); end
@@ -20,7 +20,7 @@ module Bluejay
     sig { returns(InputType) }
     def type; end
 
-    sig { returns(String) }
+    sig { returns(Symbol) }
     def ruby_name; end
   end
 end

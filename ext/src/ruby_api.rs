@@ -1,4 +1,4 @@
-use magnus::{define_module, function, memoize, Error, RModule};
+use magnus::{define_module, function, memoize, Error, Module, RModule};
 
 mod arguments_definition;
 mod coerce_input;
@@ -26,6 +26,7 @@ mod introspection;
 mod object_type_definition;
 mod output_type;
 mod r_result;
+mod resolver_strategy;
 mod scalar;
 mod schema_definition;
 mod union_member_type;
@@ -59,6 +60,7 @@ pub use interface_type_definition::InterfaceTypeDefinition;
 pub use object_type_definition::ObjectTypeDefinition;
 pub use output_type::{BaseOutputType, OutputType};
 pub use r_result::RResult;
+pub use resolver_strategy::ResolverStrategy;
 pub use scalar::Scalar;
 pub use schema_definition::{SchemaDefinition, TypeDefinition};
 pub use union_member_type::UnionMemberType;
@@ -69,6 +71,10 @@ pub use wrapped_value::WrappedValue;
 
 pub fn root() -> RModule {
     *memoize!(RModule: define_module("Bluejay").unwrap())
+}
+
+pub fn base() -> RModule {
+    *memoize!(RModule: root().define_module("Base").unwrap())
 }
 
 pub fn init() -> Result<(), Error> {
@@ -91,6 +97,7 @@ pub fn init() -> Result<(), Error> {
     object_type_definition::init()?;
     output_type::init()?;
     r_result::init()?;
+    resolver_strategy::init()?;
     scalar::init()?;
     schema_definition::init()?;
     union_member_type::init()?;

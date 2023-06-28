@@ -12,7 +12,7 @@ module Bluejay
         interface_implementations: T::Array[InterfaceImplementation],
         description: T.nilable(String),
         directives: T::Array[Directive],
-        ruby_class: T.class_of(ObjectType),
+        ruby_class: T.class_of(Base::ObjectType),
       ).void
     end
     def initialize(name:, field_definitions:, interface_implementations:, description:, directives:, ruby_class:); end

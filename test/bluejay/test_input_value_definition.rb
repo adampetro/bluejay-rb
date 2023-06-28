@@ -14,7 +14,7 @@ module Bluejay
     end
 
     def test_ruby_name_override
-      ivd = InputValueDefinition.new(name: "myInputField", type: it!(Scalar::String), ruby_name: "overridden")
+      ivd = InputValueDefinition.new(name: "myInputField", type: it!(Scalar::String), ruby_name: :overridden)
 
       assert_equal(:overridden, ivd.ruby_name)
     end

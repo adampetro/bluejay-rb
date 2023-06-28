@@ -6,7 +6,7 @@ module Bluejay
     T.any(
       Scalar,
       T.class_of(EnumType),
-      T.class_of(ObjectType),
+      T.class_of(Base::ObjectType),
       T.class_of(UnionType),
       T.class_of(InterfaceType),
       T.class_of(CustomScalarType),

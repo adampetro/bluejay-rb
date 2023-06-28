@@ -3,7 +3,7 @@ use crate::helpers::{rhash_with_capacity, FuncallKw, NewInstanceKw, RArrayIter};
 use crate::ruby_api::{
     BaseInputType, BaseOutputType, CoerceInput, ExecutionResult, ExtraResolverArg, FieldDefinition,
     InputType, InputValueDefinition, InterfaceTypeDefinition, ObjectTypeDefinition, OutputType,
-    SchemaDefinition, TypeDefinition, UnionTypeDefinition,
+    ResolverStrategy, SchemaDefinition, TypeDefinition, UnionTypeDefinition,
 };
 use bluejay_core::definition::{OutputType as CoreOutputType, OutputTypeReference};
 use bluejay_core::executable::{
@@ -501,17 +501,28 @@ impl<'a> Engine<'a> {
 
     fn resolve_field_value(
         &'a self,
-        _object_type: &ObjectTypeDefinition,
+        object_type: &ObjectTypeDefinition,
         object_value: Value,
         field_definition: &FieldDefinition,
         argument_values: Option<RHash>,
     ) -> Result<Value, ExecutionError<'a>> {
         // TODO: use object_type somehow?
+        let object_to_call_on = match field_definition.resolver_strategy() {
+            ResolverStrategy::Object => object_value,
+            ResolverStrategy::DefinitionClass => *object_type.ruby_class(),
+            ResolverStrategy::DefinitionInstance => {
+                // TODO: reuse
+                object_type
+                    .ruby_class()
+                    .new_instance((object_value,))
+                    .unwrap()
+            }
+        };
         match argument_values {
             Some(kwargs) => {
-                object_value.funcall_kw(field_definition.ruby_resolver_method_name(), kwargs)
+                object_to_call_on.funcall_kw(field_definition.ruby_resolver_method_name(), kwargs)
             }
-            None => object_value.funcall(field_definition.ruby_resolver_method_name(), ()),
+            None => object_to_call_on.funcall(field_definition.ruby_resolver_method_name(), ()),
         }
         .map_err(|error| ExecutionError::ApplicationError(error.to_string()))
     }

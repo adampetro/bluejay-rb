@@ -1,7 +1,7 @@
 use crate::helpers::HasDefinitionWrapper;
 use crate::ruby_api::{
-    introspection, root, Directives, FieldDefinition, FieldsDefinition, InterfaceImplementations,
-    InterfaceTypeDefinition,
+    base, introspection, root, Directives, FieldDefinition, FieldsDefinition,
+    InterfaceImplementations, InterfaceTypeDefinition,
 };
 use bluejay_core::AsIter;
 use magnus::{
@@ -18,6 +18,7 @@ pub struct ObjectTypeDefinition {
     directives: Directives,
     interface_implementations: InterfaceImplementations,
     is_builtin: bool,
+    ruby_class: RClass,
 }
 
 impl ObjectTypeDefinition {
@@ -53,6 +54,7 @@ impl ObjectTypeDefinition {
             directives,
             interface_implementations,
             is_builtin,
+            ruby_class,
         })
     }
 }
@@ -67,7 +69,7 @@ impl DataTypeFunctions for ObjectTypeDefinition {
 
 impl HasDefinitionWrapper for ObjectTypeDefinition {
     fn wrapping_class() -> RClass {
-        *memoize!(RClass: root().define_class("ObjectType", Default::default()).unwrap())
+        *memoize!(RClass: base().define_class("ObjectType", Default::default()).unwrap())
     }
 }
 
@@ -100,6 +102,10 @@ impl ObjectTypeDefinition {
 
     pub fn directives(&self) -> &Directives {
         &self.directives
+    }
+
+    pub fn ruby_class(&self) -> RClass {
+        self.ruby_class
     }
 }
 

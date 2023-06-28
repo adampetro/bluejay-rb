@@ -32,9 +32,11 @@ module Tapioca
           end
 
           constant.field_definitions.each do |field_definition|
+            next unless field_definition.resolver_strategy == Bluejay::ResolverStrategy::Object
+
             # TODO: add extra args
             parameters = field_definition.argument_definitions.map do |argument_definition|
-              create_kw_param(argument_definition.ruby_name, type: argument_definition.type.sorbet_type)
+              create_kw_param(argument_definition.ruby_name.to_s, type: argument_definition.type.sorbet_type)
             end
 
             return_type = field_definition.type.sorbet_type

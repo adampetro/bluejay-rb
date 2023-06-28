@@ -1,12 +1,14 @@
 use crate::helpers::NewInstanceKw;
-use crate::ruby_api::{root, ArgumentsDefinition, DirectiveDefinition, Directives, OutputType};
+use crate::ruby_api::{
+    root, ArgumentsDefinition, DirectiveDefinition, Directives, OutputType, ResolverStrategy,
+};
 use bluejay_core::AsIter;
 use convert_case::{Case, Casing};
 use magnus::{
     exception, function, gc, memoize, method,
     scan_args::{get_kwargs, KwArgs},
     typed_data::Obj,
-    DataTypeFunctions, Error, Module, Object, RArray, RHash, RString, Symbol, TypedData,
+    DataTypeFunctions, Error, Module, Object, RArray, RHash, RString, Symbol, TypedData, Value,
 };
 
 #[derive(Debug, TypedData)]
@@ -18,6 +20,7 @@ pub struct FieldDefinition {
     r#type: Obj<OutputType>,
     directives: Directives,
     is_builtin: bool,
+    resolver_strategy: ResolverStrategy,
     ruby_resolver_method_name: String,
     name_r_string: RString,
     extra_resolver_args: Vec<ExtraResolverArg>,
@@ -28,60 +31,52 @@ impl FieldDefinition {
     pub fn new(kw: RHash) -> Result<Self, Error> {
         let args: KwArgs<_, _, ()> = get_kwargs(
             kw,
-            &["type"],
+            &["name", "type"],
             &[
-                "name",
                 "argument_definitions",
                 "description",
                 "directives",
                 "resolver_method_name",
                 "deprecation_reason",
+                "resolver_strategy",
             ],
         )?;
-        let (r#type,): (Obj<OutputType>,) = args.required;
+        let (name, r#type): (Value, Obj<OutputType>) = args.required;
         type OptionalArgs = (
-            Option<Option<RString>>,
             Option<RArray>,
             Option<Option<String>>,
             Option<RArray>,
             Option<Option<Symbol>>,
             Option<Option<String>>,
+            Option<Obj<ResolverStrategy>>,
         );
         let (
-            name_r_string,
             argument_definitions,
             description,
             directives,
             resolver_method_name,
             deprecation_reason,
+            resolver_strategy,
         ): OptionalArgs = args.optional;
-        let name_r_string = name_r_string.flatten();
-        let resolver_method_name = resolver_method_name.flatten();
-
+        let resolver_method_name = resolver_method_name.flatten().map(|s| s.to_string());
         let (name_r_string, name, ruby_resolver_method_name) =
-            match (name_r_string, resolver_method_name) {
-                (None, None) => {
-                    return Err(Error::new(
-                        exception::arg_error(),
-                        "Must provide a non-nil value for one of `name` or `resolver_method_name`",
-                    ));
-                }
-                (Some(name_r_string), Some(resolver_method_name)) => (
-                    name_r_string,
-                    name_r_string.to_string()?,
-                    resolver_method_name.to_string(),
-                ),
-                (Some(name_r_string), None) => {
-                    let name = name_r_string.to_string()?;
-                    let resolver_method_name = name.to_case(Case::Snake);
-                    (name_r_string, name, resolver_method_name)
-                }
-                (None, Some(resolver_method_name)) => {
-                    let resolver_method_name = resolver_method_name.to_string();
-                    let name = resolver_method_name.to_case(Case::Camel);
-                    let name_r_string = RString::new(&name);
-                    (name_r_string, name, resolver_method_name)
-                }
+            if let Some(r_string) = RString::from_value(name) {
+                let name = r_string.to_string()?;
+                (
+                    r_string,
+                    r_string.to_string()?,
+                    resolver_method_name.unwrap_or_else(|| name.to_case(Case::Snake)),
+                )
+            } else if let Some(symbol) = Symbol::from_value(name) {
+                let symbol_str = symbol.to_string();
+                let name = symbol_str.to_case(Case::Camel);
+                let resolver_method_name = resolver_method_name.unwrap_or(symbol_str);
+                (RString::new(&name), name, resolver_method_name)
+            } else {
+                return Err(Error::new(
+                    exception::arg_error(),
+                    "Must provide a `String` or `Symbol` for `name`",
+                ));
             };
 
         name_r_string.freeze();
@@ -110,6 +105,7 @@ impl FieldDefinition {
             "__schema" | "__type" => vec![ExtraResolverArg::SchemaClass],
             _ => vec![],
         };
+        let resolver_strategy = resolver_strategy.map(|obj| *obj.get()).unwrap_or_default();
         Ok(Self {
             name,
             description,
@@ -117,11 +113,16 @@ impl FieldDefinition {
             r#type,
             directives,
             is_builtin,
+            resolver_strategy,
             ruby_resolver_method_name,
             name_r_string,
             extra_resolver_args,
             deprecation_reason,
         })
+    }
+
+    pub(crate) fn resolver_strategy(&self) -> ResolverStrategy {
+        self.resolver_strategy
     }
 
     pub(crate) fn ruby_resolver_method_name(&self) -> &str {
@@ -226,6 +227,10 @@ pub fn init() -> Result<(), Error> {
 
     class.define_singleton_method("new", function!(FieldDefinition::new, 1))?;
     class.define_method("name", method!(FieldDefinition::name, 0))?;
+    class.define_method(
+        "resolver_strategy",
+        method!(FieldDefinition::resolver_strategy, 0),
+    )?;
     class.define_method(
         "resolver_method_name",
         method!(FieldDefinition::ruby_resolver_method_name, 0),

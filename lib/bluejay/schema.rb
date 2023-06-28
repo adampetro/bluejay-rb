@@ -2,7 +2,7 @@
 # frozen_string_literal: true
 
 module Bluejay
-  class Schema
+  class Schema < Base::Schema
     extend(Finalize)
 
     class << self
@@ -70,7 +70,7 @@ module Bluejay
         end
       end
 
-      sig { returns(SchemaDefinition) }
+      sig { override.returns(SchemaDefinition) }
       def definition
         @definition ||= T.let(nil, T.nilable(SchemaDefinition))
         @definition ||= begin

@@ -3,8 +3,8 @@ use bluejay_core::Value as CoreValue;
 use bluejay_printer::value::DisplayValue;
 use convert_case::{Case, Casing};
 use magnus::{
-    function, gc, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,
-    DataTypeFunctions, Error, Module, Object, RArray, RHash, Symbol, TypedData,
+    exception, function, gc, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,
+    DataTypeFunctions, Error, Module, Object, RArray, RHash, RString, Symbol, TypedData, Value,
 };
 
 #[derive(Debug, TypedData)]
@@ -25,16 +25,30 @@ impl InputValueDefinition {
             &["name", "type"],
             &["description", "directives", "ruby_name"],
         )?;
-        let (name, r#type): (String, Obj<InputType>) = args.required;
+        let (name, r#type): (Value, Obj<InputType>) = args.required;
         let (description, directives, ruby_name): (
             Option<Option<String>>,
             Option<RArray>,
-            Option<String>,
+            Option<Option<Symbol>>,
         ) = args.optional;
         let description = description.unwrap_or_default();
         let directives = directives.try_into()?;
-        let ruby_name = ruby_name.unwrap_or_else(|| name.to_case(Case::Snake));
-        let ruby_name = Symbol::new(ruby_name.as_str());
+        let ruby_name = ruby_name.flatten();
+        let (name, ruby_name) = if let Some(r_string) = RString::from_value(name) {
+            let name = r_string.to_string()?;
+            let ruby_name = ruby_name.unwrap_or_else(|| Symbol::new(name.to_case(Case::Snake)));
+            (name, ruby_name)
+        } else if let Some(symbol) = Symbol::from_value(name) {
+            let name = symbol.to_string().to_case(Case::Camel);
+            let ruby_name = ruby_name.unwrap_or(symbol);
+            (name, ruby_name)
+        } else {
+            return Err(Error::new(
+                exception::arg_error(),
+                "Must provide a `String` or `Symbol` for `name`",
+            ));
+        };
+
         Ok(Self {
             name,
             description,
