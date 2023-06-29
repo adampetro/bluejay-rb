@@ -986,7 +986,7 @@
                     {
                         "args": [
                             {
-                                "defaultValue": null,
+                                "defaultValue": "false",
                                 "description": null,
                                 "name": "includeDeprecated",
                                 "type": {
@@ -1057,7 +1057,7 @@
                     {
                         "args": [
                             {
-                                "defaultValue": null,
+                                "defaultValue": "false",
                                 "description": null,
                                 "name": "includeDeprecated",
                                 "type": {

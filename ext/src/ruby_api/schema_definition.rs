@@ -78,6 +78,7 @@ impl SchemaDefinition {
                 &directives,
             );
         let interface_implementors = Self::interface_implementors(&contained_types);
+        Self::validate_default_values(&contained_types)?;
         Ok(Self {
             description,
             query,
@@ -168,6 +169,35 @@ impl SchemaDefinition {
                 interface_implementors
             },
         )
+    }
+
+    fn validate_default_values(
+        type_definitions: &BTreeMap<String, TypeDefinition>,
+    ) -> Result<(), Error> {
+        type_definitions
+            .values()
+            .try_for_each(|type_definition| match type_definition {
+                TypeDefinition::InputObject(iotd) => iotd
+                    .as_ref()
+                    .input_fields_definition()
+                    .iter()
+                    .try_for_each(|ivd| ivd.validate_default_value()),
+                TypeDefinition::Object(otd) => {
+                    otd.as_ref().fields_definition().iter().try_for_each(|fd| {
+                        fd.argument_definitions()
+                            .iter()
+                            .try_for_each(|ivd| ivd.validate_default_value())
+                    })
+                }
+                TypeDefinition::Interface(itd) => {
+                    itd.as_ref().fields_definition().iter().try_for_each(|fd| {
+                        fd.argument_definitions()
+                            .iter()
+                            .try_for_each(|ivd| ivd.validate_default_value())
+                    })
+                }
+                _ => Ok(()),
+            })
     }
 
     fn query_root_class() -> RClass {

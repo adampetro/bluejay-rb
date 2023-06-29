@@ -1,4 +1,4 @@
-use magnus::{define_module, function, memoize, Error, RModule};
+use magnus::{define_module, function, memoize, Error, Module, RModule};
 
 mod arguments_definition;
 mod coerce_input;
@@ -69,6 +69,10 @@ pub use wrapped_value::WrappedValue;
 
 pub fn root() -> RModule {
     *memoize!(RModule: define_module("Bluejay").unwrap())
+}
+
+pub fn errors() -> RModule {
+    *memoize!(RModule: root().define_module("Errors").unwrap())
 }
 
 pub fn init() -> Result<(), Error> {

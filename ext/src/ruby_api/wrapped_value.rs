@@ -3,13 +3,13 @@ use bluejay_core::{
     ValueReference,
 };
 use bluejay_parser::ast::ConstValue as ParserConstValue;
+use indexmap::IndexMap;
 use magnus::{
     exception, gc,
     r_hash::ForEach,
     value::{Qfalse, Qtrue},
     Error, Float, Integer, RArray, RHash, RString, Value,
 };
-use std::collections::HashMap;
 
 #[derive(Debug)]
 pub enum ValueInner {
@@ -73,20 +73,20 @@ impl CoreListValue<true> for ListValue {
 }
 
 #[derive(Debug)]
-pub struct ObjectValue(HashMap<String, ValueInner>);
+pub struct ObjectValue(IndexMap<String, ValueInner>);
 
 impl CoreObjectValue<true> for ObjectValue {
     type Key = String;
     type Value = ValueInner;
-    type Iterator<'a> = std::collections::hash_map::Iter<'a, String, ValueInner>;
+    type Iterator<'a> = indexmap::map::Iter<'a, String, ValueInner>;
 
     fn iter(&self) -> Self::Iterator<'_> {
         self.0.iter()
     }
 }
 
-impl From<HashMap<String, ValueInner>> for ObjectValue {
-    fn from(value: HashMap<String, ValueInner>) -> Self {
+impl From<IndexMap<String, ValueInner>> for ObjectValue {
+    fn from(value: IndexMap<String, ValueInner>) -> Self {
         Self(value)
     }
 }
@@ -197,7 +197,7 @@ pub fn value_inner_from_ruby_const_value(val: Value) -> Result<ValueInner, Error
             .collect();
         Ok(ValueInner::List(ListValue(v?)))
     } else if let Some(r_hash) = RHash::from_value(val) {
-        let mut h: HashMap<String, ValueInner> = HashMap::new();
+        let mut h: IndexMap<String, ValueInner> = IndexMap::new();
         r_hash.foreach(|k, v| {
             let v = value_inner_from_ruby_const_value(v)?;
             h.insert(k, v);

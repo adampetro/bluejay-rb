@@ -124,7 +124,11 @@ module Bluejay
               name: "hello",
               type: ot!(Scalar::String),
               argument_definitions: [
-                InputValueDefinition.new(name: "name", type: it!(NameInputObject)),
+                InputValueDefinition.new(
+                  name: "name",
+                  type: it!(NameInputObject),
+                  default_value: { "first" => "DefaultFirst", "last" => "DefaultLast" },
+                ),
               ],
             ),
             FieldDefinition.new(
@@ -226,6 +230,7 @@ module Bluejay
           __typename
           hello(name: $name)
           otherHello: hello(name: { first: "John" last: "Smith" })
+          helloWithDefault: hello
           today
           isToday(date: $date)
           fooOrBar {
@@ -249,7 +254,8 @@ module Bluejay
         {
           "__typename" => "QueryRoot",
           "hello" => "Hello, Adam Petro!",
-          "otherHello" => "Hello, John Smith!",\
+          "otherHello" => "Hello, John Smith!",
+          "helloWithDefault" => "Hello, DefaultFirst DefaultLast!",
           "today" => Date.today.iso8601,
           "isToday" => true,
           "fooOrBar" => {
@@ -302,6 +308,7 @@ module Bluejay
           __typename
           hello(name: $name)
           otherHello: hello(name: { first: "John" last: "Smith" })
+          helloWithDefault: hello
           fooOrBar {
             __typename
             ...on FooObjectType { foo }
@@ -349,7 +356,7 @@ module Bluejay
 
         type QueryRoot {
           hello(
-            name: NameInputObject!
+            name: NameInputObject! = { first: "DefaultFirst", last: "DefaultLast" }
           ): String!
 
           today: Date!

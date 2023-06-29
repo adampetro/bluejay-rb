@@ -1,11 +1,15 @@
-use crate::ruby_api::{root, wrapped_value::ValueInner, Directives, InputType, WrappedValue};
+use crate::ruby_api::{
+    errors, root, wrapped_value::ValueInner, CoerceInput, Directives, InputType, WrappedValue,
+};
 use bluejay_core::Value as CoreValue;
 use bluejay_printer::value::DisplayValue;
 use convert_case::{Case, Casing};
 use magnus::{
-    function, gc, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,
-    DataTypeFunctions, Error, Module, Object, RArray, RHash, Symbol, TypedData,
+    function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,
+    Class, DataTypeFunctions, Error, ExceptionClass, Module, Object, RArray, RHash, Symbol,
+    TypedData, Value,
 };
+use once_cell::sync::OnceCell;
 
 #[derive(Debug, TypedData)]
 #[magnus(class = "Bluejay::InputValueDefinition", mark)]
@@ -14,7 +18,7 @@ pub struct InputValueDefinition {
     description: Option<String>,
     r#type: Obj<InputType>,
     directives: Directives,
-    default_value: Option<WrappedValue>,
+    default_value: Option<(Value, OnceCell<WrappedValue>)>,
     ruby_name: Symbol,
 }
 
@@ -23,14 +27,16 @@ impl InputValueDefinition {
         let args: KwArgs<_, _, ()> = get_kwargs(
             kw,
             &["name", "type"],
-            &["description", "directives", "ruby_name"],
+            &["description", "directives", "ruby_name", "default_value"],
         )?;
         let (name, r#type): (String, Obj<InputType>) = args.required;
-        let (description, directives, ruby_name): (
+        type OptionalArgs = (
             Option<Option<String>>,
             Option<RArray>,
             Option<String>,
-        ) = args.optional;
+            Option<Option<Value>>,
+        );
+        let (description, directives, ruby_name, default_value): OptionalArgs = args.optional;
         let description = description.unwrap_or_default();
         let directives = directives.try_into()?;
         let ruby_name = ruby_name.unwrap_or_else(|| name.to_case(Case::Snake));
@@ -40,7 +46,7 @@ impl InputValueDefinition {
             description,
             r#type,
             directives,
-            default_value: None,
+            default_value: default_value.flatten().map(|v| (v, OnceCell::new())),
             ruby_name,
         })
     }
@@ -57,8 +63,10 @@ impl InputValueDefinition {
         self.r#type.get()
     }
 
-    pub fn default_value(&self) -> Option<WrappedValue> {
-        None
+    pub fn default_value(&self) -> Option<&WrappedValue> {
+        self.default_value
+            .as_ref()
+            .map(|v| v.1.get().expect("Default value not coerced"))
     }
 
     pub fn is_required(&self) -> bool {
@@ -76,14 +84,39 @@ impl InputValueDefinition {
     pub fn directives(&self) -> &Directives {
         &self.directives
     }
+
+    pub fn validate_default_value(&self) -> Result<(), Error> {
+        if let Some((raw_value, wrapped_value)) = self.default_value.as_ref() {
+            wrapped_value
+                .get_or_try_init(|| {
+                    self.r#type
+                        .get()
+                        .coerced_ruby_value_to_wrapped_value(*raw_value, &[])
+                        .and_then(|result| {
+                            result.map_err(|coercion_errors| {
+                                let arr =
+                                    RArray::from_iter(coercion_errors.into_iter().map(Obj::wrap));
+                                match default_value_error().new_instance((arr, *raw_value)) {
+                                    Ok(exception) => Error::Exception(exception),
+                                    Err(error) => error,
+                                }
+                            })
+                        })
+                })
+                .map(|_| ())
+        } else {
+            Ok(())
+        }
+    }
 }
 
 impl DataTypeFunctions for InputValueDefinition {
     fn mark(&self) {
         gc::mark(self.r#type);
         self.directives.mark();
-        if let Some(default_value) = &self.default_value {
-            default_value.mark();
+        if let Some((raw_value, wrapped_value)) = &self.default_value {
+            gc::mark(raw_value);
+            wrapped_value.get().map(WrappedValue::mark);
         }
         gc::mark(self.ruby_name);
     }
@@ -107,12 +140,18 @@ impl bluejay_core::definition::InputValueDefinition for InputValueDefinition {
     }
 
     fn default_value(&self) -> Option<&Self::Value> {
-        self.default_value.as_ref().map(AsRef::as_ref)
+        self.default_value
+            .as_ref()
+            .map(|v| v.1.get().expect("Default value not coerced").as_ref())
     }
 
     fn directives(&self) -> Option<&Self::Directives> {
         self.directives.to_option()
     }
+}
+
+fn default_value_error() -> ExceptionClass {
+    *memoize!(ExceptionClass: errors().define_error("DefaultValueError", Default::default()).unwrap())
 }
 
 pub fn init() -> Result<(), Error> {

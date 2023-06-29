@@ -10,9 +10,10 @@ module Bluejay
         description: T.nilable(String),
         directives: T::Array[Directive],
         ruby_name: T.nilable(String),
+        default_value: T.nilable(Object),
       ).void
     end
-    def initialize(name:, type:, description: nil, directives: [], ruby_name: nil); end
+    def initialize(name:, type:, description: nil, directives: [], ruby_name: nil, default_value: nil); end
 
     sig { returns(String) }
     def name; end
