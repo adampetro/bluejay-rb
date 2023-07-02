@@ -1,7 +1,9 @@
 use crate::helpers::WrappedDefinition;
 use crate::ruby_api::{wrapped_value::ValueInner, CoerceInput, DirectiveDefinition, WrappedValue};
+use crate::visibility_scoped::{ScopedDirectiveDefinition, VisibilityCache};
 use bluejay_core::{
-    Argument as CoreArgument, Arguments as CoreArguments, AsIter, Directive as CoreDirective,
+    definition::prelude::*, Argument as CoreArgument, Arguments as CoreArguments, AsIter,
+    Directive as CoreDirective,
 };
 use magnus::{gc, Error, RObject, TryConvert, Value};
 
@@ -18,20 +20,27 @@ impl TryConvert for Directive {
             WrappedDefinition::try_convert(*val.class())?;
         let obj: RObject = val.try_convert()?;
         obj.freeze();
-        let arguments: Result<Vec<Argument>, Error> = definition
-            .as_ref()
-            .arguments_definition()
-            .iter()
-            .map(|ivd| -> Result<Argument, Error> {
-                let value: Value = obj.funcall(ivd.ruby_name(), ())?;
-                let value: WrappedValue = ivd
-                    .r#type()
-                    .coerced_ruby_value_to_wrapped_value(value, &[])?
-                    .unwrap();
-                let name = ivd.name().to_string();
-                Ok(Argument { name, value })
-            })
-            .collect();
+        let visibility_cache = VisibilityCache::new(bluejay_visibility::NullWarden::default());
+        let scoped_directive_definition =
+            ScopedDirectiveDefinition::new(definition.as_ref(), &visibility_cache);
+        let arguments: Result<Vec<Argument>, Error> = if let Some(arguments_definition) =
+            scoped_directive_definition.arguments_definition()
+        {
+            arguments_definition
+                .iter()
+                .map(|ivd| -> Result<Argument, Error> {
+                    let value: Value = obj.funcall(ivd.inner().ruby_name(), ())?;
+                    let value: WrappedValue = ivd
+                        .r#type()
+                        .coerced_ruby_value_to_wrapped_value(value, &[])?
+                        .unwrap();
+                    let name = ivd.name().to_string();
+                    Ok(Argument { name, value })
+                })
+                .collect()
+        } else {
+            Ok(Vec::new())
+        };
         let arguments = Arguments(arguments?);
         Ok(Self {
             obj,

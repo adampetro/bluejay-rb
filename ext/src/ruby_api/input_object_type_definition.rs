@@ -5,13 +5,13 @@ use crate::ruby_api::{
     introspection, root, wrapped_value::value_inner_from_ruby_const_value, CoerceInput,
     CoercionError, Directives, InputFieldsDefinition, RResult, WrappedValue,
 };
-use bluejay_core::AsIter;
+use crate::visibility_scoped::{ScopedInputObjectTypeDefinition, VisibilityCache};
+use bluejay_core::{definition::prelude::*, AsIter};
 use bluejay_parser::ast::Value as ParserValue;
 use magnus::{
     function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions,
     Error, Module, Object, RArray, RClass, RHash, TypedData, Value, QNIL,
 };
-use std::collections::HashSet;
 
 #[derive(Debug, TypedData)]
 #[magnus(class = "Bluejay::InputObjectTypeDefinition", mark)]
@@ -19,7 +19,6 @@ pub struct InputObjectTypeDefinition {
     name: String,
     description: Option<String>,
     input_fields_definition: InputFieldsDefinition,
-    input_value_definition_names: HashSet<String>,
     directives: Directives,
     ruby_class: RClass,
 }
@@ -45,17 +44,11 @@ impl InputObjectTypeDefinition {
             RClass,
         ) = args.required;
         let input_fields_definition = InputFieldsDefinition::new(input_field_definitions)?;
-        let input_value_definition_names = HashSet::from_iter(
-            input_fields_definition
-                .iter()
-                .map(|ivd| ivd.name().to_owned()),
-        );
         let directives = directives.try_into()?;
         Ok(Self {
             name,
             description,
             input_fields_definition,
-            input_value_definition_names,
             directives,
             ruby_class,
         })
@@ -113,21 +106,21 @@ impl bluejay_core::definition::InputObjectTypeDefinition for InputObjectTypeDefi
     }
 }
 
-impl CoerceInput for InputObjectTypeDefinition {
+impl<'a> CoerceInput for ScopedInputObjectTypeDefinition<'a> {
     fn coerced_ruby_value_to_wrapped_value(
         &self,
         value: Value,
         path: &[String],
     ) -> Result<Result<WrappedValue, Vec<CoercionError>>, Error> {
         if let Some(hash) = RHash::from_value(value) {
-            let args = rhash_with_capacity(self.input_fields_definition.len());
+            let args = rhash_with_capacity(self.input_field_definitions().len());
             let mut errors = Vec::new();
 
-            for ivd in self.input_fields_definition.iter() {
-                let key = ivd.ruby_name();
+            for ivd in self.input_field_definitions().iter() {
+                let key = ivd.inner().ruby_name();
                 let value = hash.get(ivd.name());
                 let required = ivd.is_required();
-                let default_value = ivd.default_value();
+                let default_value = ivd.inner().default_value();
                 if required && value.is_none() {
                     errors.push(CoercionError::new(
                         format!("No value for required field {}", ivd.name()),
@@ -160,9 +153,13 @@ impl CoerceInput for InputObjectTypeDefinition {
             let keys: Vec<String> = hash.funcall("keys", ())?;
 
             errors.extend(keys.iter().filter_map(|key| {
-                if !self.input_value_definition_names.contains(key) {
+                if !self
+                    .input_field_definitions()
+                    .iter()
+                    .any(|ivd| ivd.name() == key)
+                {
                     Some(CoercionError::new(
-                        format!("No field named `{}` on {}", key, self.name),
+                        format!("No field named `{}` on {}", key, self.name()),
                         path.to_owned(),
                     ))
                 } else {
@@ -171,7 +168,7 @@ impl CoerceInput for InputObjectTypeDefinition {
             }));
 
             if errors.is_empty() {
-                let r_value = self.ruby_class.new_instance_kw(args)?;
+                let r_value = self.inner().ruby_class.new_instance_kw(args)?;
 
                 let inner = value_inner_from_ruby_const_value(value)?;
 
@@ -184,7 +181,7 @@ impl CoerceInput for InputObjectTypeDefinition {
                 format!(
                     "No implicit conversion of {} to {}",
                     public_name(value),
-                    self.name
+                    self.name()
                 ),
                 path.to_owned(),
             )]))
@@ -198,17 +195,17 @@ impl CoerceInput for InputObjectTypeDefinition {
         variables: &impl Variables<CONST>,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         if let ParserValue::Object(o) = value {
-            let args = rhash_with_capacity(self.input_fields_definition.len());
+            let args = rhash_with_capacity(self.input_field_definitions().len());
             let mut errors = Vec::new();
 
-            for ivd in self.input_fields_definition.iter() {
-                let key = ivd.ruby_name();
+            for ivd in self.input_field_definitions().iter() {
+                let key = ivd.inner().ruby_name();
                 let value = o
                     .iter()
                     .find(|(name, _)| ivd.name() == name.as_str())
                     .map(|(_, value)| value);
                 let required = ivd.is_required();
-                let default_value = ivd.default_value();
+                let default_value = ivd.inner().default_value();
 
                 match (value, default_value) {
                     (None, None) => {
@@ -240,9 +237,13 @@ impl CoerceInput for InputObjectTypeDefinition {
 
             errors.extend(o.iter().filter_map(|(key, _)| {
                 let key = key.as_ref();
-                if !self.input_value_definition_names.contains(key) {
+                if !self
+                    .input_field_definitions()
+                    .iter()
+                    .any(|ivd| ivd.name() == key)
+                {
                     Some(CoercionError::new(
-                        format!("No field named `{}` on {}", key, self.name),
+                        format!("No field named `{}` on {}", key, self.name()),
                         path.to_owned(),
                     ))
                 } else {
@@ -251,13 +252,13 @@ impl CoerceInput for InputObjectTypeDefinition {
             }));
 
             if errors.is_empty() {
-                self.ruby_class.new_instance_kw(args).map(Ok)
+                self.inner().ruby_class.new_instance_kw(args).map(Ok)
             } else {
                 Ok(Err(errors))
             }
         } else {
             Ok(Err(vec![CoercionError::new(
-                format!("No implicit conversion of {} to {}", value, self.name,),
+                format!("No implicit conversion of {} to {}", value, self.name(),),
                 path.to_owned(),
             )]))
         }
@@ -269,14 +270,14 @@ impl CoerceInput for InputObjectTypeDefinition {
         path: &[String],
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         if let Some(hash) = RHash::from_value(value) {
-            let args = rhash_with_capacity(self.input_fields_definition.len());
+            let args = rhash_with_capacity(self.input_field_definitions().len());
             let mut errors = Vec::new();
 
-            for ivd in self.input_fields_definition.iter() {
-                let key = ivd.ruby_name();
+            for ivd in self.input_field_definitions().iter() {
+                let key = ivd.inner().ruby_name();
                 let value = hash.get(ivd.name());
                 let required = ivd.is_required();
-                let default_value = ivd.default_value();
+                let default_value = ivd.inner().default_value();
                 if required && value.is_none() {
                     errors.push(CoercionError::new(
                         format!("No value for required field {}", ivd.name()),
@@ -309,9 +310,13 @@ impl CoerceInput for InputObjectTypeDefinition {
             let keys: Vec<String> = hash.funcall("keys", ())?;
 
             errors.extend(keys.iter().filter_map(|key| {
-                if !self.input_value_definition_names.contains(key) {
+                if !self
+                    .input_field_definitions()
+                    .iter()
+                    .any(|ivd| ivd.name() == key)
+                {
                     Some(CoercionError::new(
-                        format!("No field named `{}` on {}", key, self.name),
+                        format!("No field named `{}` on {}", key, self.name()),
                         path.to_owned(),
                     ))
                 } else {
@@ -320,7 +325,7 @@ impl CoerceInput for InputObjectTypeDefinition {
             }));
 
             if errors.is_empty() {
-                self.ruby_class.new_instance_kw(args).map(Ok)
+                self.inner().ruby_class.new_instance_kw(args).map(Ok)
             } else {
                 Ok(Err(errors))
             }
@@ -329,7 +334,7 @@ impl CoerceInput for InputObjectTypeDefinition {
                 format!(
                     "No implicit conversion of {} to {}",
                     public_name(value),
-                    self.name
+                    self.name()
                 ),
                 path.to_owned(),
             )]))
@@ -365,15 +370,21 @@ pub fn init() -> Result<(), Error> {
         "coerce_input",
         method!(
             |itd: &InputObjectTypeDefinition, input: Value| -> Result<RResult, Error> {
-                itd.coerce_ruby_const_value(input, &[]).map(|result| {
-                    result
-                        .map_err(|errors| {
-                            let arr = RArray::from_iter(errors);
-                            let _ = arr.len();
-                            arr
-                        })
-                        .into()
-                })
+                let visibility_cache =
+                    VisibilityCache::new(bluejay_visibility::NullWarden::default());
+                let scoped_definition =
+                    ScopedInputObjectTypeDefinition::new(itd, &visibility_cache);
+                scoped_definition
+                    .coerce_ruby_const_value(input, &[])
+                    .map(|result| {
+                        result
+                            .map_err(|errors| {
+                                let arr = RArray::from_iter(errors);
+                                let _ = arr.len();
+                                arr
+                            })
+                            .into()
+                    })
             },
             1
         ),

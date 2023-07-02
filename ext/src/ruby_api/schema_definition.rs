@@ -8,6 +8,7 @@ use crate::ruby_api::{
     InterfaceImplementations, InterfaceTypeDefinition, ObjectTypeDefinition, OutputType, Scalar,
     UnionMemberType, UnionMemberTypes, UnionTypeDefinition, ValidationError,
 };
+use crate::visibility_scoped::{ScopedSchemaDefinition, VisibilityCache};
 use bluejay_core::definition::{
     InputType as CoreInputType, OutputType as CoreOutputType,
     SchemaDefinition as CoreSchemaDefinition, TypeDefinition as CoreTypeDefinition,
@@ -16,6 +17,7 @@ use bluejay_core::definition::{
 use bluejay_core::{AsIter, BuiltinScalarDefinition};
 use bluejay_printer::definition::DisplaySchemaDefinition;
 use bluejay_validator::executable::{BuiltinRulesValidator, Cache as ValidationCache};
+use bluejay_visibility::NullWarden;
 use magnus::IntoValue;
 use magnus::{
     exception, function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs,
@@ -78,7 +80,9 @@ impl SchemaDefinition {
                 &directives,
             );
         let interface_implementors = Self::interface_implementors(&contained_types);
+
         Self::validate_default_values(&contained_types)?;
+
         Ok(Self {
             description,
             query,
@@ -131,11 +135,15 @@ impl SchemaDefinition {
         if let Ok(document) =
             bluejay_parser::ast::executable::ExecutableDocument::parse(query.as_str())
         {
+            let warden = NullWarden::default();
+            let cache = VisibilityCache::new(warden);
+            let scoped_schema_definition = ScopedSchemaDefinition::new(self, &cache);
+
             RArray::from_iter(
                 BuiltinRulesValidator::validate(
                     &document,
-                    self,
-                    &ValidationCache::new(&document, self),
+                    &scoped_schema_definition,
+                    &ValidationCache::new(&document, &scoped_schema_definition),
                 )
                 .map(|error| -> Obj<ValidationError> { Obj::wrap(error.into()) }),
             )
@@ -145,7 +153,10 @@ impl SchemaDefinition {
     }
 
     fn to_definition(&self) -> String {
-        DisplaySchemaDefinition::to_string(self)
+        let cache = VisibilityCache::new(NullWarden::default());
+        let scoped_schema_definition = ScopedSchemaDefinition::new(self, &cache);
+
+        DisplaySchemaDefinition::to_string(&scoped_schema_definition)
     }
 
     fn interface_implementors(
@@ -174,6 +185,7 @@ impl SchemaDefinition {
     fn validate_default_values(
         type_definitions: &BTreeMap<String, TypeDefinition>,
     ) -> Result<(), Error> {
+        let cache = VisibilityCache::new(bluejay_visibility::NullWarden::default());
         type_definitions
             .values()
             .try_for_each(|type_definition| match type_definition {
@@ -181,19 +193,19 @@ impl SchemaDefinition {
                     .as_ref()
                     .input_fields_definition()
                     .iter()
-                    .try_for_each(|ivd| ivd.validate_default_value()),
+                    .try_for_each(|ivd| ivd.validate_default_value(&cache)),
                 TypeDefinition::Object(otd) => {
                     otd.as_ref().fields_definition().iter().try_for_each(|fd| {
                         fd.argument_definitions()
                             .iter()
-                            .try_for_each(|ivd| ivd.validate_default_value())
+                            .try_for_each(|ivd| ivd.validate_default_value(&cache))
                     })
                 }
                 TypeDefinition::Interface(itd) => {
                     itd.as_ref().fields_definition().iter().try_for_each(|fd| {
                         fd.argument_definitions()
                             .iter()
-                            .try_for_each(|ivd| ivd.validate_default_value())
+                            .try_for_each(|ivd| ivd.validate_default_value(&cache))
                     })
                 }
                 _ => Ok(()),
@@ -303,7 +315,7 @@ impl CoreSchemaDefinition for SchemaDefinition {
         Values<'a, String, WrappedDefinition<DirectiveDefinition>>,
         fn(&WrappedDefinition<DirectiveDefinition>) -> &DirectiveDefinition,
     >;
-    type IterfaceImplementors<'a> = std::iter::Flatten<
+    type InterfaceImplementors<'a> = std::iter::Flatten<
         std::option::IntoIter<
             std::iter::Map<
                 std::slice::Iter<'a, WrappedDefinition<ObjectTypeDefinition>>,
@@ -358,7 +370,7 @@ impl CoreSchemaDefinition for SchemaDefinition {
     fn get_interface_implementors(
         &self,
         itd: &Self::InterfaceTypeDefinition,
-    ) -> Self::IterfaceImplementors<'_> {
+    ) -> Self::InterfaceImplementors<'_> {
         type MapFn<'a> = std::iter::Map<
             std::slice::Iter<'a, WrappedDefinition<ObjectTypeDefinition>>,
             fn(&WrappedDefinition<ObjectTypeDefinition>) -> &ObjectTypeDefinition,

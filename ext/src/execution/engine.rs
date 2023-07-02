@@ -1,17 +1,25 @@
-use crate::execution::{CoerceResult, ExecutionError, FieldError, KeyStore, SelectionSetProvider};
+use crate::execution::{
+    CoerceResult, ExecutionError, FieldError, KeyStore, SelectionSetProvider,
+    VariableDefinitionInputTypeCache,
+};
 use crate::helpers::{rhash_with_capacity, FuncallKw, NewInstanceKw, RArrayIter};
-use crate::ruby_api::{
-    BaseInputType, BaseOutputType, CoerceInput, ExecutionResult, ExtraResolverArg, FieldDefinition,
-    InputType, InputValueDefinition, InterfaceTypeDefinition, ObjectTypeDefinition, OutputType,
-    SchemaDefinition, TypeDefinition, UnionTypeDefinition,
+use crate::ruby_api::{CoerceInput, ExecutionResult, ExtraResolverArg, SchemaDefinition};
+use crate::visibility_scoped::{
+    ScopedBaseOutputType, ScopedFieldDefinition, ScopedInputType, ScopedInputValueDefinition,
+    ScopedInterfaceTypeDefinition, ScopedObjectTypeDefinition, ScopedOutputType,
+    ScopedSchemaDefinition, ScopedUnionTypeDefinition, VisibilityCache,
 };
 use bluejay_core::definition::{OutputType as CoreOutputType, OutputTypeReference};
 use bluejay_core::executable::{
-    OperationDefinition as CoreOperationDefinition, Selection as CoreSelection, VariableType,
+    OperationDefinition as CoreOperationDefinition, Selection as CoreSelection,
 };
-use bluejay_core::{AsIter, Directive as CoreDirective, OperationType};
+use bluejay_core::{
+    definition::{prelude::*, SchemaDefinition as CoreSchemaDefinition, TypeDefinitionReference},
+    AsIter, Directive as CoreDirective, OperationType,
+};
 use bluejay_parser::ast::executable::{ExecutableDocument, Field, OperationDefinition, Selection};
 use bluejay_parser::ast::{Directive, VariableArguments, VariableValue};
+use bluejay_visibility::NullWarden;
 use indexmap::IndexMap;
 use magnus::{Error, RArray, RHash, Value, QNIL};
 use std::cell::RefCell;
@@ -22,7 +30,7 @@ type CollectFieldsCache<'a> =
     RefCell<HashMap<SelectionSetProvider<'a>, Rc<IndexMap<&'a str, Rc<Vec<&'a Field<'a>>>>>>>;
 
 pub struct Engine<'a> {
-    schema: &'a SchemaDefinition,
+    schema_definition: ScopedSchemaDefinition<'a>,
     document: &'a ExecutableDocument<'a>,
     variables: &'a RHash,
     key_store: KeyStore<'a>,
@@ -57,16 +65,25 @@ impl<'a> Engine<'a> {
             }
         };
 
-        let variables =
-            match Self::get_variable_values(schema, operation_definition, variable_values) {
-                Ok(cvv) => cvv,
-                Err(errors) => {
-                    return Ok(Self::execution_result(Default::default(), errors));
-                }
-            };
+        let visibility_cache = VisibilityCache::new(NullWarden::default());
+        let schema_definition = ScopedSchemaDefinition::new(schema, &visibility_cache);
+        let variable_definition_input_type_cache = VariableDefinitionInputTypeCache::new();
+
+        let variables = match Self::get_variable_values(
+            schema,
+            operation_definition,
+            variable_values,
+            &visibility_cache,
+            &variable_definition_input_type_cache,
+        ) {
+            Ok(cvv) => cvv,
+            Err(errors) => {
+                return Ok(Self::execution_result(Default::default(), errors));
+            }
+        };
 
         let instance = Engine {
-            schema,
+            schema_definition,
             document: &document,
             variables: &variables,
             key_store: KeyStore::new(),
@@ -108,6 +125,8 @@ impl<'a> Engine<'a> {
         schema: &'b SchemaDefinition,
         operation: &'b OperationDefinition<'b>,
         variable_values: RHash,
+        visibility_cache: &'b VisibilityCache<'b>,
+        variable_definition_input_type_cache: &'b VariableDefinitionInputTypeCache,
     ) -> Result<RHash, Vec<ExecutionError<'b>>> {
         let coerced_variables = RHash::new();
         let mut errors: Vec<ExecutionError<'b>> = Vec::new();
@@ -115,23 +134,16 @@ impl<'a> Engine<'a> {
         if let Some(variable_definitions) = operation.as_ref().variable_definitions() {
             for variable_definition in variable_definitions.iter() {
                 let variable_name = variable_definition.variable().name();
-                let variable_named_type_reference = variable_definition.r#type();
-                let variable_base_type = schema
-                    .r#type(variable_named_type_reference.as_ref().name())
-                    .unwrap();
-                let base_input_type_reference: BaseInputType =
-                    variable_base_type.try_into().unwrap();
-                let variable_type = InputType::from_parser_variable_type(
-                    variable_named_type_reference,
-                    base_input_type_reference,
-                );
+                let variable_type = variable_definition_input_type_cache
+                    .input_type_for_variable_definition(schema, variable_definition.r#type());
+                let scoped_variable_type = ScopedInputType::new(variable_type, visibility_cache);
                 let default_value = variable_definition.default_value();
                 let value = variable_values.get(variable_name);
                 let has_value = value.is_some();
                 let path = vec![variable_name.to_owned()];
                 match default_value {
                     Some(default_value) if !has_value => {
-                        match variable_type.coerce_parser_value(default_value, &path, &()) {
+                        match scoped_variable_type.coerce_parser_value(default_value, &path, &()) {
                             Ok(Ok(coerced_value)) => {
                                 coerced_variables
                                     .aset(variable_name, coerced_value)
@@ -148,13 +160,13 @@ impl<'a> Engine<'a> {
                         }
                     }
                     _ => {
-                        if variable_type.is_required() && !has_value {
+                        if scoped_variable_type.as_ref().is_required() && !has_value {
                             errors.push(ExecutionError::RequiredVariableMissingValue {
                                 name: variable_name,
                             });
                         } else {
                             let value = value.unwrap_or_default();
-                            match variable_type.coerce_ruby_const_value(value, &path) {
+                            match scoped_variable_type.coerce_ruby_const_value(value, &path) {
                                 Ok(Ok(coerced_value)) => {
                                     coerced_variables
                                         .aset(variable_name, coerced_value)
@@ -193,8 +205,7 @@ impl<'a> Engine<'a> {
         query: &'a OperationDefinition,
         initial_value: Value,
     ) -> ExecutionResult {
-        let query_type = self.schema.query();
-        let query_type = query_type.get();
+        let query_type = self.schema_definition.query();
 
         let (value, errors) = self.execute_selection_set(
             SelectionSetProvider::SelectionSet(query.selection_set()),
@@ -208,7 +219,7 @@ impl<'a> Engine<'a> {
     fn execute_selection_set(
         &'a self,
         selection_set: SelectionSetProvider<'a>,
-        object_type: &ObjectTypeDefinition,
+        object_type: &ScopedObjectTypeDefinition<'a>,
         object_value: Value,
     ) -> (Value, Vec<ExecutionError<'a>>) {
         let mut visited_fragments = HashSet::new();
@@ -221,19 +232,22 @@ impl<'a> Engine<'a> {
 
         for (&response_key, fields) in grouped_field_set.as_ref() {
             let field_name = fields.first().unwrap().name().as_ref();
-            let field_definition = object_type.field_definition(field_name).unwrap_or_else(|| {
-                panic!(
-                    "No field definition with name {field_name} on type {}",
-                    object_type.name()
-                )
-            });
+            let field_definition = object_type
+                .fields_definition()
+                .get(field_name)
+                .unwrap_or_else(|| {
+                    panic!(
+                        "No field definition with name {field_name} on type {}",
+                        object_type.name()
+                    )
+                });
             let (response_value, mut errs) =
                 self.execute_field(object_type, object_value, field_definition, fields.clone());
             if field_definition.r#type().as_ref().is_required() && response_value.is_nil() {
                 has_null_for_required = true;
             }
             let key = if response_key == field_name {
-                field_definition.name_r_string()
+                field_definition.inner().name_r_string()
             } else {
                 self.key_store.get(response_key)
             };
@@ -250,7 +264,7 @@ impl<'a> Engine<'a> {
 
     fn collect_fields(
         &'a self,
-        object_type: &ObjectTypeDefinition,
+        object_type: &ScopedObjectTypeDefinition<'a>,
         selection_set_provider: SelectionSetProvider<'a>,
         visited_fragments: &mut HashSet<&'a str>,
     ) -> Rc<IndexMap<&'a str, Rc<Vec<&'a Field>>>> {
@@ -374,35 +388,45 @@ impl<'a> Engine<'a> {
 
     fn does_fragment_type_apply(
         &'a self,
-        object_type: &ObjectTypeDefinition,
+        object_type: &ScopedObjectTypeDefinition,
         fragment_type_name: &str,
     ) -> bool {
-        let fragment_type = self.schema.r#type(fragment_type_name).unwrap();
+        let fragment_type = self
+            .schema_definition
+            .get_type_definition(fragment_type_name)
+            .unwrap();
 
         match fragment_type {
-            TypeDefinition::Object(otd) => {
+            TypeDefinitionReference::Object(otd) => {
                 // TODO: see if there's any edge case where name equality does not work
-                otd.as_ref().name() == object_type.name()
+                otd.name() == object_type.name()
             }
-            TypeDefinition::Interface(itd) => object_type.implements_interface(itd.as_ref()),
-            TypeDefinition::Union(utd) => utd.as_ref().contains_type(object_type),
-            TypeDefinition::BuiltinScalar(_)
-            | TypeDefinition::CustomScalar(_)
-            | TypeDefinition::Enum(_)
-            | TypeDefinition::InputObject(_) => unreachable!(),
+            TypeDefinitionReference::Interface(itd) => {
+                // TODO: do this properly for visibility
+                object_type.inner().implements_interface(itd.inner())
+            }
+            TypeDefinitionReference::Union(utd) => {
+                // TODO: do this properly for visibility
+                utd.inner().contains_type(object_type.inner())
+            }
+            TypeDefinitionReference::BuiltinScalar(_)
+            | TypeDefinitionReference::CustomScalar(_)
+            | TypeDefinitionReference::Enum(_)
+            | TypeDefinitionReference::InputObject(_) => unreachable!(),
         }
     }
 
     fn execute_field(
         &'a self,
-        object_type: &ObjectTypeDefinition,
+        object_type: &ScopedObjectTypeDefinition<'a>,
         object_value: Value,
-        field_definition: &FieldDefinition,
+        field_definition: &ScopedFieldDefinition<'a>,
         fields: Rc<Vec<&'a Field>>,
     ) -> (Value, Vec<ExecutionError<'a>>) {
         let field = fields.first().unwrap();
 
-        if field_definition.resolver_arg_count() == 0 {
+        // TODO: better `resolver_arg_count` with visibility
+        if field_definition.inner().resolver_arg_count() == 0 {
             self.resolve_field_value(object_type, object_value, field_definition, None)
                 .map_err(|err| vec![err])
         } else {
@@ -425,24 +449,29 @@ impl<'a> Engine<'a> {
 
     fn coerce_argument_values(
         &'a self,
-        field_definition: &FieldDefinition,
+        field_definition: &ScopedFieldDefinition<'a>,
         field: &Field,
     ) -> Result<RHash, Vec<ExecutionError<'a>>> {
-        let coerced_args = rhash_with_capacity(field_definition.resolver_arg_count());
+        // TODO: better `resolver_arg_count` with visibility
+        let coerced_args = rhash_with_capacity(field_definition.inner().resolver_arg_count());
         let mut errors: Vec<ExecutionError<'a>> = Vec::new();
-        let argument_definitions = field_definition.argument_definitions();
-        for argument_definition in argument_definitions.iter() {
-            match self.coerce_argument_value(argument_definition, field.arguments()) {
-                Ok(value) => coerced_args
-                    .aset(argument_definition.ruby_name(), value)
-                    .unwrap(),
-                Err(errs) => errors.extend(errs.into_iter()),
+        if let Some(argument_definitions) = field_definition.arguments_definition() {
+            for argument_definition in argument_definitions.iter() {
+                match self.coerce_argument_value(argument_definition, field.arguments()) {
+                    Ok(value) => coerced_args
+                        .aset(argument_definition.inner().ruby_name(), value)
+                        .unwrap(),
+                    Err(errs) => errors.extend(errs.into_iter()),
+                }
             }
         }
-        for extra_resolver_arg in field_definition.extra_resolver_args() {
+        for extra_resolver_arg in field_definition.inner().extra_resolver_args() {
             match extra_resolver_arg {
                 ExtraResolverArg::SchemaClass => coerced_args
-                    .aset(extra_resolver_arg.kwarg_name(), self.schema.ruby_class())
+                    .aset(
+                        extra_resolver_arg.kwarg_name(),
+                        self.schema_definition.inner().ruby_class(),
+                    )
                     .unwrap(),
             }
         }
@@ -456,12 +485,12 @@ impl<'a> Engine<'a> {
 
     fn coerce_argument_value(
         &'a self,
-        argument_definition: &InputValueDefinition,
+        argument_definition: &ScopedInputValueDefinition<'a>,
         arguments: Option<&VariableArguments>,
     ) -> Result<Value, Vec<ExecutionError<'a>>> {
         let argument_name = argument_definition.name();
         let argument_type = argument_definition.r#type();
-        let default_value = argument_definition.default_value();
+        let default_value = argument_definition.inner().default_value();
         let argument_value: Option<&VariableValue> = arguments.and_then(|arguments| {
             arguments
                 .iter()
@@ -472,7 +501,7 @@ impl<'a> Engine<'a> {
         match default_value {
             Some(default_value) if !has_value => Ok(default_value.to_value()),
             _ => {
-                if argument_type.is_required() && !has_value {
+                if argument_type.as_ref().is_required() && !has_value {
                     // TODO: field error
                     // shouldn't this never happen if query is validated and variables coerced to match definition in query?
                     todo!()
@@ -501,24 +530,23 @@ impl<'a> Engine<'a> {
 
     fn resolve_field_value(
         &'a self,
-        _object_type: &ObjectTypeDefinition,
+        _object_type: &ScopedObjectTypeDefinition<'a>,
         object_value: Value,
-        field_definition: &FieldDefinition,
+        field_definition: &ScopedFieldDefinition<'a>,
         argument_values: Option<RHash>,
     ) -> Result<Value, ExecutionError<'a>> {
         // TODO: use object_type somehow?
         match argument_values {
-            Some(kwargs) => {
-                object_value.funcall_kw(field_definition.ruby_resolver_method_name(), kwargs)
-            }
-            None => object_value.funcall(field_definition.ruby_resolver_method_name(), ()),
+            Some(kwargs) => object_value
+                .funcall_kw(field_definition.inner().ruby_resolver_method_name(), kwargs),
+            None => object_value.funcall(field_definition.inner().ruby_resolver_method_name(), ()),
         }
         .map_err(|error| ExecutionError::ApplicationError(error.to_string()))
     }
 
     fn complete_value(
         &'a self,
-        field_type: &OutputType,
+        field_type: &ScopedOutputType<'a>,
         fields: Rc<Vec<&'a Field>>,
         result: Value,
     ) -> (Value, Vec<ExecutionError<'a>>) {
@@ -535,27 +563,27 @@ impl<'a> Engine<'a> {
 
         match field_type.as_ref() {
             OutputTypeReference::Base(inner, _) => match inner {
-                BaseOutputType::BuiltinScalar(bstd) => match bstd.coerce_result(result) {
+                ScopedBaseOutputType::BuiltinScalar(bstd) => match bstd.coerce_result(result) {
                     Ok(value) => (value, vec![]),
                     Err(error) => (*QNIL, vec![ExecutionError::FieldError(error)]),
                 },
-                BaseOutputType::CustomScalar(cstd) => match cstd.as_ref().coerce_result(result) {
+                ScopedBaseOutputType::CustomScalar(cstd) => match cstd.coerce_result(result) {
                     Ok(value) => (value, vec![]),
                     Err(error) => (*QNIL, vec![ExecutionError::FieldError(error)]),
                 },
-                BaseOutputType::Enum(etd) => match etd.as_ref().coerce_result(result) {
+                ScopedBaseOutputType::Enum(etd) => match etd.coerce_result(result) {
                     Ok(value) => (value, vec![]),
                     Err(error) => (*QNIL, vec![ExecutionError::FieldError(error)]),
                 },
-                BaseOutputType::Object(otd) => {
-                    self.execute_selection_set(fields.into(), otd.as_ref(), result)
+                ScopedBaseOutputType::Object(otd) => {
+                    self.execute_selection_set(fields.into(), otd, result)
                 }
-                BaseOutputType::Interface(itd) => {
-                    let object_type = self.resolve_interface_type(itd.as_ref(), result);
+                ScopedBaseOutputType::Interface(itd) => {
+                    let object_type = self.resolve_interface_type(itd, result);
                     self.execute_selection_set(fields.into(), object_type, result)
                 }
-                BaseOutputType::Union(utd) => {
-                    let object_type = self.resolve_union_type(utd.as_ref(), result);
+                ScopedBaseOutputType::Union(utd) => {
+                    let object_type = self.resolve_union_type(utd, result);
                     self.execute_selection_set(fields.into(), object_type, result)
                 }
             },
@@ -591,16 +619,22 @@ impl<'a> Engine<'a> {
 
     fn resolve_interface_type(
         &'a self,
-        interface_type: &InterfaceTypeDefinition,
+        interface_type: &'a ScopedInterfaceTypeDefinition<'a>,
         object_value: Value,
-    ) -> &'a ObjectTypeDefinition {
+    ) -> &'a ScopedObjectTypeDefinition<'a> {
         // TODO: change to return Result<_, FieldError>
         let typename: String = object_value.funcall("resolve_typename", ()).unwrap();
-        let object_type = match self.schema.r#type(typename.as_str()) {
-            Some(TypeDefinition::Object(otd)) => otd.as_ref(),
-            _ => panic!(),
-        };
-        if object_type.implements_interface(interface_type) {
+        let object_type = self
+            .schema_definition
+            .get_type_definition(typename.as_str())
+            .unwrap()
+            .into_object()
+            .unwrap_or_else(|_| panic!("Returned type is not an object"));
+        // TODO: do this properly for visibility
+        if object_type
+            .inner()
+            .implements_interface(interface_type.inner())
+        {
             object_type
         } else {
             panic!()
@@ -609,16 +643,19 @@ impl<'a> Engine<'a> {
 
     fn resolve_union_type(
         &'a self,
-        union_type: &UnionTypeDefinition,
+        union_type: &'a ScopedUnionTypeDefinition<'a>,
         object_value: Value,
-    ) -> &'a ObjectTypeDefinition {
+    ) -> &'a ScopedObjectTypeDefinition<'a> {
         // TODO: change to return Result<_, FieldError>
         let typename: String = object_value.funcall("resolve_typename", ()).unwrap();
-        let object_type = match self.schema.r#type(typename.as_str()) {
-            Some(TypeDefinition::Object(otd)) => otd.as_ref(),
-            _ => panic!(),
-        };
-        if union_type.contains_type(object_type) {
+        let object_type = self
+            .schema_definition
+            .get_type_definition(typename.as_str())
+            .unwrap()
+            .into_object()
+            .unwrap_or_else(|_| panic!("Type is not an object"));
+        // TODO: do this properly for visibility
+        if union_type.inner().contains_type(object_type.inner()) {
             object_type
         } else {
             panic!()
@@ -629,32 +666,39 @@ impl<'a> Engine<'a> {
         &'a self,
         directive: &'a Directive<'a, false>,
     ) -> Result<Value, Vec<ExecutionError<'a>>> {
-        let directive_definition_obj = self.schema.directive(directive.name().as_ref()).unwrap();
-        let directive_definition = directive_definition_obj.get();
+        let directive_definition = self
+            .schema_definition
+            .get_directive_definition(directive.name().as_ref())
+            .unwrap();
 
-        let directive = if directive_definition.arguments_definition().is_empty() {
-            directive_definition.ruby_class().new_instance(()).unwrap()
-        } else {
-            let coerced_args =
-                rhash_with_capacity(directive_definition.arguments_definition().len());
-            let mut errors = Vec::new();
-            for argument_definition in directive_definition.arguments_definition().iter() {
-                match self.coerce_argument_value(argument_definition, directive.arguments()) {
-                    Ok(value) => coerced_args
-                        .aset(argument_definition.ruby_name(), value)
-                        .unwrap(),
-                    Err(errs) => errors.extend(errs.into_iter()),
+        let directive = match directive_definition.arguments_definition() {
+            Some(arguments_definition) if !arguments_definition.is_empty() => {
+                let coerced_args = rhash_with_capacity(arguments_definition.len());
+                let mut errors = Vec::new();
+                for argument_definition in arguments_definition.iter() {
+                    match self.coerce_argument_value(argument_definition, directive.arguments()) {
+                        Ok(value) => coerced_args
+                            .aset(argument_definition.inner().ruby_name(), value)
+                            .unwrap(),
+                        Err(errs) => errors.extend(errs.into_iter()),
+                    }
+                }
+
+                if errors.is_empty() {
+                    directive_definition
+                        .inner()
+                        .ruby_class()
+                        .new_instance_kw(coerced_args)
+                        .unwrap()
+                } else {
+                    return Err(errors);
                 }
             }
-
-            if errors.is_empty() {
-                directive_definition
-                    .ruby_class()
-                    .new_instance_kw(coerced_args)
-                    .unwrap()
-            } else {
-                return Err(errors);
-            }
+            _ => directive_definition
+                .inner()
+                .ruby_class()
+                .new_instance(())
+                .unwrap(),
         };
 
         Ok(directive)

@@ -5,7 +5,8 @@ use crate::ruby_api::{
     enum_value_definitions::EnumValueDefinitions, introspection, root, wrapped_value::ValueInner,
     Directives, WrappedValue,
 };
-use bluejay_core::AsIter;
+use crate::visibility_scoped::ScopedEnumTypeDefinition;
+use bluejay_core::{definition::prelude::*, AsIter};
 use bluejay_parser::ast::Value as ParserValue;
 use magnus::{
     function, gc, memoize, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error,
@@ -69,22 +70,6 @@ impl EnumTypeDefinition {
     pub fn directives(&self) -> &Directives {
         &self.directives
     }
-
-    fn coerce_from_name(&self, name: &str, path: &[String]) -> Result<Value, Vec<CoercionError>> {
-        if self
-            .enum_value_definitions
-            .iter()
-            .any(|evd| evd.name() == name)
-        {
-            let r_value = RString::from_slice(name.as_bytes());
-            Ok(*r_value)
-        } else {
-            Err(vec![CoercionError::new(
-                format!("No member `{}` on {}", name, self.name.as_str()),
-                path.to_owned(),
-            )])
-        }
-    }
 }
 
 impl DataTypeFunctions for EnumTypeDefinition {
@@ -94,7 +79,27 @@ impl DataTypeFunctions for EnumTypeDefinition {
     }
 }
 
-impl CoerceInput for EnumTypeDefinition {
+fn coerce_from_name(
+    etd: &ScopedEnumTypeDefinition,
+    name: &str,
+    path: &[String],
+) -> Result<Value, Vec<CoercionError>> {
+    if etd
+        .enum_value_definitions()
+        .iter()
+        .any(|evd| evd.name() == name)
+    {
+        let r_value = RString::from_slice(name.as_bytes());
+        Ok(*r_value)
+    } else {
+        Err(vec![CoercionError::new(
+            format!("No member `{}` on {}", name, etd.name()),
+            path.to_owned(),
+        )])
+    }
+}
+
+impl<'a> CoerceInput for ScopedEnumTypeDefinition<'a> {
     fn coerced_ruby_value_to_wrapped_value(
         &self,
         value: Value,
@@ -104,7 +109,7 @@ impl CoerceInput for EnumTypeDefinition {
         match s {
             Ok(s) => {
                 if self
-                    .enum_value_definitions
+                    .enum_value_definitions()
                     .iter()
                     .any(|evd| evd.name() == s.as_str())
                 {
@@ -112,7 +117,7 @@ impl CoerceInput for EnumTypeDefinition {
                     Ok(Ok((value, inner).into()))
                 } else {
                     Ok(Err(vec![CoercionError::new(
-                        format!("No member `{}` on {}", s.as_str(), self.name.as_str()),
+                        format!("No member `{}` on {}", s.as_str(), self.name()),
                         path.to_owned(),
                     )]))
                 }
@@ -121,7 +126,7 @@ impl CoerceInput for EnumTypeDefinition {
                 format!(
                     "No implicit conversion of {} to {}",
                     public_name(value),
-                    self.name.as_str()
+                    self.name()
                 ),
                 path.to_owned(),
             )])),
@@ -135,14 +140,10 @@ impl CoerceInput for EnumTypeDefinition {
         _: &impl Variables<CONST>,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         if let ParserValue::Enum(e) = value {
-            Ok(self.coerce_from_name(e.as_str(), path))
+            Ok(coerce_from_name(self, e.as_str(), path))
         } else {
             Ok(Err(vec![CoercionError::new(
-                format!(
-                    "No implicit conversion of {} to {}",
-                    value,
-                    self.name.as_str()
-                ),
+                format!("No implicit conversion of {} to {}", value, self.name()),
                 path.to_owned(),
             )]))
         }
@@ -155,12 +156,12 @@ impl CoerceInput for EnumTypeDefinition {
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         let s: Result<String, _> = value.try_convert();
         match s {
-            Ok(s) => Ok(self.coerce_from_name(s.as_str(), path)),
+            Ok(s) => Ok(coerce_from_name(self, s.as_str(), path)),
             Err(_) => Ok(Err(vec![CoercionError::new(
                 format!(
                     "No implicit conversion of {} to {}",
                     public_name(value),
-                    self.name.as_str()
+                    self.name()
                 ),
                 path.to_owned(),
             )])),
@@ -199,13 +200,13 @@ impl bluejay_core::definition::EnumTypeDefinition for EnumTypeDefinition {
     }
 }
 
-impl CoerceResult for EnumTypeDefinition {
+impl<'a> CoerceResult for ScopedEnumTypeDefinition<'a> {
     fn coerce_result(&self, value: Value) -> Result<Value, FieldError> {
         if value
             .try_convert()
             .ok()
             .map(|value: String| {
-                self.enum_value_definitions
+                self.enum_value_definitions()
                     .iter()
                     .any(|evd| evd.name() == value.as_str())
             })

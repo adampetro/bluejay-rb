@@ -1,6 +1,7 @@
 use crate::ruby_api::{
     errors, root, wrapped_value::ValueInner, CoerceInput, Directives, InputType, WrappedValue,
 };
+use crate::visibility_scoped::{ScopedInputType, VisibilityCache};
 use bluejay_core::Value as CoreValue;
 use bluejay_printer::value::DisplayValue;
 use convert_case::{Case, Casing};
@@ -85,12 +86,15 @@ impl InputValueDefinition {
         &self.directives
     }
 
-    pub fn validate_default_value(&self) -> Result<(), Error> {
+    pub fn validate_default_value<'a>(
+        &'a self,
+        visibility_cache: &'a VisibilityCache<'a>,
+    ) -> Result<(), Error> {
         if let Some((raw_value, wrapped_value)) = self.default_value.as_ref() {
             wrapped_value
                 .get_or_try_init(|| {
-                    self.r#type
-                        .get()
+                    let scoped_type = ScopedInputType::new(self.r#type.get(), visibility_cache);
+                    scoped_type
                         .coerced_ruby_value_to_wrapped_value(*raw_value, &[])
                         .and_then(|result| {
                             result.map_err(|coercion_errors| {

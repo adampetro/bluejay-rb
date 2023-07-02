@@ -4,6 +4,7 @@ use crate::ruby_api::{
     introspection, root, wrapped_value::value_inner_from_ruby_const_value, CoerceInput,
     CoercionError, DirectiveDefinition, Directives, RResult, WrappedValue,
 };
+use crate::visibility_scoped::ScopedScalarTypeDefinition;
 use bluejay_core::AsIter;
 use bluejay_parser::ast::Value as ParserValue;
 use magnus::{
@@ -109,7 +110,7 @@ impl HasDefinitionWrapper for CustomScalarTypeDefinition {
     }
 }
 
-impl CoerceInput for CustomScalarTypeDefinition {
+impl<'a> CoerceInput for ScopedScalarTypeDefinition<'a> {
     fn coerced_ruby_value_to_wrapped_value(
         &self,
         value: Value,
@@ -117,7 +118,8 @@ impl CoerceInput for CustomScalarTypeDefinition {
     ) -> Result<Result<WrappedValue, Vec<CoercionError>>, Error> {
         let inner = value_inner_from_ruby_const_value(value)?;
 
-        let coerced_r_result: Obj<RResult> = self.ruby_class.funcall("coerce_input", (value,))?;
+        let coerced_r_result: Obj<RResult> =
+            self.inner().ruby_class.funcall("coerce_input", (value,))?;
 
         let coerced_result: Result<Value, String> = coerced_r_result.get().try_into()?;
 
@@ -134,7 +136,10 @@ impl CoerceInput for CustomScalarTypeDefinition {
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         let r_value = value_from_core_value(value, variables);
 
-        let coerced_r_result: Obj<RResult> = self.ruby_class.funcall("coerce_input", (r_value,))?;
+        let coerced_r_result: Obj<RResult> = self
+            .inner()
+            .ruby_class
+            .funcall("coerce_input", (r_value,))?;
 
         let coerced_result: Result<Value, String> = coerced_r_result.get().try_into()?;
 
@@ -146,7 +151,8 @@ impl CoerceInput for CustomScalarTypeDefinition {
         value: Value,
         path: &[String],
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
-        let coerced_r_result: Obj<RResult> = self.ruby_class.funcall("coerce_input", (value,))?;
+        let coerced_r_result: Obj<RResult> =
+            self.inner().ruby_class.funcall("coerce_input", (value,))?;
 
         let coerced_result: Result<Value, String> = coerced_r_result.get().try_into()?;
 
@@ -154,9 +160,10 @@ impl CoerceInput for CustomScalarTypeDefinition {
     }
 }
 
-impl CoerceResult for CustomScalarTypeDefinition {
+impl<'a> CoerceResult for ScopedScalarTypeDefinition<'a> {
     fn coerce_result(&self, value: Value) -> Result<Value, FieldError> {
         let coerced_r_result: Obj<RResult> = self
+            .inner()
             .ruby_class
             .funcall("coerce_result", (value,))
             .map_err(|error| FieldError::ApplicationError(error.to_string()))?;

@@ -1,9 +1,11 @@
 use super::root;
-use crate::ruby_api::SchemaDefinition;
 use bluejay_core::{
-    definition::{DirectiveDefinition, InputType, InputValueDefinition, OutputType},
+    definition::{
+        DirectiveDefinition, FieldDefinition, InputType, InputValueDefinition, OutputType,
+        SchemaDefinition,
+    },
     executable::{OperationDefinition, VariableType},
-    OperationType,
+    AsIter, OperationType,
 };
 use bluejay_parser::ast::{executable::ExecutableDocument, Value as ParserValue};
 use bluejay_validator::executable::{ArgumentError, DirectiveError, Error as CoreError};
@@ -51,8 +53,8 @@ impl From<String> for ValidationError {
     }
 }
 
-impl<'a> From<CoreError<'a, ExecutableDocument<'a>, SchemaDefinition>> for ValidationError {
-    fn from(value: CoreError<'a, ExecutableDocument<'a>, SchemaDefinition>) -> Self {
+impl<'a, S: SchemaDefinition> From<CoreError<'a, ExecutableDocument<'a>, S>> for ValidationError {
+    fn from(value: CoreError<'a, ExecutableDocument<'a>, S>) -> Self {
         match value {
             CoreError::NotLoneAnonymousOperation { .. } => Self::new(
                 "Anonymous operations are not allowed when there is more than one operation",
@@ -262,10 +264,10 @@ impl<'a, const CONST: bool> From<InputCoercionError<'a, CONST, ParserValue<'a, C
     }
 }
 
-impl<'a, const CONST: bool>
-    From<DirectiveError<'a, CONST, ExecutableDocument<'a>, SchemaDefinition>> for ValidationError
+impl<'a, const CONST: bool, S: SchemaDefinition>
+    From<DirectiveError<'a, CONST, ExecutableDocument<'a>, S>> for ValidationError
 {
-    fn from(value: DirectiveError<'a, CONST, ExecutableDocument<'a>, SchemaDefinition>) -> Self {
+    fn from(value: DirectiveError<'a, CONST, ExecutableDocument<'a>, S>) -> Self {
         match value {
             DirectiveError::DirectiveDoesNotExist { directive } => Self::new(format!(
                 "No directive definition with name `@{}`",
@@ -288,10 +290,10 @@ impl<'a, const CONST: bool>
     }
 }
 
-impl<'a, const CONST: bool> From<ArgumentError<'a, CONST, ExecutableDocument<'a>, SchemaDefinition>>
-    for ValidationError
+impl<'a, const CONST: bool, S: SchemaDefinition>
+    From<ArgumentError<'a, CONST, ExecutableDocument<'a>, S>> for ValidationError
 {
-    fn from(value: ArgumentError<'a, CONST, ExecutableDocument<'a>, SchemaDefinition>) -> Self {
+    fn from(value: ArgumentError<'a, CONST, ExecutableDocument<'a>, S>) -> Self {
         match value {
             ArgumentError::DirectiveMissingRequiredArguments {
                 directive,
