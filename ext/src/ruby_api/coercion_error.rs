@@ -1,4 +1,4 @@
-use super::{root, ExecutionError};
+use crate::ruby_api::{root, ExecutionError};
 use magnus::{
     function, method,
     rb_sys::AsRawValue,

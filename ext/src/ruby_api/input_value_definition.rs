@@ -1,3 +1,4 @@
+use crate::helpers::Path;
 use crate::ruby_api::{
     errors, root, wrapped_value::ValueInner, CoerceInput, Directives, InputType, WrappedValue,
 };
@@ -7,8 +8,8 @@ use bluejay_printer::value::DisplayValue;
 use convert_case::{Case, Casing};
 use magnus::{
     function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,
-    Class, DataTypeFunctions, Error, ExceptionClass, Module, Object, RArray, RHash, Symbol,
-    TypedData, Value,
+    Class, DataTypeFunctions, Error, ExceptionClass, Module, Object, RArray, RHash, RString,
+    Symbol, TypedData, Value,
 };
 use once_cell::sync::OnceCell;
 
@@ -21,6 +22,7 @@ pub struct InputValueDefinition {
     directives: Directives,
     default_value: Option<(Value, OnceCell<WrappedValue>)>,
     ruby_name: Symbol,
+    name_r_string: RString,
 }
 
 impl InputValueDefinition {
@@ -42,6 +44,7 @@ impl InputValueDefinition {
         let directives = directives.try_into()?;
         let ruby_name = ruby_name.unwrap_or_else(|| name.to_case(Case::Snake));
         let ruby_name = Symbol::new(ruby_name.as_str());
+        let name_r_string = RString::new(&name);
         Ok(Self {
             name,
             description,
@@ -49,6 +52,7 @@ impl InputValueDefinition {
             directives,
             default_value: default_value.flatten().map(|v| (v, OnceCell::new())),
             ruby_name,
+            name_r_string,
         })
     }
 
@@ -82,6 +86,10 @@ impl InputValueDefinition {
         self.ruby_name
     }
 
+    pub(crate) fn name_r_string(&self) -> RString {
+        self.name_r_string
+    }
+
     pub fn directives(&self) -> &Directives {
         &self.directives
     }
@@ -94,8 +102,9 @@ impl InputValueDefinition {
             wrapped_value
                 .get_or_try_init(|| {
                     let scoped_type = ScopedInputType::new(self.r#type.get(), visibility_cache);
+                    let path: Path = Default::default();
                     scoped_type
-                        .coerced_ruby_value_to_wrapped_value(*raw_value, &[])
+                        .coerced_ruby_value_to_wrapped_value(*raw_value, path)
                         .and_then(|result| {
                             result.map_err(|coercion_errors| {
                                 let arr =
@@ -123,6 +132,7 @@ impl DataTypeFunctions for InputValueDefinition {
             wrapped_value.get().map(WrappedValue::mark);
         }
         gc::mark(self.ruby_name);
+        gc::mark(self.name_r_string);
     }
 }
 
@@ -162,7 +172,7 @@ pub fn init() -> Result<(), Error> {
     let class = root().define_class("InputValueDefinition", Default::default())?;
 
     class.define_singleton_method("new", function!(InputValueDefinition::new, 1))?;
-    class.define_method("name", method!(InputValueDefinition::name, 0))?;
+    class.define_method("name", method!(InputValueDefinition::name_r_string, 0))?;
     class.define_method("type", method!(|ivd: &InputValueDefinition| ivd.r#type, 0))?;
     class.define_method("ruby_name", method!(InputValueDefinition::ruby_name, 0))?;
     class.define_method("description", method!(InputValueDefinition::description, 0))?;

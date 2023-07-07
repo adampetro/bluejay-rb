@@ -1,5 +1,5 @@
 use crate::execution::{CoerceResult, FieldError};
-use crate::helpers::{value_from_core_value, HasDefinitionWrapper, NewInstanceKw, Variables};
+use crate::helpers::{value_from_core_value, HasDefinitionWrapper, NewInstanceKw, Path, Variables};
 use crate::ruby_api::{
     introspection, root, wrapped_value::value_inner_from_ruby_const_value, CoerceInput,
     CoercionError, DirectiveDefinition, Directives, RResult, WrappedValue,
@@ -114,7 +114,7 @@ impl<'a> CoerceInput for ScopedScalarTypeDefinition<'a> {
     fn coerced_ruby_value_to_wrapped_value(
         &self,
         value: Value,
-        path: &[String],
+        path: Path,
     ) -> Result<Result<WrappedValue, Vec<CoercionError>>, Error> {
         let inner = value_inner_from_ruby_const_value(value)?;
 
@@ -131,7 +131,7 @@ impl<'a> CoerceInput for ScopedScalarTypeDefinition<'a> {
     fn coerce_parser_value<const CONST: bool>(
         &self,
         value: &ParserValue<CONST>,
-        path: &[String],
+        path: Path,
         variables: &impl Variables<CONST>,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         let r_value = value_from_core_value(value, variables);
@@ -149,7 +149,7 @@ impl<'a> CoerceInput for ScopedScalarTypeDefinition<'a> {
     fn coerce_ruby_const_value(
         &self,
         value: Value,
-        path: &[String],
+        path: Path,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         let coerced_r_result: Obj<RResult> =
             self.inner().ruby_class.funcall("coerce_input", (value,))?;

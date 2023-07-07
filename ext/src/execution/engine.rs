@@ -2,7 +2,7 @@ use crate::execution::{
     CoerceResult, ExecutionError, FieldError, KeyStore, SelectionSetProvider,
     VariableDefinitionInputTypeCache,
 };
-use crate::helpers::{rhash_with_capacity, FuncallKw, NewInstanceKw, RArrayIter};
+use crate::helpers::{rhash_with_capacity, FuncallKw, NewInstanceKw, Path, RArrayIter};
 use crate::ruby_api::{CoerceInput, ExecutionResult, ExtraResolverArg, SchemaDefinition};
 use crate::visibility_scoped::{
     ScopedBaseOutputType, ScopedFieldDefinition, ScopedInputType, ScopedInputValueDefinition,
@@ -90,16 +90,7 @@ impl<'a> Engine<'a> {
             collect_fields_cache: Default::default(),
         };
 
-        match operation_definition.as_ref().operation_type() {
-            OperationType::Query => {
-                let query_root = initial_value.funcall("query", ())?;
-                Ok(instance.execute_query(operation_definition, query_root))
-            }
-            OperationType::Mutation => {
-                unimplemented!("executing mutations has not been implemented yet")
-            }
-            OperationType::Subscription => unreachable!(),
-        }
+        instance.execute_operation(operation_definition, initial_value)
     }
 
     fn get_operation<'b>(
@@ -140,10 +131,10 @@ impl<'a> Engine<'a> {
                 let default_value = variable_definition.default_value();
                 let value = variable_values.get(variable_name);
                 let has_value = value.is_some();
-                let path = vec![variable_name.to_owned()];
+                let path = Path::new(variable_name);
                 match default_value {
                     Some(default_value) if !has_value => {
-                        match scoped_variable_type.coerce_parser_value(default_value, &path, &()) {
+                        match scoped_variable_type.coerce_parser_value(default_value, path, &()) {
                             Ok(Ok(coerced_value)) => {
                                 coerced_variables
                                     .aset(variable_name, coerced_value)
@@ -166,7 +157,7 @@ impl<'a> Engine<'a> {
                             });
                         } else {
                             let value = value.unwrap_or_default();
-                            match scoped_variable_type.coerce_ruby_const_value(value, &path) {
+                            match scoped_variable_type.coerce_ruby_const_value(value, path) {
                                 Ok(Ok(coerced_value)) => {
                                     coerced_variables
                                         .aset(variable_name, coerced_value)
@@ -200,20 +191,32 @@ impl<'a> Engine<'a> {
         ExecutionResult::new(value, errors)
     }
 
-    fn execute_query(
+    fn execute_operation(
         &'a self,
-        query: &'a OperationDefinition,
+        operation: &'a OperationDefinition,
         initial_value: Value,
-    ) -> ExecutionResult {
-        let query_type = self.schema_definition.query();
+    ) -> Result<ExecutionResult, Error> {
+        let (root_type, root_value) = match operation.as_ref().operation_type() {
+            OperationType::Query => (
+                self.schema_definition.query(),
+                initial_value.funcall("query", ())?,
+            ),
+            OperationType::Mutation => (
+                self.schema_definition
+                    .mutation()
+                    .expect("Schema does not define a query root"),
+                initial_value.funcall("mutation", ())?,
+            ),
+            OperationType::Subscription => unreachable!(),
+        };
 
         let (value, errors) = self.execute_selection_set(
-            SelectionSetProvider::SelectionSet(query.selection_set()),
-            query_type,
-            initial_value,
+            SelectionSetProvider::SelectionSet(operation.selection_set()),
+            root_type,
+            root_value,
         );
 
-        Self::execution_result(value, errors)
+        Ok(Self::execution_result(value, errors))
     }
 
     fn execute_selection_set(
@@ -509,7 +512,7 @@ impl<'a> Engine<'a> {
                     // TODO: see if it is possible to distinguish between null and no value being passed
                     match argument_type.coerce_parser_value(
                         argument_value,
-                        &[argument_name.to_owned()],
+                        Path::new(argument_name),
                         self.variables,
                     ) {
                         Ok(Ok(coerced_value)) => Ok(coerced_value),

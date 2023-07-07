@@ -1,4 +1,4 @@
-use crate::helpers::{public_name, RArrayIter, Variables, WrappedDefinition};
+use crate::helpers::{public_name, Path, RArrayIter, Variables, WrappedDefinition};
 use crate::ruby_api::{
     introspection, root, wrapped_value::ValueInner, CoerceInput, CoercionError,
     CustomScalarTypeDefinition, EnumTypeDefinition, InputFieldsDefinition,
@@ -80,23 +80,23 @@ impl BaseInputType {
         }
     }
 
-    fn coerce_string(value: Value, path: &[String]) -> Result<Value, Vec<CoercionError>> {
+    fn coerce_string(value: Value, path: Path) -> Result<Value, Vec<CoercionError>> {
         if RString::from_value(value).is_some() {
             Ok(value)
         } else {
             Err(vec![CoercionError::new(
                 format!("No implicit conversion of {} to String", public_name(value)),
-                path.to_owned(),
+                path.to_vec(),
             )])
         }
     }
 
-    fn coerce_integer(value: Value, path: &[String]) -> Result<Value, Vec<CoercionError>> {
+    fn coerce_integer(value: Value, path: Path) -> Result<Value, Vec<CoercionError>> {
         if let Some(int_value) = Integer::from_value(value) {
             int_value.to_i32().map(|_| value).map_err(|_| {
                 vec![CoercionError::new(
                     "Integer values must fit within 32 bits signed".to_owned(),
-                    path.to_owned(),
+                    path.to_vec(),
                 )]
             })
         } else {
@@ -105,12 +105,12 @@ impl BaseInputType {
                     "No implicit conversion of {} to integer",
                     public_name(value)
                 ),
-                path.to_owned(),
+                path.to_vec(),
             )])
         }
     }
 
-    fn coerce_float(value: Value, path: &[String]) -> Result<Value, Vec<CoercionError>> {
+    fn coerce_float(value: Value, path: Path) -> Result<Value, Vec<CoercionError>> {
         if let Some(f) = Float::from_value(value) {
             let finite: bool = f.to_f64().is_finite();
             if finite {
@@ -118,7 +118,7 @@ impl BaseInputType {
             } else {
                 Err(vec![CoercionError::new(
                     "Float values must be finite".to_string(),
-                    path.to_owned(),
+                    path.to_vec(),
                 )])
             }
         } else if let Some(i) = Integer::from_value(value) {
@@ -126,12 +126,12 @@ impl BaseInputType {
         } else {
             Err(vec![CoercionError::new(
                 format!("No implicit conversion of {} to Float", public_name(value)),
-                path.to_owned(),
+                path.to_vec(),
             )])
         }
     }
 
-    fn coerce_boolean(value: Value, path: &[String]) -> Result<Value, Vec<CoercionError>> {
+    fn coerce_boolean(value: Value, path: Path) -> Result<Value, Vec<CoercionError>> {
         if value.is_kind_of(magnus::class::true_class())
             || value.is_kind_of(magnus::class::false_class())
         {
@@ -142,12 +142,12 @@ impl BaseInputType {
                     "No implicit conversion of {} to Boolean",
                     public_name(value)
                 ),
-                path.to_owned(),
+                path.to_vec(),
             )])
         }
     }
 
-    fn coerce_id(value: Value, path: &[String]) -> Result<Value, Vec<CoercionError>> {
+    fn coerce_id(value: Value, path: Path) -> Result<Value, Vec<CoercionError>> {
         if RString::from_value(value).is_some() {
             Ok(value)
         } else if Integer::from_value(value).is_some() {
@@ -155,7 +155,7 @@ impl BaseInputType {
         } else {
             Err(vec![CoercionError::new(
                 format!("No implicit conversion of {} to ID", public_name(value)),
-                path.to_owned(),
+                path.to_vec(),
             )])
         }
     }
@@ -163,7 +163,7 @@ impl BaseInputType {
     fn coerce_parser_value<const CONST: bool>(
         t: &BuiltinScalarDefinition,
         value: &ParserValue<CONST>,
-        path: &[String],
+        path: Path,
     ) -> Result<Value, Vec<CoercionError>> {
         match (t, value.as_ref()) {
             (BuiltinScalarDefinition::Boolean, ValueReference::Boolean(b)) => {
@@ -186,7 +186,7 @@ impl BaseInputType {
             }
             _ => Err(vec![CoercionError::new(
                 format!("No implicit conversion of {value} to {t}"),
-                path.to_owned(),
+                path.to_vec(),
             )]),
         }
     }
@@ -196,7 +196,7 @@ impl CoerceInput for BuiltinScalarDefinition {
     fn coerced_ruby_value_to_wrapped_value(
         &self,
         value: Value,
-        path: &[String],
+        path: Path,
     ) -> Result<Result<WrappedValue, Vec<CoercionError>>, Error> {
         let r_value_result = match self {
             Self::String => BaseInputType::coerce_string(value, path),
@@ -214,7 +214,7 @@ impl CoerceInput for BuiltinScalarDefinition {
     fn coerce_parser_value<const CONST: bool>(
         &self,
         value: &ParserValue<CONST>,
-        path: &[String],
+        path: Path,
         _: &impl Variables<CONST>,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         Ok(BaseInputType::coerce_parser_value(self, value, path))
@@ -223,7 +223,7 @@ impl CoerceInput for BuiltinScalarDefinition {
     fn coerce_ruby_const_value(
         &self,
         value: Value,
-        path: &[String],
+        path: Path,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         Ok(match self {
             Self::String => BaseInputType::coerce_string(value, path),
@@ -239,7 +239,7 @@ impl<'a> CoerceInput for ScopedBaseInputType<'a> {
     fn coerced_ruby_value_to_wrapped_value(
         &self,
         value: Value,
-        path: &[String],
+        path: Path,
     ) -> Result<Result<WrappedValue, Vec<CoercionError>>, Error> {
         match self {
             Self::BuiltinScalar(bstd) => bstd.coerced_ruby_value_to_wrapped_value(value, path),
@@ -252,7 +252,7 @@ impl<'a> CoerceInput for ScopedBaseInputType<'a> {
     fn coerce_parser_value<const CONST: bool>(
         &self,
         value: &ParserValue<CONST>,
-        path: &[String],
+        path: Path,
         variables: &impl Variables<CONST>,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         match self {
@@ -266,7 +266,7 @@ impl<'a> CoerceInput for ScopedBaseInputType<'a> {
     fn coerce_ruby_const_value(
         &self,
         value: Value,
-        path: &[String],
+        path: Path,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         match self {
             Self::BuiltinScalar(bstd) => bstd.coerce_ruby_const_value(value, path),
@@ -364,19 +364,19 @@ impl InputType {
 
     fn coerce_required_ruby<
         T,
-        F: Fn(Value, &[String]) -> Result<Result<T, Vec<CoercionError>>, Error>,
+        F: Fn(Value, Path) -> Result<Result<T, Vec<CoercionError>>, Error>,
         G: Fn() -> Result<T, Error>,
     >(
         value: Value,
         required: bool,
-        path: &[String],
+        path: Path,
         f: F,
         generate_empty: G,
     ) -> Result<Result<T, Vec<CoercionError>>, Error> {
         if required && value.is_nil() {
             Ok(Err(vec![CoercionError::new(
                 "Got null when a non-null value was expected".to_owned(),
-                path.to_owned(),
+                path.to_vec(),
             )]))
         } else if value.is_nil() {
             generate_empty().map(Ok)
@@ -438,7 +438,7 @@ impl InputType {
     fn coerce_parser_value<const CONST: bool>(
         scoped_self: &ScopedInputType,
         value: &ParserValue<CONST>,
-        path: &[String],
+        path: Path,
         variables: &impl Variables<CONST>,
         allow_implicit_list: bool,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
@@ -446,7 +446,7 @@ impl InputType {
         match value {
             ParserValue::Null(_) if required => Ok(Err(vec![CoercionError::new(
                 "Got null when a non-null value was expected".to_owned(),
-                path.to_owned(),
+                path.to_vec(),
             )])),
             ParserValue::Null(_) => Ok(Ok(*QNIL)),
             ParserValue::Variable(var) => {
@@ -458,7 +458,7 @@ impl InputType {
                             var.name(),
                             scoped_self.as_ref().display_name(),
                         ),
-                        path.to_owned(),
+                        path.to_vec(),
                     )])),
                     Some(value) => Ok(Ok(value)),
                     None => Ok(Ok(*QNIL)),
@@ -474,11 +474,9 @@ impl InputType {
                         let mut errors = Vec::new();
 
                         for (idx, value) in l.iter().enumerate() {
-                            let mut path = path.to_owned();
-                            path.push(idx.to_string());
+                            let path = path.append(idx);
 
-                            match Self::coerce_parser_value(inner, value, &path, variables, false)?
-                            {
+                            match Self::coerce_parser_value(inner, value, path, variables, false)? {
                                 Ok(coerced_value) => {
                                     coerced.push(coerced_value).unwrap();
                                 }
@@ -503,7 +501,7 @@ impl InputType {
                                 "No implicit conversion of {value} to {}",
                                 scoped_self.as_ref().display_name()
                             ),
-                            path.to_owned(),
+                            path.to_vec(),
                         )]))
                     }
                 }
@@ -514,7 +512,7 @@ impl InputType {
     fn coerce_ruby_const_value(
         scoped_self: &ScopedInputType,
         value: Value,
-        path: &[String],
+        path: Path,
         allow_implicit_list: bool,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         match scoped_self {
@@ -535,10 +533,9 @@ impl InputType {
                         let mut errors = Vec::new();
 
                         for (idx, value) in RArrayIter::<Value>::from(&array).enumerate() {
-                            let mut path = path.to_owned();
-                            path.push(idx.to_string());
+                            let path = path.append(idx);
 
-                            match Self::coerce_ruby_const_value(inner, value, &path, false)? {
+                            match Self::coerce_ruby_const_value(inner, value, path, false)? {
                                 Ok(coerced_value) => {
                                     coerced.push(coerced_value).unwrap();
                                 }
@@ -563,7 +560,7 @@ impl InputType {
                                 public_name(value),
                                 scoped_self.as_ref().display_name()
                             ),
-                            path.to_owned(),
+                            path.to_vec(),
                         )]))
                     }
                 },
@@ -577,7 +574,7 @@ impl<'a> CoerceInput for ScopedInputType<'a> {
     fn coerced_ruby_value_to_wrapped_value(
         &self,
         value: Value,
-        path: &[String],
+        path: Path,
     ) -> Result<Result<WrappedValue, Vec<CoercionError>>, Error> {
         match self {
             Self::Base(inner, required) => InputType::coerce_required_ruby(
@@ -598,10 +595,9 @@ impl<'a> CoerceInput for ScopedInputType<'a> {
                         let mut errors = Vec::new();
 
                         for (idx, value) in RArrayIter::<Value>::from(&array).enumerate() {
-                            let mut path = path.to_owned();
-                            path.push(idx.to_string());
+                            let path = path.append(idx);
 
-                            match inner.coerced_ruby_value_to_wrapped_value(value, &path)? {
+                            match inner.coerced_ruby_value_to_wrapped_value(value, path)? {
                                 Ok(coerced_value) => {
                                     let (r_value, inner) = coerced_value.into();
                                     coerced.push(r_value).unwrap();
@@ -639,7 +635,7 @@ impl<'a> CoerceInput for ScopedInputType<'a> {
     fn coerce_parser_value<const CONST: bool>(
         &self,
         value: &ParserValue<CONST>,
-        path: &[String],
+        path: Path,
         variables: &impl Variables<CONST>,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         InputType::coerce_parser_value(self, value, path, variables, true)
@@ -648,7 +644,7 @@ impl<'a> CoerceInput for ScopedInputType<'a> {
     fn coerce_ruby_const_value(
         &self,
         value: Value,
-        path: &[String],
+        path: Path,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         InputType::coerce_ruby_const_value(self, value, path, true)
     }

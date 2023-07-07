@@ -1,5 +1,5 @@
 use crate::execution::{CoerceResult, FieldError};
-use crate::helpers::{public_name, HasDefinitionWrapper, Variables};
+use crate::helpers::{public_name, HasDefinitionWrapper, Path, Variables};
 use crate::ruby_api::{
     coerce_input::CoerceInput, coercion_error::CoercionError,
     enum_value_definitions::EnumValueDefinitions, introspection, root, wrapped_value::ValueInner,
@@ -82,7 +82,7 @@ impl DataTypeFunctions for EnumTypeDefinition {
 fn coerce_from_name(
     etd: &ScopedEnumTypeDefinition,
     name: &str,
-    path: &[String],
+    path: Path,
 ) -> Result<Value, Vec<CoercionError>> {
     if etd
         .enum_value_definitions()
@@ -94,7 +94,7 @@ fn coerce_from_name(
     } else {
         Err(vec![CoercionError::new(
             format!("No member `{}` on {}", name, etd.name()),
-            path.to_owned(),
+            path.to_vec(),
         )])
     }
 }
@@ -103,7 +103,7 @@ impl<'a> CoerceInput for ScopedEnumTypeDefinition<'a> {
     fn coerced_ruby_value_to_wrapped_value(
         &self,
         value: Value,
-        path: &[String],
+        path: Path,
     ) -> Result<Result<WrappedValue, Vec<CoercionError>>, Error> {
         let s: Result<String, _> = value.try_convert();
         match s {
@@ -118,7 +118,7 @@ impl<'a> CoerceInput for ScopedEnumTypeDefinition<'a> {
                 } else {
                     Ok(Err(vec![CoercionError::new(
                         format!("No member `{}` on {}", s.as_str(), self.name()),
-                        path.to_owned(),
+                        path.to_vec(),
                     )]))
                 }
             }
@@ -128,7 +128,7 @@ impl<'a> CoerceInput for ScopedEnumTypeDefinition<'a> {
                     public_name(value),
                     self.name()
                 ),
-                path.to_owned(),
+                path.to_vec(),
             )])),
         }
     }
@@ -136,7 +136,7 @@ impl<'a> CoerceInput for ScopedEnumTypeDefinition<'a> {
     fn coerce_parser_value<const CONST: bool>(
         &self,
         value: &ParserValue<CONST>,
-        path: &[String],
+        path: Path,
         _: &impl Variables<CONST>,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         if let ParserValue::Enum(e) = value {
@@ -144,7 +144,7 @@ impl<'a> CoerceInput for ScopedEnumTypeDefinition<'a> {
         } else {
             Ok(Err(vec![CoercionError::new(
                 format!("No implicit conversion of {} to {}", value, self.name()),
-                path.to_owned(),
+                path.to_vec(),
             )]))
         }
     }
@@ -152,7 +152,7 @@ impl<'a> CoerceInput for ScopedEnumTypeDefinition<'a> {
     fn coerce_ruby_const_value(
         &self,
         value: Value,
-        path: &[String],
+        path: Path,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         let s: Result<String, _> = value.try_convert();
         match s {
@@ -163,7 +163,7 @@ impl<'a> CoerceInput for ScopedEnumTypeDefinition<'a> {
                     public_name(value),
                     self.name()
                 ),
-                path.to_owned(),
+                path.to_vec(),
             )])),
         }
     }

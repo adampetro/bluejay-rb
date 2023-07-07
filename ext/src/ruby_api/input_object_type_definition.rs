@@ -1,5 +1,5 @@
 use crate::helpers::{
-    public_name, rhash_with_capacity, HasDefinitionWrapper, NewInstanceKw, Variables,
+    public_name, rhash_with_capacity, HasDefinitionWrapper, NewInstanceKw, Path, Variables,
 };
 use crate::ruby_api::{
     introspection, root, wrapped_value::value_inner_from_ruby_const_value, CoerceInput,
@@ -9,8 +9,8 @@ use crate::visibility_scoped::{ScopedInputObjectTypeDefinition, VisibilityCache}
 use bluejay_core::{definition::prelude::*, AsIter};
 use bluejay_parser::ast::Value as ParserValue;
 use magnus::{
-    function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions,
-    Error, Module, Object, RArray, RClass, RHash, TypedData, Value, QNIL,
+    function, gc, memoize, method, r_hash::ForEach, scan_args::get_kwargs, scan_args::KwArgs,
+    DataTypeFunctions, Error, Module, Object, RArray, RClass, RHash, TypedData, Value, QNIL,
 };
 
 #[derive(Debug, TypedData)]
@@ -110,7 +110,7 @@ impl<'a> CoerceInput for ScopedInputObjectTypeDefinition<'a> {
     fn coerced_ruby_value_to_wrapped_value(
         &self,
         value: Value,
-        path: &[String],
+        path: Path,
     ) -> Result<Result<WrappedValue, Vec<CoercionError>>, Error> {
         if let Some(hash) = RHash::from_value(value) {
             let args = rhash_with_capacity(self.input_field_definitions().len());
@@ -118,13 +118,13 @@ impl<'a> CoerceInput for ScopedInputObjectTypeDefinition<'a> {
 
             for ivd in self.input_field_definitions().iter() {
                 let key = ivd.inner().ruby_name();
-                let value = hash.get(ivd.name());
+                let value = hash.get(ivd.inner().name_r_string());
                 let required = ivd.is_required();
                 let default_value = ivd.inner().default_value();
                 if required && value.is_none() {
                     errors.push(CoercionError::new(
                         format!("No value for required field {}", ivd.name()),
-                        path.to_owned(),
+                        path.to_vec(),
                     ));
                 } else {
                     match default_value {
@@ -132,11 +132,10 @@ impl<'a> CoerceInput for ScopedInputObjectTypeDefinition<'a> {
                             args.aset(key, default_value.to_value()).unwrap();
                         }
                         _ => {
-                            let mut inner_path = path.to_owned();
-                            inner_path.push(ivd.name().to_owned());
+                            let inner_path = path.append(ivd.name());
                             match ivd.r#type().coerced_ruby_value_to_wrapped_value(
                                 value.unwrap_or(*QNIL),
-                                &inner_path,
+                                inner_path,
                             )? {
                                 Ok(coerced_value) => {
                                     args.aset(key, coerced_value.to_value()).unwrap();
@@ -150,22 +149,20 @@ impl<'a> CoerceInput for ScopedInputObjectTypeDefinition<'a> {
                 }
             }
 
-            let keys: Vec<String> = hash.funcall("keys", ())?;
-
-            errors.extend(keys.iter().filter_map(|key| {
-                if !self
+            hash.foreach(|key: String, _: Value| {
+                if self
                     .input_field_definitions()
                     .iter()
-                    .any(|ivd| ivd.name() == key)
+                    .all(|ivd| ivd.name() != key)
                 {
-                    Some(CoercionError::new(
+                    errors.push(CoercionError::new(
                         format!("No field named `{}` on {}", key, self.name()),
-                        path.to_owned(),
+                        path.to_vec(),
                     ))
-                } else {
-                    None
                 }
-            }));
+
+                Ok(ForEach::Continue)
+            })?;
 
             if errors.is_empty() {
                 let r_value = self.inner().ruby_class.new_instance_kw(args)?;
@@ -183,7 +180,7 @@ impl<'a> CoerceInput for ScopedInputObjectTypeDefinition<'a> {
                     public_name(value),
                     self.name()
                 ),
-                path.to_owned(),
+                path.to_vec(),
             )]))
         }
     }
@@ -191,7 +188,7 @@ impl<'a> CoerceInput for ScopedInputObjectTypeDefinition<'a> {
     fn coerce_parser_value<const CONST: bool>(
         &self,
         value: &ParserValue<CONST>,
-        path: &[String],
+        path: Path,
         variables: &impl Variables<CONST>,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         if let ParserValue::Object(o) = value {
@@ -212,7 +209,7 @@ impl<'a> CoerceInput for ScopedInputObjectTypeDefinition<'a> {
                         if required {
                             errors.push(CoercionError::new(
                                 format!("No value for required field {}", ivd.name()),
-                                path.to_owned(),
+                                path.to_vec(),
                             ));
                         }
                     }
@@ -220,11 +217,10 @@ impl<'a> CoerceInput for ScopedInputObjectTypeDefinition<'a> {
                         args.aset(key, default_value.to_value()).unwrap();
                     }
                     (Some(value), _) => {
-                        let mut inner_path = path.to_owned();
-                        inner_path.push(ivd.name().to_owned());
+                        let inner_path = path.append(ivd.name());
                         match ivd
                             .r#type()
-                            .coerce_parser_value(value, &inner_path, variables)?
+                            .coerce_parser_value(value, inner_path, variables)?
                         {
                             Ok(coerced_value) => {
                                 args.aset(key, coerced_value).unwrap();
@@ -244,7 +240,7 @@ impl<'a> CoerceInput for ScopedInputObjectTypeDefinition<'a> {
                 {
                     Some(CoercionError::new(
                         format!("No field named `{}` on {}", key, self.name()),
-                        path.to_owned(),
+                        path.to_vec(),
                     ))
                 } else {
                     None
@@ -259,7 +255,7 @@ impl<'a> CoerceInput for ScopedInputObjectTypeDefinition<'a> {
         } else {
             Ok(Err(vec![CoercionError::new(
                 format!("No implicit conversion of {} to {}", value, self.name(),),
-                path.to_owned(),
+                path.to_vec(),
             )]))
         }
     }
@@ -267,7 +263,7 @@ impl<'a> CoerceInput for ScopedInputObjectTypeDefinition<'a> {
     fn coerce_ruby_const_value(
         &self,
         value: Value,
-        path: &[String],
+        path: Path,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         if let Some(hash) = RHash::from_value(value) {
             let args = rhash_with_capacity(self.input_field_definitions().len());
@@ -275,13 +271,13 @@ impl<'a> CoerceInput for ScopedInputObjectTypeDefinition<'a> {
 
             for ivd in self.input_field_definitions().iter() {
                 let key = ivd.inner().ruby_name();
-                let value = hash.get(ivd.name());
+                let value = hash.get(ivd.inner().name_r_string());
                 let required = ivd.is_required();
                 let default_value = ivd.inner().default_value();
                 if required && value.is_none() {
                     errors.push(CoercionError::new(
                         format!("No value for required field {}", ivd.name()),
-                        path.to_owned(),
+                        path.to_vec(),
                     ));
                 } else {
                     match default_value {
@@ -289,11 +285,10 @@ impl<'a> CoerceInput for ScopedInputObjectTypeDefinition<'a> {
                             args.aset(key, default_value.to_value()).unwrap();
                         }
                         _ => {
-                            let mut inner_path = path.to_owned();
-                            inner_path.push(ivd.name().to_owned());
+                            let inner_path = path.append(ivd.name());
                             match ivd.r#type().coerced_ruby_value_to_wrapped_value(
                                 value.unwrap_or(*QNIL),
-                                &inner_path,
+                                inner_path,
                             )? {
                                 Ok(coerced_value) => {
                                     args.aset(key, coerced_value.to_value()).unwrap();
@@ -307,22 +302,20 @@ impl<'a> CoerceInput for ScopedInputObjectTypeDefinition<'a> {
                 }
             }
 
-            let keys: Vec<String> = hash.funcall("keys", ())?;
-
-            errors.extend(keys.iter().filter_map(|key| {
-                if !self
+            hash.foreach(|key: String, _: Value| {
+                if self
                     .input_field_definitions()
                     .iter()
-                    .any(|ivd| ivd.name() == key)
+                    .all(|ivd| ivd.name() != key)
                 {
-                    Some(CoercionError::new(
+                    errors.push(CoercionError::new(
                         format!("No field named `{}` on {}", key, self.name()),
-                        path.to_owned(),
+                        path.to_vec(),
                     ))
-                } else {
-                    None
                 }
-            }));
+
+                Ok(ForEach::Continue)
+            })?;
 
             if errors.is_empty() {
                 self.inner().ruby_class.new_instance_kw(args).map(Ok)
@@ -336,7 +329,7 @@ impl<'a> CoerceInput for ScopedInputObjectTypeDefinition<'a> {
                     public_name(value),
                     self.name()
                 ),
-                path.to_owned(),
+                path.to_vec(),
             )]))
         }
     }
@@ -375,7 +368,7 @@ pub fn init() -> Result<(), Error> {
                 let scoped_definition =
                     ScopedInputObjectTypeDefinition::new(itd, &visibility_cache);
                 scoped_definition
-                    .coerce_ruby_const_value(input, &[])
+                    .coerce_ruby_const_value(input, Default::default())
                     .map(|result| {
                         result
                             .map_err(|errors| {
