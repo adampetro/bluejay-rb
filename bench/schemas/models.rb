@@ -184,11 +184,33 @@ module Schemas
       const(:teams, T::Array[Team])
     end
 
+    class PlayersCreate < T::Struct
+      const(:count, Integer)
+    end
+
+    class MutationRoot
+      class << self
+        extend(T::Sig)
+
+        include(Schemas::Bluejay::MutationRoot::Interface)
+
+        sig { params(players: T::Array[Schemas::Bluejay::PlayerInput]).returns(PlayersCreate) }
+        def players_create(players:)
+          PlayersCreate.new(
+            count: players.length,
+          )
+        end
+      end
+    end
+
     class SchemaRoot < T::Struct
       extend(T::Sig)
       include(Schemas::Bluejay::Schema::Root)
 
       const(:query, QueryRoot)
+
+      sig { override.returns(Schemas::Bluejay::MutationRoot::Interface) }
+      def mutation = MutationRoot
     end
   end
 end

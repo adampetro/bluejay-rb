@@ -10,6 +10,7 @@ end
 
 BENCHMARKS_TO_DOCUMENT = [
   BenchmarkToDocument.new(path: "execute", description: "Parse + Execute"),
+  BenchmarkToDocument.new(path: "execute_large_vars", description: "Parse + Execute with large variables"),
   BenchmarkToDocument.new(path: "parse_small", description: "Parse small"),
   BenchmarkToDocument.new(path: "parse_large", description: "Parse large"),
   BenchmarkToDocument.new(path: "validate", description: "Parse + Validate"),

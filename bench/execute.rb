@@ -26,8 +26,14 @@ Bench.all do |x|
     }
   GQL
 
-  unless Schemas::GraphQL::Schema.execute(query, root_value:, validate: false).to_h["data"] == \
-      Schemas::Bluejay::Schema.execute(query:, operation_name: nil, initial_value: schema_root_value).value
+  graphql_test_run = Schemas::GraphQL::Schema.execute(query, root_value:, validate: false)
+  bluejay_test_run = Schemas::Bluejay::Schema.execute(query:, operation_name: nil, initial_value: schema_root_value)
+
+  unless graphql_test_run.to_h["errors"].nil? && bluejay_test_run.errors.empty?
+    raise "errors returned"
+  end
+
+  unless graphql_test_run.to_h["data"] == bluejay_test_run.value
     raise "results not equal"
   end
 

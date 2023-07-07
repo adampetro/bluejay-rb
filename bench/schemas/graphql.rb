@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require "graphql"
+require_relative "models"
 
 module Schemas
   module GraphQL
@@ -28,8 +29,44 @@ module Schemas
       field(:teams, [Team], null: false)
     end
 
+    class DraftPositionInput < ::GraphQL::Schema::InputObject
+      argument(:round, Integer, required: true)
+      argument(:selection, Integer, required: true)
+      argument(:year, Integer, required: true)
+    end
+
+    class PlayerInput < ::GraphQL::Schema::InputObject
+      argument(:first_name, String, required: true)
+      argument(:last_name, String, required: true)
+      argument(:age, Integer, required: true)
+      argument(:draft_position, DraftPositionInput, required: false)
+    end
+
+    class PlayersCreate < ::GraphQL::Schema::Mutation
+      extend(T::Sig)
+
+      null(false)
+      argument(:players, [PlayerInput], required: true)
+
+      field(:count, Integer, null: false)
+
+      class Result < T::Struct
+        const(:count, Integer)
+      end
+
+      sig { params(players: T::Array[PlayerInput]).returns(T.untyped) }
+      def resolve(players:)
+        Result.new(count: players.length)
+      end
+    end
+
+    class MutationRoot < ::GraphQL::Schema::Object
+      field(:players_create, mutation: PlayersCreate)
+    end
+
     class Schema < ::GraphQL::Schema
       query(QueryRoot)
+      mutation(MutationRoot)
     end
   end
 end

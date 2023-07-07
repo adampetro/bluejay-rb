@@ -64,6 +64,72 @@ module Schemas
       end
     end
 
+    class DraftPositionInput < ::Bluejay::InputObjectType
+      class << self
+        extend(T::Sig)
+
+        sig { override.returns(T::Array[::Bluejay::InputValueDefinition]) }
+        def input_field_definitions
+          [
+            ::Bluejay::InputValueDefinition.new(name: "round", type: it!(::Bluejay::Scalar::Int)),
+            ::Bluejay::InputValueDefinition.new(name: "selection", type: it!(::Bluejay::Scalar::Int)),
+            ::Bluejay::InputValueDefinition.new(name: "year", type: it!(::Bluejay::Scalar::Int)),
+          ]
+        end
+      end
+    end
+
+    class PlayerInput < ::Bluejay::InputObjectType
+      class << self
+        extend(T::Sig)
+
+        sig { override.returns(T::Array[::Bluejay::InputValueDefinition]) }
+        def input_field_definitions
+          [
+            ::Bluejay::InputValueDefinition.new(name: "firstName", type: it!(::Bluejay::Scalar::String)),
+            ::Bluejay::InputValueDefinition.new(name: "lastName", type: it!(::Bluejay::Scalar::String)),
+            ::Bluejay::InputValueDefinition.new(name: "age", type: it!(::Bluejay::Scalar::Int)),
+            ::Bluejay::InputValueDefinition.new(name: "draftPosition", type: it(DraftPositionInput)),
+          ]
+        end
+      end
+    end
+
+    class PlayersCreate < ::Bluejay::ObjectType
+      class << self
+        extend(T::Sig)
+
+        sig { override.returns(T::Array[::Bluejay::FieldDefinition]) }
+        def field_definitions
+          [
+            ::Bluejay::FieldDefinition.new(name: "count", type: ot!(::Bluejay::Scalar::Int)),
+          ]
+        end
+      end
+    end
+
+    class MutationRoot < ::Bluejay::ObjectType
+      class << self
+        extend(T::Sig)
+
+        sig { override.returns(T::Array[::Bluejay::FieldDefinition]) }
+        def field_definitions
+          [
+            ::Bluejay::FieldDefinition.new(
+              name: "playersCreate",
+              argument_definitions: [
+                ::Bluejay::InputValueDefinition.new(
+                  name: "players",
+                  type: lit!(it!(PlayerInput)),
+                ),
+              ],
+              type: ot!(PlayersCreate),
+            ),
+          ]
+        end
+      end
+    end
+
     class Schema < ::Bluejay::Schema
       class << self
         extend(T::Sig)
@@ -71,6 +137,11 @@ module Schemas
         sig { override.returns(T.class_of(::Bluejay::QueryRoot)) }
         def query
           QueryRoot
+        end
+
+        sig { override.returns(T.nilable(T.class_of(::Bluejay::ObjectType))) }
+        def mutation
+          MutationRoot
         end
       end
     end
