@@ -72,6 +72,17 @@ module Bluejay
       )
     end
 
+    def test_coerce_input_nested_error
+      result = MyInputObjectType.coerce_input({ "myArg" => [], "mySelf" => { "myArg" => nil } })
+
+      assert_predicate(result, :err?)
+      assert_equal(1, result.unwrap_err.length)
+      assert_equal(
+        Bluejay::CoercionError.new("Got null when a non-null value was expected", ["mySelf", "myArg"]),
+        result.unwrap_err.first,
+      )
+    end
+
     def test_initialize_and_accessors
       instance = MyInputObjectType.new(
         my_arg: ["X"],

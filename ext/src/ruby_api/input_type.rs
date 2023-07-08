@@ -1,4 +1,4 @@
-use crate::helpers::{public_name, Path, RArrayIter, Variables, WrappedDefinition};
+use crate::helpers::{public_name, RArrayIter, Variables, WrappedDefinition};
 use crate::ruby_api::{
     introspection, root, wrapped_value::ValueInner, CoerceInput, CoercionError,
     CustomScalarTypeDefinition, EnumTypeDefinition, InputFieldsDefinition,
@@ -13,6 +13,7 @@ use bluejay_core::executable::{VariableType as CoreVariableType, VariableTypeRef
 use bluejay_core::{AsIter, BuiltinScalarDefinition, Value as CoreValue, ValueReference};
 use bluejay_parser::ast::executable::VariableType;
 use bluejay_parser::ast::Value as ParserValue;
+use bluejay_validator::Path;
 use magnus::{
     exception, function, gc, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,
     DataTypeFunctions, Error, Float, Integer, Module, Object, RArray, RHash, RString, TypedData,
@@ -474,7 +475,7 @@ impl InputType {
                         let mut errors = Vec::new();
 
                         for (idx, value) in l.iter().enumerate() {
-                            let path = path.append(idx);
+                            let path = path.push(idx);
 
                             match Self::coerce_parser_value(inner, value, path, variables, false)? {
                                 Ok(coerced_value) => {
@@ -533,7 +534,7 @@ impl InputType {
                         let mut errors = Vec::new();
 
                         for (idx, value) in RArrayIter::<Value>::from(&array).enumerate() {
-                            let path = path.append(idx);
+                            let path = path.push(idx);
 
                             match Self::coerce_ruby_const_value(inner, value, path, false)? {
                                 Ok(coerced_value) => {
@@ -595,7 +596,7 @@ impl<'a> CoerceInput for ScopedInputType<'a> {
                         let mut errors = Vec::new();
 
                         for (idx, value) in RArrayIter::<Value>::from(&array).enumerate() {
-                            let path = path.append(idx);
+                            let path = path.push(idx);
 
                             match inner.coerced_ruby_value_to_wrapped_value(value, path)? {
                                 Ok(coerced_value) => {

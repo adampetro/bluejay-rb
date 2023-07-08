@@ -1,5 +1,5 @@
 use crate::execution::{CoerceResult, FieldError};
-use crate::helpers::{value_from_core_value, HasDefinitionWrapper, NewInstanceKw, Path, Variables};
+use crate::helpers::{value_from_core_value, HasDefinitionWrapper, NewInstanceKw, Variables};
 use crate::ruby_api::{
     introspection, root, wrapped_value::value_inner_from_ruby_const_value, CoerceInput,
     CoercionError, DirectiveDefinition, Directives, RResult, WrappedValue,
@@ -7,6 +7,7 @@ use crate::ruby_api::{
 use crate::visibility_scoped::ScopedScalarTypeDefinition;
 use bluejay_core::AsIter;
 use bluejay_parser::ast::Value as ParserValue;
+use bluejay_validator::Path;
 use magnus::{
     function, memoize, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,
     DataTypeFunctions, Error, Module, Object, RArray, RClass, RHash, TypedData, Value,

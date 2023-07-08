@@ -1,7 +1,8 @@
 use super::coercion_error::CoercionError;
-use crate::helpers::{Path, Variables};
+use crate::helpers::Variables;
 use crate::ruby_api::WrappedValue;
 use bluejay_parser::ast::Value as ParserValue;
+use bluejay_validator::Path;
 use magnus::{Error, Value};
 
 pub trait CoerceInput {

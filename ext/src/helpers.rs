@@ -1,12 +1,10 @@
 mod funcall_kw;
-mod path;
 mod public_name;
 mod typed_frozen_r_array;
 mod variables;
 mod wrapped_definition;
 
 pub use funcall_kw::{FuncallKw, NewInstanceKw};
-pub use path::Path;
 pub use public_name::public_name;
 pub use typed_frozen_r_array::TypedFrozenRArray;
 pub use variables::Variables;

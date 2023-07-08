@@ -1,5 +1,5 @@
 use crate::execution::{CoerceResult, FieldError};
-use crate::helpers::{public_name, HasDefinitionWrapper, Path, Variables};
+use crate::helpers::{public_name, HasDefinitionWrapper, Variables};
 use crate::ruby_api::{
     coerce_input::CoerceInput, coercion_error::CoercionError,
     enum_value_definitions::EnumValueDefinitions, introspection, root, wrapped_value::ValueInner,
@@ -8,6 +8,7 @@ use crate::ruby_api::{
 use crate::visibility_scoped::ScopedEnumTypeDefinition;
 use bluejay_core::{definition::prelude::*, AsIter};
 use bluejay_parser::ast::Value as ParserValue;
+use bluejay_validator::Path;
 use magnus::{
     function, gc, memoize, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error,
     Module, Object, RArray, RClass, RHash, RString, TypedData, Value,

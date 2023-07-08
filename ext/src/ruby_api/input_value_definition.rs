@@ -1,10 +1,10 @@
-use crate::helpers::Path;
 use crate::ruby_api::{
     errors, root, wrapped_value::ValueInner, CoerceInput, Directives, InputType, WrappedValue,
 };
 use crate::visibility_scoped::{ScopedInputType, VisibilityCache};
 use bluejay_core::Value as CoreValue;
 use bluejay_printer::value::DisplayValue;
+use bluejay_validator::Path;
 use convert_case::{Case, Casing};
 use magnus::{
     function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,

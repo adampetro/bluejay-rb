@@ -2,7 +2,7 @@ use crate::execution::{
     CoerceResult, ExecutionError, FieldError, KeyStore, SelectionSetProvider,
     VariableDefinitionInputTypeCache,
 };
-use crate::helpers::{rhash_with_capacity, FuncallKw, NewInstanceKw, Path, RArrayIter};
+use crate::helpers::{rhash_with_capacity, FuncallKw, NewInstanceKw, RArrayIter};
 use crate::ruby_api::{CoerceInput, ExecutionResult, ExtraResolverArg, SchemaDefinition};
 use crate::visibility_scoped::{
     ScopedBaseOutputType, ScopedFieldDefinition, ScopedInputType, ScopedInputValueDefinition,
@@ -19,6 +19,7 @@ use bluejay_core::{
 };
 use bluejay_parser::ast::executable::{ExecutableDocument, Field, OperationDefinition, Selection};
 use bluejay_parser::ast::{Directive, VariableArguments, VariableValue};
+use bluejay_validator::Path;
 use bluejay_visibility::NullWarden;
 use indexmap::IndexMap;
 use magnus::{Error, RArray, RHash, Value, QNIL};

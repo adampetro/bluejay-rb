@@ -1,5 +1,5 @@
 use crate::helpers::{
-    public_name, rhash_with_capacity, HasDefinitionWrapper, NewInstanceKw, Path, Variables,
+    public_name, rhash_with_capacity, HasDefinitionWrapper, NewInstanceKw, Variables,
 };
 use crate::ruby_api::{
     introspection, root, wrapped_value::value_inner_from_ruby_const_value, CoerceInput,
@@ -8,6 +8,7 @@ use crate::ruby_api::{
 use crate::visibility_scoped::{ScopedInputObjectTypeDefinition, VisibilityCache};
 use bluejay_core::{definition::prelude::*, AsIter};
 use bluejay_parser::ast::Value as ParserValue;
+use bluejay_validator::Path;
 use magnus::{
     function, gc, memoize, method, r_hash::ForEach, scan_args::get_kwargs, scan_args::KwArgs,
     DataTypeFunctions, Error, Module, Object, RArray, RClass, RHash, TypedData, Value, QNIL,
@@ -132,7 +133,7 @@ impl<'a> CoerceInput for ScopedInputObjectTypeDefinition<'a> {
                             args.aset(key, default_value.to_value()).unwrap();
                         }
                         _ => {
-                            let inner_path = path.append(ivd.name());
+                            let inner_path = path.push(ivd.name());
                             match ivd.r#type().coerced_ruby_value_to_wrapped_value(
                                 value.unwrap_or(*QNIL),
                                 inner_path,
@@ -217,7 +218,7 @@ impl<'a> CoerceInput for ScopedInputObjectTypeDefinition<'a> {
                         args.aset(key, default_value.to_value()).unwrap();
                     }
                     (Some(value), _) => {
-                        let inner_path = path.append(ivd.name());
+                        let inner_path = path.push(ivd.name());
                         match ivd
                             .r#type()
                             .coerce_parser_value(value, inner_path, variables)?
@@ -285,7 +286,7 @@ impl<'a> CoerceInput for ScopedInputObjectTypeDefinition<'a> {
                             args.aset(key, default_value.to_value()).unwrap();
                         }
                         _ => {
-                            let inner_path = path.append(ivd.name());
+                            let inner_path = path.push(ivd.name());
                             match ivd.r#type().coerced_ruby_value_to_wrapped_value(
                                 value.unwrap_or(*QNIL),
                                 inner_path,
