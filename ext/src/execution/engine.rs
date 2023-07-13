@@ -215,6 +215,7 @@ impl<'a> Engine<'a> {
             SelectionSetProvider::SelectionSet(operation.selection_set()),
             root_type,
             root_value,
+            Path::default(),
         );
 
         Ok(Self::execution_result(value, errors))
@@ -225,12 +226,13 @@ impl<'a> Engine<'a> {
         selection_set: SelectionSetProvider<'a>,
         object_type: &ScopedObjectTypeDefinition<'a>,
         object_value: Value,
+        path: Path<'a>,
     ) -> (Value, Vec<ExecutionError<'a>>) {
         let mut visited_fragments = HashSet::new();
         let grouped_field_set =
             self.collect_fields(object_type, selection_set, &mut visited_fragments);
 
-        let result_map = RHash::new();
+        let result_map = rhash_with_capacity(grouped_field_set.len());
         let mut errors = Vec::new();
         let mut has_null_for_required = false;
 
@@ -245,8 +247,13 @@ impl<'a> Engine<'a> {
                         object_type.name()
                     )
                 });
-            let (response_value, mut errs) =
-                self.execute_field(object_type, object_value, field_definition, fields.clone());
+            let (response_value, mut errs) = self.execute_field(
+                object_type,
+                object_value,
+                field_definition,
+                fields.clone(),
+                path.push(response_key),
+            );
             if field_definition.r#type().as_ref().is_required() && response_value.is_nil() {
                 has_null_for_required = true;
             }
@@ -426,6 +433,7 @@ impl<'a> Engine<'a> {
         object_value: Value,
         field_definition: &ScopedFieldDefinition<'a>,
         fields: Rc<Vec<&'a Field>>,
+        path: Path<'a>,
     ) -> (Value, Vec<ExecutionError<'a>>) {
         let field = fields.first().unwrap();
 
@@ -446,7 +454,7 @@ impl<'a> Engine<'a> {
                 })
         }
         .map(|resolved_value| {
-            self.complete_value(field_definition.r#type(), fields, resolved_value)
+            self.complete_value(field_definition.r#type(), fields, resolved_value, path)
         })
         .unwrap_or_else(|errors| (*QNIL, errors))
     }
@@ -554,13 +562,15 @@ impl<'a> Engine<'a> {
         field_type: &ScopedOutputType<'a>,
         fields: Rc<Vec<&'a Field>>,
         result: Value,
+        path: Path<'a>,
     ) -> (Value, Vec<ExecutionError<'a>>) {
         if field_type.as_ref().is_required() && result.is_nil() {
             return (
                 *QNIL,
-                vec![ExecutionError::FieldError(
-                    FieldError::ReturnedNullForNonNullType,
-                )],
+                vec![ExecutionError::FieldError {
+                    error: FieldError::ReturnedNullForNonNullType,
+                    path,
+                }],
             );
         } else if result.is_nil() {
             return (result, vec![]);
@@ -570,26 +580,26 @@ impl<'a> Engine<'a> {
             OutputTypeReference::Base(inner, _) => match inner {
                 ScopedBaseOutputType::BuiltinScalar(bstd) => match bstd.coerce_result(result) {
                     Ok(value) => (value, vec![]),
-                    Err(error) => (*QNIL, vec![ExecutionError::FieldError(error)]),
+                    Err(error) => (*QNIL, vec![ExecutionError::FieldError { error, path }]),
                 },
                 ScopedBaseOutputType::CustomScalar(cstd) => match cstd.coerce_result(result) {
                     Ok(value) => (value, vec![]),
-                    Err(error) => (*QNIL, vec![ExecutionError::FieldError(error)]),
+                    Err(error) => (*QNIL, vec![ExecutionError::FieldError { error, path }]),
                 },
                 ScopedBaseOutputType::Enum(etd) => match etd.coerce_result(result) {
                     Ok(value) => (value, vec![]),
-                    Err(error) => (*QNIL, vec![ExecutionError::FieldError(error)]),
+                    Err(error) => (*QNIL, vec![ExecutionError::FieldError { error, path }]),
                 },
                 ScopedBaseOutputType::Object(otd) => {
-                    self.execute_selection_set(fields.into(), otd, result)
+                    self.execute_selection_set(fields.into(), otd, result, path)
                 }
                 ScopedBaseOutputType::Interface(itd) => {
                     let object_type = self.resolve_interface_type(itd, result);
-                    self.execute_selection_set(fields.into(), object_type, result)
+                    self.execute_selection_set(fields.into(), object_type, result, path)
                 }
                 ScopedBaseOutputType::Union(utd) => {
                     let object_type = self.resolve_union_type(utd, result);
-                    self.execute_selection_set(fields.into(), object_type, result)
+                    self.execute_selection_set(fields.into(), object_type, result, path)
                 }
             },
             OutputTypeReference::List(inner, _) => {
@@ -597,8 +607,9 @@ impl<'a> Engine<'a> {
                     let completed = RArray::with_capacity(arr.len());
                     let mut errors: Vec<ExecutionError<'a>> = Vec::new();
                     let mut has_null = false;
-                    for item in RArrayIter::from(&arr) {
-                        let (value, mut errs) = self.complete_value(inner, fields.clone(), item);
+                    for (idx, item) in RArrayIter::from(&arr).enumerate() {
+                        let (value, mut errs) =
+                            self.complete_value(inner, fields.clone(), item, path.push(idx));
                         completed.push(value).unwrap(); // TODO: make sure unwrapping is ok here
                         errors.append(&mut errs);
                         if value.is_nil() {
@@ -613,9 +624,10 @@ impl<'a> Engine<'a> {
                 } else {
                     (
                         *QNIL,
-                        vec![ExecutionError::FieldError(
-                            FieldError::ReturnedNonListForListType,
-                        )],
+                        vec![ExecutionError::FieldError {
+                            error: FieldError::ReturnedNonListForListType,
+                            path,
+                        }],
                     )
                 }
             }

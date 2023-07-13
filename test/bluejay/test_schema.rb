@@ -297,7 +297,7 @@ module Bluejay
 
       assert_equal(1, result.errors.length)
       assert_equal(
-        ExecutionError.new("Field error"),
+        ExecutionError.new("Did not return today", ["today"]),
         result.errors.first,
       )
     end
