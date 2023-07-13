@@ -6,6 +6,7 @@ use magnus::{
     function, gc, memoize, method,
     scan_args::{get_kwargs, KwArgs},
     typed_data::Obj,
+    value::Id,
     DataTypeFunctions, Error, Module, Object, RArray, RHash, RString, Symbol, TypedData,
 };
 
@@ -19,6 +20,7 @@ pub struct FieldDefinition {
     directives: Directives,
     is_builtin: bool,
     ruby_resolver_method_name: String,
+    ruby_resolver_method_id: Id,
     name_r_string: RString,
     extra_resolver_args: Vec<ExtraResolverArg>,
     deprecation_reason: Option<String>,
@@ -78,6 +80,7 @@ impl FieldDefinition {
         let ruby_resolver_method_name = resolver_method_name
             .flatten()
             .unwrap_or_else(|| name.to_case(Case::Snake));
+        let ruby_resolver_method_id = Id::new(ruby_resolver_method_name.as_str());
         let extra_resolver_args = match name.as_str() {
             "__schema" | "__type" => vec![ExtraResolverArg::SchemaClass],
             _ => vec![],
@@ -90,6 +93,7 @@ impl FieldDefinition {
             directives,
             is_builtin,
             ruby_resolver_method_name,
+            ruby_resolver_method_id,
             name_r_string,
             extra_resolver_args,
             deprecation_reason,
@@ -98,6 +102,10 @@ impl FieldDefinition {
 
     pub(crate) fn ruby_resolver_method_name(&self) -> &str {
         self.ruby_resolver_method_name.as_str()
+    }
+
+    pub(crate) fn ruby_resolver_method_id(&self) -> Id {
+        self.ruby_resolver_method_id
     }
 
     pub(crate) fn name_r_string(&self) -> RString {

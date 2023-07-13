@@ -1,6 +1,6 @@
 use magnus::{
-    exception, gc, typed_data::Obj, Error, IntoValue, Module, RClass, Ruby, TryConvert, TypedData,
-    Value,
+    exception, gc, memoize, typed_data::Obj, value::Id, Error, IntoValue, Module, RClass, Ruby,
+    TryConvert, TypedData, Value,
 };
 use once_cell::unsync::OnceCell;
 
@@ -43,8 +43,11 @@ impl<T: HasDefinitionWrapper> WrappedDefinition<T> {
     }
 
     pub fn get(&self) -> &Obj<T> {
-        self.memoized_definition
-            .get_or_init(|| self.cls.funcall("definition", ()).unwrap())
+        self.memoized_definition.get_or_init(|| {
+            self.cls
+                .funcall(*memoize!(Id: Id::new("definition")), ())
+                .unwrap()
+        })
     }
 
     pub fn mark(&self) {

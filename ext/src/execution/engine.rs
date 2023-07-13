@@ -541,9 +541,10 @@ impl<'a> Engine<'a> {
     ) -> Result<Value, ExecutionError<'a>> {
         // TODO: use object_type somehow?
         match argument_values {
-            Some(kwargs) => object_value
-                .funcall_kw(field_definition.inner().ruby_resolver_method_name(), kwargs),
-            None => object_value.funcall(field_definition.inner().ruby_resolver_method_name(), ()),
+            Some(kwargs) => {
+                object_value.funcall_kw(field_definition.inner().ruby_resolver_method_id(), kwargs)
+            }
+            None => object_value.funcall(field_definition.inner().ruby_resolver_method_id(), ()),
         }
         .map_err(|error| ExecutionError::ApplicationError(error.to_string()))
     }
