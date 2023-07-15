@@ -1,10 +1,10 @@
 use crate::helpers::HasDefinitionWrapper;
 use crate::ruby_api::{
-    introspection, root, Directives, FieldsDefinition, InterfaceImplementations,
+    base, introspection, root, Directives, FieldsDefinition, InterfaceImplementations,
 };
 use magnus::{
     function, gc, memoize, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error,
-    Module, Object, RArray, RClass, RHash, TypedData,
+    Module, Object, RArray, RHash, RModule, TypedData,
 };
 
 #[derive(Debug, TypedData)]
@@ -79,8 +79,8 @@ impl DataTypeFunctions for InterfaceTypeDefinition {
 }
 
 impl HasDefinitionWrapper for InterfaceTypeDefinition {
-    fn wrapping_class() -> RClass {
-        *memoize!(RClass: root().define_class("InterfaceType", Default::default()).unwrap())
+    fn required_module() -> RModule {
+        *memoize!(RModule: base().define_module("InterfaceType").unwrap())
     }
 }
 

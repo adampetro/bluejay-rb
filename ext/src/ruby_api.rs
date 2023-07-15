@@ -71,6 +71,10 @@ pub fn root() -> RModule {
     *memoize!(RModule: define_module("Bluejay").unwrap())
 }
 
+pub fn base() -> RModule {
+    *memoize!(RModule: root().define_module("Base").unwrap())
+}
+
 pub fn errors() -> RModule {
     *memoize!(RModule: root().define_module("Errors").unwrap())
 }

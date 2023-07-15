@@ -4,6 +4,7 @@
 module Bluejay
   class CustomScalarType
     extend(T::Generic)
+    include(Base::CustomScalarType)
 
     InternalRepresentation = type_template
 
@@ -49,7 +50,7 @@ module Bluejay
 
       private
 
-      sig(:final) { returns(CustomScalarTypeDefinition) }
+      sig(:final) { override.returns(CustomScalarTypeDefinition) }
       def definition
         @definition ||= T.let(
           CustomScalarTypeDefinition.new(

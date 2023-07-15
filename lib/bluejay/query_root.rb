@@ -3,6 +3,8 @@
 
 module Bluejay
   class QueryRoot < ObjectType
+    include(Base::QueryRoot)
+
     class << self
       extend(T::Sig)
       extend(T::Helpers)
@@ -11,7 +13,7 @@ module Bluejay
 
       private
 
-      sig { returns(ObjectTypeDefinition) }
+      sig { override.returns(ObjectTypeDefinition) }
       def definition
         @definition ||= T.let(nil, T.nilable(ObjectTypeDefinition))
         @definition ||= begin

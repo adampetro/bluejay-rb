@@ -1,12 +1,12 @@
 use crate::helpers::HasDefinitionWrapper;
 use crate::ruby_api::{
-    introspection, root, Directives, FieldDefinition, FieldsDefinition, InterfaceImplementations,
-    InterfaceTypeDefinition,
+    base, introspection, root, Directives, FieldDefinition, FieldsDefinition,
+    InterfaceImplementations, InterfaceTypeDefinition,
 };
 use bluejay_core::AsIter;
 use magnus::{
     function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions,
-    Error, Module, Object, RArray, RClass, RHash, TypedData,
+    Error, Module, Object, RArray, RClass, RHash, RModule, TypedData,
 };
 
 #[derive(Debug, TypedData)]
@@ -66,8 +66,8 @@ impl DataTypeFunctions for ObjectTypeDefinition {
 }
 
 impl HasDefinitionWrapper for ObjectTypeDefinition {
-    fn wrapping_class() -> RClass {
-        *memoize!(RClass: root().define_class("ObjectType", Default::default()).unwrap())
+    fn required_module() -> RModule {
+        *memoize!(RModule: base().define_module("ObjectType").unwrap())
     }
 }
 

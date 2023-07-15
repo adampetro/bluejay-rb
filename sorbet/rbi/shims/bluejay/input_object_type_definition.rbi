@@ -8,8 +8,8 @@ module Bluejay
         name: String,
         input_field_definitions: T::Array[InputValueDefinition],
         description: T.nilable(String),
-        directives: T::Array[Directive],
-        ruby_class: T.class_of(InputObjectType),
+        directives: T::Array[Base::Directive],
+        ruby_class: Base::InputObjectType::ClassMethods,
       ).void
     end
     def initialize(name:, input_field_definitions:, description:, directives:, ruby_class:); end

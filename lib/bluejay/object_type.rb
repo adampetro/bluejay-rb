@@ -3,6 +3,8 @@
 
 module Bluejay
   class ObjectType
+    include(Base::ObjectType)
+
     class << self
       extend(T::Sig)
       extend(T::Helpers)
@@ -47,7 +49,7 @@ module Bluejay
         end
       end
 
-      sig { returns(ObjectTypeDefinition) }
+      sig { override.returns(ObjectTypeDefinition) }
       def definition
         @definition ||= T.let(nil, T.nilable(ObjectTypeDefinition))
         @definition ||= begin

@@ -3,6 +3,8 @@
 
 module Bluejay
   class EnumType
+    include(Base::EnumType)
+
     class << self
       extend(T::Sig)
       extend(T::Helpers)
@@ -30,7 +32,7 @@ module Bluejay
 
       private
 
-      sig(:final) { returns(EnumTypeDefinition) }
+      sig(:final) { override.returns(EnumTypeDefinition) }
       def definition
         @definition ||= T.let(nil, T.nilable(EnumTypeDefinition))
         @definition ||= EnumTypeDefinition.new(

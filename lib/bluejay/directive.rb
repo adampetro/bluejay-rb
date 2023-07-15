@@ -3,6 +3,8 @@
 
 module Bluejay
   class Directive
+    include(Base::Directive)
+
     class << self
       extend(T::Sig)
       extend(T::Helpers)
@@ -34,7 +36,7 @@ module Bluejay
 
       private
 
-      sig(:final) { returns(DirectiveDefinition) }
+      sig(:final) { override.returns(DirectiveDefinition) }
       def definition
         @definition ||= T.let(nil, T.nilable(DirectiveDefinition))
         @definition ||= begin

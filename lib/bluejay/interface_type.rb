@@ -3,6 +3,8 @@
 
 module Bluejay
   class InterfaceType
+    include(Base::InterfaceType)
+
     class << self
       extend(T::Sig)
       extend(T::Helpers)
@@ -47,7 +49,7 @@ module Bluejay
         end
       end
 
-      sig { returns(InterfaceTypeDefinition) }
+      sig { override.returns(InterfaceTypeDefinition) }
       def definition
         @definition ||= T.let(nil, T.nilable(InterfaceTypeDefinition))
         @definition ||= begin

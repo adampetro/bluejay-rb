@@ -4,6 +4,7 @@
 module Bluejay
   class InputObjectType
     extend(T::Sig)
+    include(Base::InputObjectType)
 
     class << self
       extend(T::Sig)
@@ -38,7 +39,7 @@ module Bluejay
 
       private
 
-      sig(:final) { returns(InputObjectTypeDefinition) }
+      sig(:final) { override.returns(InputObjectTypeDefinition) }
       def definition
         @definition ||= T.let(nil, T.nilable(InputObjectTypeDefinition))
         @definition ||= begin

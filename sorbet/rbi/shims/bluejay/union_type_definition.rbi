@@ -8,7 +8,7 @@ module Bluejay
         name: String,
         member_types: T::Array[UnionMemberType],
         description: T.nilable(String),
-        directives: T::Array[Directive],
+        directives: T::Array[Base::Directive],
         field_definitions: T::Array[FieldDefinition],
       ).void
     end

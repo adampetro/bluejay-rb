@@ -1,11 +1,11 @@
 use magnus::{
-    exception, gc, memoize, typed_data::Obj, value::Id, Error, IntoValue, Module, RClass, Ruby,
-    TryConvert, TypedData, Value,
+    exception, gc, memoize, typed_data::Obj, value::Id, Error, IntoValue, Module, RClass, RModule,
+    Ruby, TryConvert, TypedData, Value,
 };
 use once_cell::unsync::OnceCell;
 
 pub trait HasDefinitionWrapper: TypedData {
-    fn wrapping_class() -> RClass;
+    fn required_module() -> RModule;
 }
 
 #[derive(Debug)]
@@ -25,7 +25,7 @@ impl<T: HasDefinitionWrapper> Clone for WrappedDefinition<T> {
 
 impl<T: HasDefinitionWrapper> WrappedDefinition<T> {
     pub fn new(cls: RClass) -> Result<Self, Error> {
-        if cls.is_inherited(T::wrapping_class()) {
+        if cls.is_inherited(T::required_module()) {
             Ok(Self {
                 cls,
                 memoized_definition: OnceCell::new(),
@@ -34,9 +34,9 @@ impl<T: HasDefinitionWrapper> WrappedDefinition<T> {
             Err(Error::new(
                 exception::type_error(),
                 format!(
-                    "no implicit conversion of {} into {}",
+                    "class {} does not include {} in its singleton class",
                     cls,
-                    T::wrapping_class()
+                    T::required_module()
                 ),
             ))
         }
@@ -68,18 +68,7 @@ impl<T: HasDefinitionWrapper> WrappedDefinition<T> {
 
 impl<T: HasDefinitionWrapper> TryConvert for WrappedDefinition<T> {
     fn try_convert(val: Value) -> Result<Self, Error> {
-        let cls = RClass::from_value(val).ok_or_else(|| {
-            Error::new(
-                exception::type_error(),
-                format!(
-                    "no implicit conversion of {} into {}",
-                    unsafe { val.classname() },
-                    T::wrapping_class()
-                ),
-            )
-        })?;
-
-        Self::new(cls)
+        val.try_convert().and_then(Self::new)
     }
 }
 

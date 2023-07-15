@@ -5,9 +5,9 @@ module Bluejay
   BaseInputType = T.type_alias do
     T.any(
       Scalar,
-      T.class_of(InputObjectType),
-      T.class_of(EnumType),
-      T.class_of(CustomScalarType),
+      Base::InputObjectType::ClassMethods,
+      Base::EnumType::ClassMethods,
+      Base::CustomScalarType::ClassMethods,
     )
   end
 end

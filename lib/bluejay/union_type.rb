@@ -3,6 +3,8 @@
 
 module Bluejay
   class UnionType
+    include(Base::UnionType)
+
     class << self
       extend(T::Sig)
       extend(T::Helpers)
@@ -30,7 +32,7 @@ module Bluejay
 
       private
 
-      sig { returns(UnionTypeDefinition) }
+      sig { override.returns(UnionTypeDefinition) }
       def definition
         @definition ||= T.let(
           UnionTypeDefinition.new(

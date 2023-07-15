@@ -4,6 +4,7 @@
 module Bluejay
   class Schema
     extend(Finalize)
+    include(Base::Schema)
 
     class << self
       extend(T::Sig)
@@ -70,7 +71,7 @@ module Bluejay
         end
       end
 
-      sig { returns(SchemaDefinition) }
+      sig { override.returns(SchemaDefinition) }
       def definition
         @definition ||= T.let(nil, T.nilable(SchemaDefinition))
         @definition ||= begin

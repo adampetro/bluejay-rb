@@ -1,7 +1,7 @@
 use crate::execution::{CoerceResult, FieldError};
 use crate::helpers::{public_name, HasDefinitionWrapper, Variables};
 use crate::ruby_api::{
-    coerce_input::CoerceInput, coercion_error::CoercionError,
+    base, coerce_input::CoerceInput, coercion_error::CoercionError,
     enum_value_definitions::EnumValueDefinitions, introspection, root, wrapped_value::ValueInner,
     Directives, WrappedValue,
 };
@@ -11,7 +11,7 @@ use bluejay_parser::ast::Value as ParserValue;
 use bluejay_validator::Path;
 use magnus::{
     function, gc, memoize, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error,
-    Module, Object, RArray, RClass, RHash, RString, TypedData, Value,
+    Module, Object, RArray, RClass, RHash, RModule, RString, TypedData, Value,
 };
 
 #[derive(Debug, TypedData)]
@@ -171,8 +171,8 @@ impl<'a> CoerceInput for ScopedEnumTypeDefinition<'a> {
 }
 
 impl HasDefinitionWrapper for EnumTypeDefinition {
-    fn wrapping_class() -> RClass {
-        *memoize!(RClass: root().define_class("EnumType", Default::default()).unwrap())
+    fn required_module() -> RModule {
+        *memoize!(RModule: base().define_module("EnumType").unwrap())
     }
 }
 

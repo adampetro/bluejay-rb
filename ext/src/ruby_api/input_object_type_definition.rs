@@ -2,7 +2,7 @@ use crate::helpers::{
     public_name, rhash_with_capacity, HasDefinitionWrapper, NewInstanceKw, Variables,
 };
 use crate::ruby_api::{
-    introspection, root, wrapped_value::value_inner_from_ruby_const_value, CoerceInput,
+    base, introspection, root, wrapped_value::value_inner_from_ruby_const_value, CoerceInput,
     CoercionError, Directives, InputFieldsDefinition, RResult, WrappedValue,
 };
 use crate::visibility_scoped::{ScopedInputObjectTypeDefinition, VisibilityCache};
@@ -11,7 +11,8 @@ use bluejay_parser::ast::Value as ParserValue;
 use bluejay_validator::Path;
 use magnus::{
     function, gc, memoize, method, r_hash::ForEach, scan_args::get_kwargs, scan_args::KwArgs,
-    DataTypeFunctions, Error, Module, Object, RArray, RClass, RHash, TypedData, Value, QNIL,
+    DataTypeFunctions, Error, Module, Object, RArray, RClass, RHash, RModule, TypedData, Value,
+    QNIL,
 };
 
 #[derive(Debug, TypedData)]
@@ -81,8 +82,8 @@ impl DataTypeFunctions for InputObjectTypeDefinition {
 }
 
 impl HasDefinitionWrapper for InputObjectTypeDefinition {
-    fn wrapping_class() -> RClass {
-        *memoize!(RClass: root().define_class("InputObjectType", Default::default()).unwrap())
+    fn required_module() -> RModule {
+        *memoize!(RModule: base().define_module("InputObjectType").unwrap())
     }
 }
 

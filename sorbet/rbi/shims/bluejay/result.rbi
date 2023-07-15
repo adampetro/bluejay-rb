@@ -1,4 +1,5 @@
 # typed: strict
+# frozen_string_literal: true
 
 module Bluejay
   class Result
@@ -8,8 +9,6 @@ module Bluejay
     ErrType = type_member
 
     class << self
-      extend(T::Sig)
-
       sig do
         type_parameters(:Ok)
           .params(value: T.type_parameter(:Ok)).returns(Result[T.type_parameter(:Ok), T.untyped])

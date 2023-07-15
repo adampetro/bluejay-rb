@@ -1,5 +1,5 @@
 use crate::helpers::{HasDefinitionWrapper, WrappedDefinition};
-use crate::ruby_api::{root, ArgumentsDefinition, DirectiveLocation};
+use crate::ruby_api::{base, root, ArgumentsDefinition, DirectiveLocation};
 use bluejay_core::definition::{
     DirectiveDefinition as CoreDirectiveDefinition, DirectiveLocation as CoreDirectiveLocation,
 };
@@ -107,8 +107,8 @@ impl DataTypeFunctions for DirectiveDefinition {
 }
 
 impl HasDefinitionWrapper for DirectiveDefinition {
-    fn wrapping_class() -> RClass {
-        *memoize!(RClass: root().define_class("Directive", Default::default()).unwrap())
+    fn required_module() -> RModule {
+        *memoize!(RModule: base().define_module("Directive").unwrap())
     }
 }
 

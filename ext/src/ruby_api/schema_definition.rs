@@ -1,7 +1,7 @@
 use crate::execution::Engine as ExecutionEngine;
-use crate::helpers::{HasDefinitionWrapper, WrappedDefinition};
+use crate::helpers::WrappedDefinition;
 use crate::ruby_api::{
-    root, ArgumentsDefinition, BaseInputType, BaseOutputType, CustomScalarTypeDefinition,
+    base, root, ArgumentsDefinition, BaseInputType, BaseOutputType, CustomScalarTypeDefinition,
     DirectiveDefinition, Directives, EnumTypeDefinition, EnumValueDefinition, EnumValueDefinitions,
     ExecutionResult, FieldDefinition, FieldsDefinition, InputFieldsDefinition,
     InputObjectTypeDefinition, InputType, InputValueDefinition, InterfaceImplementation,
@@ -21,8 +21,8 @@ use bluejay_visibility::NullWarden;
 use magnus::IntoValue;
 use magnus::{
     exception, function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs,
-    typed_data::Obj, DataTypeFunctions, Error, Module, Object, RArray, RClass, RHash, Ruby,
-    TypedData, Value,
+    typed_data::Obj, DataTypeFunctions, Error, Module, Object, RArray, RClass, RHash, RModule,
+    Ruby, TypedData, Value,
 };
 use std::collections::{
     btree_map::{Entry, Values},
@@ -62,13 +62,13 @@ impl SchemaDefinition {
             RArray,
             RClass,
         ) = args.required;
-        if !query.class().is_inherited(Self::query_root_class()) {
+        if !query.class().is_inherited(Self::query_root_module()) {
             return Err(Error::new(
                 exception::type_error(),
                 format!(
                     "no implicit conversion of {} into {}",
                     query.class(),
-                    Self::query_root_class(),
+                    Self::query_root_module(),
                 ),
             ));
         }
@@ -212,8 +212,8 @@ impl SchemaDefinition {
             })
     }
 
-    fn query_root_class() -> RClass {
-        *memoize!(RClass: root().define_class("QueryRoot", ObjectTypeDefinition::wrapping_class()).unwrap())
+    fn query_root_module() -> RModule {
+        *memoize!(RModule: base().define_module("QueryRoot").unwrap())
     }
 }
 
