@@ -27,7 +27,7 @@ module Tapioca
           klass.mark_abstract
 
           constant.interface_implementations.each do |interface_implementation|
-            interface = interface_implementation.interface.const_get(:Interface)
+            interface = T.cast(interface_implementation.interface, T.class_of(InterfaceType)).const_get(:Interface)
             klass.create_include(interface.name)
           end
 

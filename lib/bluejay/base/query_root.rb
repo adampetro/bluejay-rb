@@ -16,7 +16,6 @@ module Bluejay
 
         abstract!
 
-        requires_ancestor { Class }
         requires_ancestor { ObjectType::ClassMethods }
       end
 

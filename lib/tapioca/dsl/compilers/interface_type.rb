@@ -23,7 +23,7 @@ module Tapioca
       def decorate
         root.create_path(constant.const_get(:Interface)) do |klass|
           constant.interface_implementations.each do |interface_implementation|
-            interface = interface_implementation.interface.const_get(:Interface)
+            interface = T.cast(interface_implementation.interface, T.class_of(InterfaceType)).const_get(:Interface)
             klass.create_include(interface.name)
           end
         end

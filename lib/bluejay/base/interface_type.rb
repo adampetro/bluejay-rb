@@ -15,8 +15,6 @@ module Bluejay
 
         abstract!
 
-        requires_ancestor { Class }
-
         sig { abstract.returns(InterfaceTypeDefinition) }
         def definition; end
       end

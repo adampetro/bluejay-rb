@@ -6,7 +6,7 @@ module Bluejay
     extend(T::Sig)
     extend(T::Helpers)
 
-    requires_ancestor { Class }
+    requires_ancestor { Module }
 
     private
 

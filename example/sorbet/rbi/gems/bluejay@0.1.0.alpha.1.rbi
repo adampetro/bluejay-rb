@@ -31,13 +31,11 @@ end
 #
 # source://bluejay//../../bluejay-rb/lib/bluejay/base/custom_scalar_type.rb#12
 module Bluejay::Base::CustomScalarType::ClassMethods
-  requires_ancestor { Class }
-
   abstract!
 
   # @abstract
   #
-  # source://bluejay//../../bluejay-rb/lib/bluejay/base/custom_scalar_type.rb#21
+  # source://bluejay//../../bluejay-rb/lib/bluejay/base/custom_scalar_type.rb#19
   sig { abstract.returns(::Bluejay::CustomScalarTypeDefinition) }
   def definition; end
 end
@@ -55,13 +53,11 @@ end
 #
 # source://bluejay//../../bluejay-rb/lib/bluejay/base/directive.rb#12
 module Bluejay::Base::Directive::ClassMethods
-  requires_ancestor { Class }
-
   abstract!
 
   # @abstract
   #
-  # source://bluejay//../../bluejay-rb/lib/bluejay/base/directive.rb#21
+  # source://bluejay//../../bluejay-rb/lib/bluejay/base/directive.rb#19
   sig { abstract.returns(::Bluejay::DirectiveDefinition) }
   def definition; end
 end
@@ -79,13 +75,11 @@ end
 #
 # source://bluejay//../../bluejay-rb/lib/bluejay/base/enum_type.rb#12
 module Bluejay::Base::EnumType::ClassMethods
-  requires_ancestor { Class }
-
   abstract!
 
   # @abstract
   #
-  # source://bluejay//../../bluejay-rb/lib/bluejay/base/enum_type.rb#21
+  # source://bluejay//../../bluejay-rb/lib/bluejay/base/enum_type.rb#19
   sig { abstract.returns(::Bluejay::EnumTypeDefinition) }
   def definition; end
 end
@@ -103,13 +97,11 @@ end
 #
 # source://bluejay//../../bluejay-rb/lib/bluejay/base/input_object_type.rb#12
 module Bluejay::Base::InputObjectType::ClassMethods
-  requires_ancestor { Class }
-
   abstract!
 
   # @abstract
   #
-  # source://bluejay//../../bluejay-rb/lib/bluejay/base/input_object_type.rb#21
+  # source://bluejay//../../bluejay-rb/lib/bluejay/base/input_object_type.rb#19
   sig { abstract.returns(::Bluejay::InputObjectTypeDefinition) }
   def definition; end
 end
@@ -127,13 +119,11 @@ end
 #
 # source://bluejay//../../bluejay-rb/lib/bluejay/base/interface_type.rb#12
 module Bluejay::Base::InterfaceType::ClassMethods
-  requires_ancestor { Class }
-
   abstract!
 
   # @abstract
   #
-  # source://bluejay//../../bluejay-rb/lib/bluejay/base/interface_type.rb#21
+  # source://bluejay//../../bluejay-rb/lib/bluejay/base/interface_type.rb#19
   sig { abstract.returns(::Bluejay::InterfaceTypeDefinition) }
   def definition; end
 end
@@ -151,13 +141,11 @@ end
 #
 # source://bluejay//../../bluejay-rb/lib/bluejay/base/object_type.rb#12
 module Bluejay::Base::ObjectType::ClassMethods
-  requires_ancestor { Class }
-
   abstract!
 
   # @abstract
   #
-  # source://bluejay//../../bluejay-rb/lib/bluejay/base/object_type.rb#21
+  # source://bluejay//../../bluejay-rb/lib/bluejay/base/object_type.rb#19
   sig { abstract.returns(::Bluejay::ObjectTypeDefinition) }
   def definition; end
 end
@@ -178,7 +166,6 @@ end
 # source://bluejay//../../bluejay-rb/lib/bluejay/base/query_root.rb#13
 module Bluejay::Base::QueryRoot::ClassMethods
   requires_ancestor { Bluejay::Base::ObjectType::ClassMethods }
-  requires_ancestor { Class }
 
   abstract!
 end
@@ -196,13 +183,11 @@ end
 #
 # source://bluejay//../../bluejay-rb/lib/bluejay/base/schema.rb#12
 module Bluejay::Base::Schema::ClassMethods
-  requires_ancestor { Class }
-
   abstract!
 
   # @abstract
   #
-  # source://bluejay//../../bluejay-rb/lib/bluejay/base/schema.rb#21
+  # source://bluejay//../../bluejay-rb/lib/bluejay/base/schema.rb#19
   sig { abstract.returns(::Bluejay::SchemaDefinition) }
   def definition; end
 end
@@ -220,13 +205,11 @@ end
 #
 # source://bluejay//../../bluejay-rb/lib/bluejay/base/union_type.rb#12
 module Bluejay::Base::UnionType::ClassMethods
-  requires_ancestor { Class }
-
   abstract!
 
   # @abstract
   #
-  # source://bluejay//../../bluejay-rb/lib/bluejay/base/union_type.rb#21
+  # source://bluejay//../../bluejay-rb/lib/bluejay/base/union_type.rb#19
   sig { abstract.returns(::Bluejay::UnionTypeDefinition) }
   def definition; end
 end
@@ -930,7 +913,7 @@ Bluejay::JsonValue = T.type_alias { T.nilable(T.any(::Float, ::Integer, ::String
 
 # source://bluejay//../../bluejay-rb/lib/bluejay/name_from_class.rb#5
 module Bluejay::NameFromClass
-  requires_ancestor { Class }
+  requires_ancestor { Module }
 
   private
 

@@ -15,8 +15,6 @@ module Bluejay
 
         abstract!
 
-        requires_ancestor { Class }
-
         sig { abstract.returns(EnumTypeDefinition) }
         def definition; end
       end

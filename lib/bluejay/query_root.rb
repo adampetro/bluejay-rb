@@ -27,7 +27,7 @@ module Bluejay
             end
 
             interface_implementations.each do |interface_implementation|
-              mod.include(interface_implementation.interface.const_get(:Interface))
+              mod.include(T.cast(interface_implementation.interface, T.class_of(InterfaceType)).const_get(:Interface))
             end
 
             mod.define_method(:resolve_schema) { |schema_class:| schema_class.send(:definition) }

@@ -62,7 +62,7 @@ module Bluejay
             end
 
             interface_implementations.each do |interface_implementation|
-              mod.include(interface_implementation.interface.const_get(:Interface))
+              mod.include(T.cast(interface_implementation.interface, T.class_of(InterfaceType)).const_get(:Interface))
             end
           end
           const_set(:Interface, interface)

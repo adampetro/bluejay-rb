@@ -13,12 +13,14 @@ module Graph
       sig { override.returns(String) }
       def graphql_name = "Date"
 
-      sig { override.params(value: InternalRepresentation).returns(Bluejay::Result[T.untyped, String]) }
+      # TODO: bring back generic type on `Result` (to `Result[T.untyped, String]`)
+      sig { override.params(value: InternalRepresentation).returns(Bluejay::Result) }
       def coerce_result(value)
         Bluejay::Result.ok(value.iso8601)
       end
 
-      sig { override.params(value: T.untyped).returns(Bluejay::Result[Date, String]) }
+      # TODO: bring back generic type on `Result` (to `Result[Date, String]`)
+      sig { override.params(value: T.untyped).returns(Bluejay::Result) }
       def coerce_input(value)
         if value.is_a?(String)
           begin
