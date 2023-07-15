@@ -1,6 +1,6 @@
 use crate::execution::FieldError;
 use bluejay_core::BuiltinScalarDefinition;
-use magnus::{Float, Integer, Value};
+use magnus::{Integer, TryConvert, Value};
 
 pub trait CoerceResult {
     fn coerce_result(&self, value: Value) -> Result<Value, FieldError>;
@@ -21,11 +21,8 @@ impl CoerceResult for BuiltinScalarDefinition {
                 }
             }
             Self::Float => {
-                // TODO: handle BigDecimal and possibly Numeric
-                if matches!(Float::from_value(value), Some(f) if f.to_f64().is_finite()) {
+                if matches!(f64::try_convert(value), Ok(f) if f.is_finite()) {
                     Ok(value)
-                } else if value.is_kind_of(magnus::class::integer()) {
-                    Ok(value.funcall("to_f", ()).unwrap())
                 } else {
                     Err(FieldError::CannotCoerceResultToBuiltinScalar {
                         builtin_scalar: *self,

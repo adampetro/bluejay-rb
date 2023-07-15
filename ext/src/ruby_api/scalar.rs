@@ -24,7 +24,7 @@ impl Scalar {
     pub fn sorbet_type_fully_qualified_name(&self) -> &str {
         match self.0 {
             BuiltinScalarDefinition::Boolean => "T::Boolean",
-            BuiltinScalarDefinition::Float => "Float",
+            BuiltinScalarDefinition::Float => "Numeric",
             BuiltinScalarDefinition::ID => "T.any(String, Integer)",
             BuiltinScalarDefinition::Int => "Integer",
             BuiltinScalarDefinition::String => "String",

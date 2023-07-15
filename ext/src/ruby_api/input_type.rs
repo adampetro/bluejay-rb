@@ -16,8 +16,8 @@ use bluejay_parser::ast::Value as ParserValue;
 use bluejay_validator::Path;
 use magnus::{
     exception, function, gc, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,
-    DataTypeFunctions, Error, Float, Integer, Module, Object, RArray, RHash, RString, TypedData,
-    Value, QNIL,
+    DataTypeFunctions, Error, Float, Integer, Module, Object, RArray, RHash, RString, TryConvert,
+    TypedData, Value, QNIL,
 };
 
 #[derive(Debug, Clone)]
@@ -112,9 +112,8 @@ impl BaseInputType {
     }
 
     fn coerce_float(value: Value, path: Path) -> Result<Value, Vec<CoercionError>> {
-        if let Some(f) = Float::from_value(value) {
-            let finite: bool = f.to_f64().is_finite();
-            if finite {
+        if let Ok(f) = f64::try_convert(value) {
+            if f.is_finite() {
                 Ok(value)
             } else {
                 Err(vec![CoercionError::new(
@@ -122,8 +121,6 @@ impl BaseInputType {
                     path.to_vec(),
                 )])
             }
-        } else if let Some(i) = Integer::from_value(value) {
-            Self::coerce_integer(value, path).map(|_| *Float::from_f64(i.to_i32().unwrap().into()))
         } else {
             Err(vec![CoercionError::new(
                 format!("No implicit conversion of {} to Float", public_name(value)),

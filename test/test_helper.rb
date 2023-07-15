@@ -6,6 +6,7 @@ require "pry"
 require "pry-nav"
 require "date"
 require "json"
+require "bigdecimal"
 require "minitest/autorun"
 
 module GCStressPlugin

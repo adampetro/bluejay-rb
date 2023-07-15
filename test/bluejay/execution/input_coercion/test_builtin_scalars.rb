@@ -76,7 +76,7 @@ module Bluejay
                 int
               end
 
-              sig { params(float: Float).returns(Float) }
+              sig { params(float: Numeric).returns(Numeric) }
               def float(float:)
                 float
               end
@@ -213,7 +213,7 @@ module Bluejay
             }
           GQL
 
-          [0, 1, 0.0, 1.0, Float::MAX, Float::MIN].each do |f|
+          [0, 1, 0.0, 1.0, Float::MAX, Float::MIN, BigDecimal("1.0"), BigDecimal("-1.0")].each do |f|
             result = MySchema.execute(
               query:,
               variables: { "float" => f },
@@ -235,7 +235,7 @@ module Bluejay
             }
           GQL
 
-          [Float::NAN, Float::INFINITY].each do |f|
+          [Float::NAN, Float::INFINITY, BigDecimal("Infinity"), BigDecimal("-Infinity")].each do |f|
             result = MySchema.execute(
               query:,
               variables: { "float" => f },
