@@ -16,8 +16,8 @@ itertools = "0.10.5"
 strum = { version = "0.24", features = ["derive"] }
 indexmap = "1.9.3"
 paste = "1.0"
-bluejay-parser = { git = "https://github.com/adampetro/bluejay", rev = "c45c092f19c0c63c5881931d513215d9743e2bca" }
-bluejay-core = { git = "https://github.com/adampetro/bluejay", rev = "c45c092f19c0c63c5881931d513215d9743e2bca" }
-bluejay-printer = { git = "https://github.com/adampetro/bluejay", rev = "c45c092f19c0c63c5881931d513215d9743e2bca" }
-bluejay-validator = { git = "https://github.com/adampetro/bluejay", rev = "c45c092f19c0c63c5881931d513215d9743e2bca" }
-bluejay-visibility = { git = "https://github.com/adampetro/bluejay", rev = "c45c092f19c0c63c5881931d513215d9743e2bca" }
+bluejay-parser = { git = "https://github.com/adampetro/bluejay", rev = "860e99d14f125dc80fbedd76e403c826c640649f" }
+bluejay-core = { git = "https://github.com/adampetro/bluejay", rev = "860e99d14f125dc80fbedd76e403c826c640649f" }
+bluejay-printer = { git = "https://github.com/adampetro/bluejay", rev = "860e99d14f125dc80fbedd76e403c826c640649f" }
+bluejay-validator = { git = "https://github.com/adampetro/bluejay", rev = "860e99d14f125dc80fbedd76e403c826c640649f" }
+bluejay-visibility = { git = "https://github.com/adampetro/bluejay", rev = "860e99d14f125dc80fbedd76e403c826c640649f" }

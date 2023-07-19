@@ -3,14 +3,18 @@
 
 module Bluejay
   module Errors
-    class DefaultValueError < StandardError
+    class BaseError < StandardError; end
+
+    class DefaultValueError < BaseError
       extend(T::Sig)
 
       sig { params(errors: T::Array[CoercionError], value: Object).void }
       def initialize(errors, value)
         @errors = errors
-        super("Invalid default value: #{value}. Errors:\n #{errors.map(&:message).join("\n")}")
+        super("Invalid default value: #{value}. Errors:\n#{errors.map(&:message).join("\n")}")
       end
     end
+
+    class NonUniqueDefinitionNameError < BaseError; end
   end
 end

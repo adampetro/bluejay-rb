@@ -89,3 +89,9 @@ impl<T: HasDefinitionWrapper> IntoValue for &WrappedDefinition<T> {
         (*self.get()).into_value_with(handle)
     }
 }
+
+impl<T: HasDefinitionWrapper> PartialEq for WrappedDefinition<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.cls.eql(other.cls).unwrap_or(false)
+    }
+}

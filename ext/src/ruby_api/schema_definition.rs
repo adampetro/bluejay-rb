@@ -18,6 +18,7 @@ use bluejay_core::{AsIter, BuiltinScalarDefinition};
 use bluejay_printer::definition::DisplaySchemaDefinition;
 use bluejay_validator::executable::{BuiltinRulesValidator, Cache as ValidationCache};
 use bluejay_visibility::NullWarden;
+use itertools::Itertools;
 use magnus::IntoValue;
 use magnus::{
     exception, function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs,
@@ -78,7 +79,7 @@ impl SchemaDefinition {
                 &query,
                 mutation.as_ref(),
                 &directives,
-            );
+            )?;
         let interface_implementors = Self::interface_implementors(&contained_types);
 
         Self::validate_default_values(&contained_types)?;
@@ -236,7 +237,7 @@ impl DataTypeFunctions for SchemaDefinition {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TypeDefinition {
     BuiltinScalar(BuiltinScalarDefinition),
     CustomScalar(WrappedDefinition<CustomScalarTypeDefinition>),
@@ -257,6 +258,18 @@ impl TypeDefinition {
             Self::Enum(etd) => etd.mark(),
             Self::Union(utd) => utd.mark(),
             Self::Interface(itd) => itd.mark(),
+        }
+    }
+
+    fn classname(&self) -> String {
+        match self {
+            Self::BuiltinScalar(bstd) => format!("Bluejay::Scalar::{}", bstd.name()),
+            Self::CustomScalar(cstd) => cstd.fully_qualified_name(),
+            Self::Object(otd) => otd.fully_qualified_name(),
+            Self::InputObject(iotd) => iotd.fully_qualified_name(),
+            Self::Enum(etd) => etd.fully_qualified_name(),
+            Self::Union(utd) => utd.fully_qualified_name(),
+            Self::Interface(itd) => itd.fully_qualified_name(),
         }
     }
 }
@@ -449,33 +462,23 @@ impl IntoValue for &TypeDefinition {
 struct SchemaTypeVisitor {
     types: BTreeMap<String, TypeDefinition>,
     directives: BTreeMap<String, WrappedDefinition<DirectiveDefinition>>,
+    non_unique_type_names: BTreeMap<String, Vec<String>>,
 }
 
-impl From<SchemaTypeVisitor>
-    for (
+type ContainedDefinitionResult = Result<
+    (
         BTreeMap<String, TypeDefinition>,
         BTreeMap<String, WrappedDefinition<DirectiveDefinition>>,
-    )
-{
-    fn from(
-        val: SchemaTypeVisitor,
-    ) -> (
-        BTreeMap<String, TypeDefinition>,
-        BTreeMap<String, WrappedDefinition<DirectiveDefinition>>,
-    ) {
-        (val.types, val.directives)
-    }
-}
+    ),
+    Error,
+>;
 
 impl SchemaTypeVisitor {
     pub fn compute_contained_definitions(
         query: &WrappedDefinition<ObjectTypeDefinition>,
         mutation: Option<&WrappedDefinition<ObjectTypeDefinition>>,
         schema_directives: &Directives,
-    ) -> (
-        BTreeMap<String, TypeDefinition>,
-        BTreeMap<String, WrappedDefinition<DirectiveDefinition>>,
-    ) {
+    ) -> ContainedDefinitionResult {
         let mut type_visitor = Self::new();
         type_visitor.visit_type(TypeDefinition::Object(query.clone()));
         if let Some(mutation) = mutation {
@@ -483,13 +486,36 @@ impl SchemaTypeVisitor {
         }
         type_visitor.visit_directives(schema_directives);
         type_visitor.visit_builtin_directive_definitions();
-        type_visitor.into()
+        let Self {
+            types,
+            directives,
+            non_unique_type_names,
+        } = type_visitor;
+        if non_unique_type_names.is_empty() {
+            Ok((types, directives))
+        } else {
+            let concatenated = non_unique_type_names
+                .into_iter()
+                .map(|(name, class_names)| {
+                    format!(
+                        "GraphQL type name `{}` is used in multiple classes: {}",
+                        name,
+                        class_names.join(", ")
+                    )
+                })
+                .join("\n");
+            Err(Error::new(
+                crate::ruby_api::non_unique_definition_name_error(),
+                concatenated,
+            ))
+        }
     }
 
     fn new() -> Self {
         Self {
             types: BTreeMap::new(),
             directives: BTreeMap::new(),
+            non_unique_type_names: BTreeMap::new(),
         }
     }
 
@@ -530,7 +556,14 @@ impl SchemaTypeVisitor {
     fn visit_type(&mut self, t: TypeDefinition) {
         let name = t.as_ref().name().to_owned();
         match self.types.entry(name) {
-            Entry::Occupied(_) => {}
+            Entry::Occupied(entry) => {
+                if entry.get() != &t {
+                    self.non_unique_type_names
+                        .entry(entry.key().clone())
+                        .or_insert_with(|| vec![entry.get().classname()])
+                        .push(t.classname());
+                }
+            }
             Entry::Vacant(entry) => {
                 entry.insert(t.clone());
                 match t {
