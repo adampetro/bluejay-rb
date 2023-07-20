@@ -128,7 +128,8 @@ impl<'a> Engine<'a> {
                 let variable_name = variable_definition.variable().name();
                 let variable_type = variable_definition_input_type_cache
                     .input_type_for_variable_definition(schema, variable_definition.r#type());
-                let scoped_variable_type = ScopedInputType::new(variable_type, visibility_cache);
+                let scoped_variable_type =
+                    ScopedInputType::new(variable_type, visibility_cache).unwrap();
                 let default_value = variable_definition.default_value();
                 let value = variable_values.get(variable_name);
                 let has_value = value.is_some();

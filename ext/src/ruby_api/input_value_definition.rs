@@ -104,6 +104,7 @@ impl InputValueDefinition {
                     let scoped_type = ScopedInputType::new(self.r#type.get(), visibility_cache);
                     let path: Path = Default::default();
                     scoped_type
+                        .unwrap()
                         .coerced_ruby_value_to_wrapped_value(*raw_value, path)
                         .and_then(|result| {
                             result.map_err(|coercion_errors| {
