@@ -43,9 +43,15 @@ jobs:
           cache-version: v1-${{ matrix.ruby-platform }}
 
       - uses: oxidize-rb/actions/cross-gem@v1
+        id: cross-gem
         with:
           platform: ${{ matrix.ruby-platform }}
           ruby-versions: ${{ join(fromJSON(needs.ci-data.outputs.result).stable-ruby-versions, ', ') }}
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: cross-gem
+          path: ${{ steps.cross-gem.outputs.gem-path }}
 
       - name: Smoke gem install
         if: matrix.ruby-platform == 'x86_64-linux' # GitHub actions architecture
