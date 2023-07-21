@@ -647,11 +647,17 @@ end
 module Bluejay::Errors; end
 
 # source://bluejay//../../bluejay-rb/lib/bluejay/errors.rb#6
-class Bluejay::Errors::DefaultValueError < ::StandardError
-  # source://bluejay//../../bluejay-rb/lib/bluejay/errors.rb#10
+class Bluejay::Errors::BaseError < ::StandardError; end
+
+# source://bluejay//../../bluejay-rb/lib/bluejay/errors.rb#8
+class Bluejay::Errors::DefaultValueError < ::Bluejay::Errors::BaseError
+  # source://bluejay//../../bluejay-rb/lib/bluejay/errors.rb#12
   sig { params(errors: T::Array[::Bluejay::CoercionError], value: ::Object).void }
   def initialize(errors, value); end
 end
+
+# source://bluejay//../../bluejay-rb/lib/bluejay/errors.rb#18
+class Bluejay::Errors::NonUniqueDefinitionNameError < ::Bluejay::Errors::BaseError; end
 
 class Bluejay::ExecutionError
   def ==(_arg0); end
