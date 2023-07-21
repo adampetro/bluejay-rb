@@ -17,7 +17,7 @@ Gem::Specification.new do |spec|
   spec.metadata["homepage_uri"] = spec.homepage
   spec.metadata["source_code_uri"] = "https://github.com/adampetro/bluejay-rb"
   spec.metadata["changelog_uri"] = "https://github.com/adampetro/bluejay-rb/blob/main/CHANGELOG"
-  spec.metadata["cargo_crate_name"] = "ext"
+  spec.metadata["cargo_crate_name"] = "bluejay-rb"
 
   spec.files = Dir["{lib,ext}/**/*", "LICENSE", "README.md", "Cargo.*", "rust-toolchain.toml"]
   spec.files.reject! { |f| File.directory?(f) || File.extname(f) == ".bundle" }

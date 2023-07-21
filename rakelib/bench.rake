@@ -48,7 +48,7 @@ namespace :bench do
         unless status.success?
           abort("Encountered an error: #{stdout}")
         end
-        padded_stdout = stdout.lines.map { |line| "  #{line.chomp}" }.join("\n")
+        padded_stdout = stdout.lines.map { |line| "  #{line.chomp}".tap(&:rstrip!) }.join("\n")
         output += <<~END
           <details>
             <summary>#{benchmark.description} (Ruby 3.2, YJIT #{yjit ? "enabled" : "disabled"})</summary>

@@ -36,13 +36,9 @@ require_relative "bluejay/builtin/object_types/schema"
 
 begin
   RUBY_VERSION =~ /(\d+\.\d+)/
-  require "bluejay/#{Regexp.last_match(1)}/ext"
+  require "bluejay/#{Regexp.last_match(1)}/bluejay_rb"
 rescue LoadError
-  begin
-    require "bluejay/ext"
-  rescue LoadError
-    require_relative "../ext/ext"
-  end
+  require "bluejay/bluejay_rb"
 end
 
 module Bluejay
