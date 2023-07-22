@@ -33,11 +33,7 @@ impl<T: HasDefinitionWrapper> WrappedDefinition<T> {
         } else {
             Err(Error::new(
                 exception::type_error(),
-                format!(
-                    "class {} does not include {} in its singleton class",
-                    cls,
-                    T::required_module()
-                ),
+                format!("class {} does not include {}", cls, T::required_module()),
             ))
         }
     }

@@ -390,6 +390,8 @@ Some benchmarks comparing the performance of `bluejay-rb` against `graphql-ruby`
 </details>
 <!---benchmark result end-->
 
+To update the benchmark report above, run `rake bench:doc`.
+
 ## Installation
 
 Install the gem and add to the application's Gemfile by executing:
@@ -408,4 +410,6 @@ See an example in the [`/example`](/example) directory. Note the usage of [Tapio
 
 After checking out the repo, run `bin/setup` to install dependencies and `rake compile` to compile the Rust extension. Then, run `rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+To install this gem onto your local machine, run `bundle exec rake install`.
+
+To release a new version, update the version number in `version.rb`, and push that to `main`. Then, [create a new release in the GitHub UI](https://github.com/adampetro/bluejay-rb/releases/new) with a new tag equal to the version number in `version.rb` prefixed with `v`. This will trigger the [release workflow](.github/workflows/release.yml) which will publish the new version with pre-built binaries.
