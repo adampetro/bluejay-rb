@@ -55,7 +55,7 @@ module Bluejay
         end
 
         assert_equal(
-          "GraphQL type name `Int` is used in multiple classes: Bluejay::Scalar::Int, "\
+          "GraphQL type name `Int` is used in multiple classes: Bluejay::Scalar::Int and "\
             "Bluejay::Validation::TestDuplicateTypeDefinitionNames::Int",
           e.message,
         )

@@ -18,7 +18,6 @@ use bluejay_core::AsIter;
 use bluejay_printer::definition::DisplaySchemaDefinition;
 use bluejay_validator::executable::{BuiltinRulesValidator, Cache as ValidationCache};
 use bluejay_visibility::NullWarden;
-use itertools::Itertools;
 use magnus::{
     exception, function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs,
     typed_data::Obj, DataTypeFunctions, Error, Module, Object, RArray, RClass, RHash, RModule,
@@ -343,7 +342,6 @@ impl CoreSchemaDefinition for SchemaDefinition {
 struct SchemaTypeVisitor {
     types: BTreeMap<String, TypeDefinition>,
     directives: BTreeMap<String, WrappedDefinition<DirectiveDefinition>>,
-    non_unique_type_names: BTreeMap<String, Vec<String>>,
 }
 
 type ContainedDefinitionResult = Result<
@@ -361,150 +359,152 @@ impl SchemaTypeVisitor {
         schema_directives: &Directives,
     ) -> ContainedDefinitionResult {
         let mut type_visitor = Self::new();
-        type_visitor.visit_type(TypeDefinition::Object(query.clone()));
+        type_visitor.visit_type(TypeDefinition::Object(query.clone()))?;
         if let Some(mutation) = mutation {
-            type_visitor.visit_type(TypeDefinition::Object(mutation.clone()));
+            type_visitor.visit_type(TypeDefinition::Object(mutation.clone()))?;
         }
-        type_visitor.visit_directives(schema_directives);
-        type_visitor.visit_builtin_directive_definitions();
-        let Self {
-            types,
-            directives,
-            non_unique_type_names,
-        } = type_visitor;
-        if non_unique_type_names.is_empty() {
-            Ok((types, directives))
-        } else {
-            let concatenated = non_unique_type_names
-                .into_iter()
-                .map(|(name, class_names)| {
-                    format!(
-                        "GraphQL type name `{}` is used in multiple classes: {}",
-                        name,
-                        class_names.join(", ")
-                    )
-                })
-                .join("\n");
-            Err(Error::new(
-                crate::ruby_api::non_unique_definition_name_error(),
-                concatenated,
-            ))
-        }
+        type_visitor.visit_directives(schema_directives)?;
+        type_visitor.visit_builtin_directive_definitions()?;
+        let Self { types, directives } = type_visitor;
+        Ok((types, directives))
     }
 
     fn new() -> Self {
         Self {
             types: BTreeMap::new(),
             directives: BTreeMap::new(),
-            non_unique_type_names: BTreeMap::new(),
         }
     }
 
-    fn visit_object_type_definition(&mut self, otd: &ObjectTypeDefinition) {
-        self.visit_field_definitions(otd.fields_definition());
-        self.visit_directives(otd.directives());
+    fn visit_object_type_definition(&mut self, otd: &ObjectTypeDefinition) -> Result<(), Error> {
+        self.visit_field_definitions(otd.fields_definition())?;
+        self.visit_directives(otd.directives())
     }
 
-    fn visit_union_type_definition(&mut self, utd: &UnionTypeDefinition) {
-        for union_member in utd.member_types().iter() {
+    fn visit_union_type_definition(&mut self, utd: &UnionTypeDefinition) -> Result<(), Error> {
+        utd.member_types().iter().try_for_each(|union_member| {
             let t = TypeDefinition::Object(union_member.r#type());
-            self.visit_type(t);
-        }
-        self.visit_directives(utd.directives());
+            self.visit_type(t)
+        })?;
+        self.visit_directives(utd.directives())
     }
 
-    fn visit_interface_type_definition(&mut self, itd: &InterfaceTypeDefinition) {
-        self.visit_field_definitions(itd.fields_definition());
-        self.visit_directives(itd.directives());
+    fn visit_interface_type_definition(
+        &mut self,
+        itd: &InterfaceTypeDefinition,
+    ) -> Result<(), Error> {
+        self.visit_field_definitions(itd.fields_definition())?;
+        self.visit_directives(itd.directives())
     }
 
-    fn visit_input_object_type_definition(&mut self, iotd: &InputObjectTypeDefinition) {
-        self.visit_input_value_definitions(iotd.input_fields_definition());
-        self.visit_directives(iotd.directives());
+    fn visit_input_object_type_definition(
+        &mut self,
+        iotd: &InputObjectTypeDefinition,
+    ) -> Result<(), Error> {
+        self.visit_input_value_definitions(iotd.input_fields_definition())?;
+        self.visit_directives(iotd.directives())
     }
 
-    fn visit_custom_scalar_type_definition(&mut self, cstd: &CustomScalarTypeDefinition) {
-        self.visit_directives(cstd.directives());
+    fn visit_custom_scalar_type_definition(
+        &mut self,
+        cstd: &CustomScalarTypeDefinition,
+    ) -> Result<(), Error> {
+        self.visit_directives(cstd.directives())
     }
 
-    fn visit_enum_type_definition(&mut self, etd: &EnumTypeDefinition) {
-        etd.enum_value_definitions().iter().for_each(|evd| {
-            self.visit_directives(evd.directives());
-        });
-        self.visit_directives(etd.directives());
+    fn visit_enum_type_definition(&mut self, etd: &EnumTypeDefinition) -> Result<(), Error> {
+        etd.enum_value_definitions()
+            .iter()
+            .try_for_each(|evd| self.visit_directives(evd.directives()))?;
+        self.visit_directives(etd.directives())
     }
 
-    fn visit_type(&mut self, t: TypeDefinition) {
+    fn visit_type(&mut self, t: TypeDefinition) -> Result<(), Error> {
+        t.try_init_wrapped_definition()?;
         let name = t.as_ref().name().to_owned();
         match self.types.entry(name) {
             Entry::Occupied(entry) => {
                 if entry.get() != &t {
-                    self.non_unique_type_names
-                        .entry(entry.key().clone())
-                        .or_insert_with(|| vec![entry.get().classname()])
-                        .push(t.classname());
+                    let message = format!(
+                        "GraphQL type name `{}` is used in multiple classes: {} and {}",
+                        entry.key(),
+                        entry.get().classname(),
+                        t.classname(),
+                    );
+                    Err(Error::new(
+                        crate::ruby_api::non_unique_definition_name_error(),
+                        message,
+                    ))
+                } else {
+                    Ok(())
                 }
             }
             Entry::Vacant(entry) => {
                 entry.insert(t.clone());
                 match t {
-                    TypeDefinition::BuiltinScalar(_) => {}
+                    TypeDefinition::BuiltinScalar(_) => Ok(()),
                     TypeDefinition::CustomScalar(cstd) => {
-                        self.visit_custom_scalar_type_definition(cstd.as_ref());
+                        self.visit_custom_scalar_type_definition(cstd.as_ref())
                     }
-                    TypeDefinition::Enum(etd) => {
-                        self.visit_enum_type_definition(etd.as_ref());
-                    }
-                    TypeDefinition::Object(otd) => {
-                        self.visit_object_type_definition(otd.as_ref());
-                    }
-                    TypeDefinition::Union(utd) => {
-                        self.visit_union_type_definition(utd.as_ref());
-                    }
+                    TypeDefinition::Enum(etd) => self.visit_enum_type_definition(etd.as_ref()),
+                    TypeDefinition::Object(otd) => self.visit_object_type_definition(otd.as_ref()),
+                    TypeDefinition::Union(utd) => self.visit_union_type_definition(utd.as_ref()),
                     TypeDefinition::Interface(itd) => {
-                        self.visit_interface_type_definition(itd.as_ref());
+                        self.visit_interface_type_definition(itd.as_ref())
                     }
                     TypeDefinition::InputObject(iotd) => {
-                        self.visit_input_object_type_definition(iotd.as_ref());
+                        self.visit_input_object_type_definition(iotd.as_ref())
                     }
                 }
             }
         }
     }
 
-    fn visit_field_definitions(&mut self, fields_definition: &FieldsDefinition) {
-        for field_definition in fields_definition.iter() {
-            self.visit_input_value_definitions(field_definition.argument_definitions());
+    fn visit_field_definitions(
+        &mut self,
+        fields_definition: &FieldsDefinition,
+    ) -> Result<(), Error> {
+        fields_definition.iter().try_for_each(|field_definition| {
+            self.visit_input_value_definitions(field_definition.argument_definitions())?;
             let base_type = field_definition.r#type().as_ref().base();
-            self.visit_type(base_type.into());
-            self.visit_directives(field_definition.directives());
-        }
+            self.visit_type(base_type.into())?;
+            self.visit_directives(field_definition.directives())
+        })
     }
 
-    fn visit_input_value_definitions(&mut self, input_fields_definition: &InputFieldsDefinition) {
-        for input_value_definition in input_fields_definition.iter() {
-            let base_type = input_value_definition.r#type().as_ref().base();
-            self.visit_type(base_type.into());
-            self.visit_directives(input_value_definition.directives());
-        }
+    fn visit_input_value_definitions(
+        &mut self,
+        input_fields_definition: &InputFieldsDefinition,
+    ) -> Result<(), Error> {
+        input_fields_definition
+            .iter()
+            .try_for_each(|input_value_definition| {
+                let base_type = input_value_definition.r#type().as_ref().base();
+                self.visit_type(base_type.into())?;
+                self.visit_directives(input_value_definition.directives())
+            })
     }
 
-    fn visit_directives(&mut self, directives: &Directives) {
-        directives.iter().for_each(|directive| {
+    fn visit_directives(&mut self, directives: &Directives) -> Result<(), Error> {
+        directives.iter().try_for_each(|directive| {
             let definition = directive.definition();
+            definition.try_init()?;
             self.directives
                 .entry(definition.as_ref().name().to_string())
                 .or_insert_with(|| definition.clone());
-        });
+            Ok(())
+        })
     }
 
-    fn visit_builtin_directive_definitions(&mut self) {
+    fn visit_builtin_directive_definitions(&mut self) -> Result<(), Error> {
         DirectiveDefinition::builtin_directive_definitions()
             .iter()
-            .for_each(|definition| {
+            .try_for_each(|definition| {
+                definition.try_init()?;
                 self.directives
                     .entry(definition.as_ref().name().to_string())
                     .or_insert_with(|| definition.clone());
+                Ok(())
             })
     }
 }

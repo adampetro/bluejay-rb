@@ -38,12 +38,19 @@ impl<T: HasDefinitionWrapper> WrappedDefinition<T> {
         }
     }
 
+    fn resolve_definition(&self) -> Result<Obj<T>, Error> {
+        self.cls.funcall(*memoize!(Id: Id::new("definition")), ())
+    }
+
     pub fn get(&self) -> &Obj<T> {
-        self.memoized_definition.get_or_init(|| {
-            self.cls
-                .funcall(*memoize!(Id: Id::new("definition")), ())
-                .unwrap()
-        })
+        self.memoized_definition
+            .get_or_init(|| self.resolve_definition().unwrap())
+    }
+
+    pub fn try_init(&self) -> Result<(), Error> {
+        self.memoized_definition
+            .get_or_try_init(|| self.resolve_definition())
+            .map(|_| ())
     }
 
     pub fn mark(&self) {

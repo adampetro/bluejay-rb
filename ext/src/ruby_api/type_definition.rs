@@ -6,7 +6,7 @@ use crate::ruby_api::{
 };
 use bluejay_core::definition::{TypeDefinition as CoreTypeDefinition, TypeDefinitionReference};
 use bluejay_core::BuiltinScalarDefinition;
-use magnus::IntoValue;
+use magnus::{Error, IntoValue};
 use magnus::{Ruby, Value};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -42,6 +42,18 @@ impl TypeDefinition {
             Self::Enum(etd) => etd.fully_qualified_name(),
             Self::Union(utd) => utd.fully_qualified_name(),
             Self::Interface(itd) => itd.fully_qualified_name(),
+        }
+    }
+
+    pub(crate) fn try_init_wrapped_definition(&self) -> Result<(), Error> {
+        match self {
+            Self::BuiltinScalar(_) => Ok(()),
+            Self::CustomScalar(cstd) => cstd.try_init(),
+            Self::Object(otd) => otd.try_init(),
+            Self::InputObject(iotd) => iotd.try_init(),
+            Self::Enum(etd) => etd.try_init(),
+            Self::Union(utd) => utd.try_init(),
+            Self::Interface(itd) => itd.try_init(),
         }
     }
 }
