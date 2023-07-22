@@ -1,8 +1,7 @@
 use crate::helpers::HasDefinitionWrapper;
-use crate::ruby_api::{
-    base, introspection, root, Directives, FieldsDefinition, ObjectTypeDefinition, UnionMemberTypes,
-};
-use bluejay_core::AsIter;
+use crate::ruby_api::{base, introspection, root, Directives, FieldsDefinition, UnionMemberTypes};
+use crate::visibility_scoped::{ScopedObjectTypeDefinition, ScopedUnionTypeDefinition};
+use bluejay_core::{definition::prelude::*, AsIter};
 use magnus::{
     function, gc, memoize, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error,
     Module, Object, RArray, RHash, RModule, TypedData,
@@ -66,10 +65,14 @@ impl UnionTypeDefinition {
         &self.directives
     }
 
-    pub fn contains_type(&self, t: &ObjectTypeDefinition) -> bool {
-        self.member_types
+    pub fn contains_type(
+        scoped_self: &ScopedUnionTypeDefinition,
+        t: &ScopedObjectTypeDefinition,
+    ) -> bool {
+        scoped_self
+            .union_member_types()
             .iter()
-            .any(|mt| mt.r#type().as_ref().name() == t.name())
+            .any(|mt| mt.member_type().name() == t.name())
     }
 
     pub fn sorbet_type(&self) -> String {

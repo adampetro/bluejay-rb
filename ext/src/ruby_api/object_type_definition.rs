@@ -1,9 +1,10 @@
 use crate::helpers::HasDefinitionWrapper;
 use crate::ruby_api::{
     base, introspection, root, Directives, FieldDefinition, FieldsDefinition,
-    InterfaceImplementations, InterfaceTypeDefinition,
+    InterfaceImplementations,
 };
-use bluejay_core::AsIter;
+use crate::visibility_scoped::{ScopedInterfaceTypeDefinition, ScopedObjectTypeDefinition};
+use bluejay_core::{definition::prelude::*, AsIter};
 use magnus::{
     function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions,
     Error, Module, Object, RArray, RClass, RHash, RModule, TypedData,
@@ -88,10 +89,17 @@ impl ObjectTypeDefinition {
         &self.interface_implementations
     }
 
-    pub fn implements_interface(&self, interface: &InterfaceTypeDefinition) -> bool {
-        self.interface_implementations
-            .iter()
-            .any(|ii| ii.interface().get().name() == interface.name())
+    pub fn implements_interface(
+        scoped_self: &ScopedObjectTypeDefinition,
+        interface: &ScopedInterfaceTypeDefinition,
+    ) -> bool {
+        scoped_self
+            .interface_implementations()
+            .map_or(false, |interface_implementations| {
+                interface_implementations
+                    .iter()
+                    .any(|ii| ii.interface().name() == interface.name())
+            })
     }
 
     pub fn field_definition(&self, name: &str) -> Option<&FieldDefinition> {

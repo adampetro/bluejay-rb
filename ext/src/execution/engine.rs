@@ -3,7 +3,10 @@ use crate::execution::{
     VariableDefinitionInputTypeCache,
 };
 use crate::helpers::{rhash_with_capacity, FuncallKw, NewInstanceKw, RArrayIter};
-use crate::ruby_api::{CoerceInput, ExecutionResult, ExtraResolverArg, SchemaDefinition};
+use crate::ruby_api::{
+    CoerceInput, ExecutionResult, ExtraResolverArg, ObjectTypeDefinition, SchemaDefinition,
+    UnionTypeDefinition,
+};
 use crate::visibility_scoped::{
     ScopedBaseOutputType, ScopedFieldDefinition, ScopedInputType, ScopedInputValueDefinition,
     ScopedInterfaceTypeDefinition, ScopedObjectTypeDefinition, ScopedOutputType,
@@ -414,12 +417,10 @@ impl<'a> Engine<'a> {
                 otd.name() == object_type.name()
             }
             TypeDefinitionReference::Interface(itd) => {
-                // TODO: do this properly for visibility
-                object_type.inner().implements_interface(itd.inner())
+                ObjectTypeDefinition::implements_interface(object_type, itd)
             }
             TypeDefinitionReference::Union(utd) => {
-                // TODO: do this properly for visibility
-                utd.inner().contains_type(object_type.inner())
+                UnionTypeDefinition::contains_type(utd, object_type)
             }
             TypeDefinitionReference::BuiltinScalar(_)
             | TypeDefinitionReference::CustomScalar(_)
@@ -648,11 +649,7 @@ impl<'a> Engine<'a> {
             .unwrap()
             .into_object()
             .unwrap_or_else(|_| panic!("Returned type is not an object"));
-        // TODO: do this properly for visibility
-        if object_type
-            .inner()
-            .implements_interface(interface_type.inner())
-        {
+        if ObjectTypeDefinition::implements_interface(object_type, interface_type) {
             object_type
         } else {
             panic!()
@@ -672,8 +669,7 @@ impl<'a> Engine<'a> {
             .unwrap()
             .into_object()
             .unwrap_or_else(|_| panic!("Type is not an object"));
-        // TODO: do this properly for visibility
-        if union_type.inner().contains_type(object_type.inner()) {
+        if UnionTypeDefinition::contains_type(union_type, object_type) {
             object_type
         } else {
             panic!()
