@@ -41,10 +41,11 @@ impl ExecutionError {
         self.path.clone()
     }
 
-    fn to_h(&self) -> RHash {
+    fn to_h(&self) -> Result<RHash, Error> {
         let ruby_h = rhash_with_capacity(2);
-        ruby_h.bulk_insert(&[("path", self.path), ("message", self.message)])?;
-        ruby_h
+        ruby_h.aset("path", self.path())?;
+        ruby_h.aset("message", self.message())?;
+        Ok(ruby_h)
     }
 
     fn inspect(rb_self: Obj<Self>) -> Result<String, Error> {
