@@ -11,7 +11,8 @@ module Bluejay
         "message" => "Something went wrong",
         "path" => ["root", "field", "0", "thing"],
       }
-      assert_equal expected_h, err.to_h
+
+      assert_equal(expected_h, err.to_h)
     end
   end
 end
