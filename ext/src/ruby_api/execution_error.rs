@@ -42,7 +42,7 @@ impl ExecutionError {
     }
 
     pub fn to_h(&self) -> RHash {
-        let ruby_h = rhash_with_capacity(3);
+        let ruby_h = rhash_with_capacity(2);
         let _ = ruby_h.aset("message", self.message());
         _ = ruby_h.aset("path", self.path());
         ruby_h
