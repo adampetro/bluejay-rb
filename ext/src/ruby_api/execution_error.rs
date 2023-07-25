@@ -41,10 +41,9 @@ impl ExecutionError {
         self.path.clone()
     }
 
-    pub fn to_h(&self) -> RHash {
+    fn to_h(&self) -> RHash {
         let ruby_h = rhash_with_capacity(2);
-        let _ = ruby_h.aset("message", self.message());
-        _ = ruby_h.aset("path", self.path());
+        ruby_h.bulk_insert(&[("path", self.path), ("message", self.message)])?;
         ruby_h
     }
 
