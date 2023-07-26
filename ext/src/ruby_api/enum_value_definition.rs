@@ -42,7 +42,7 @@ impl EnumValueDefinition {
                     .ruby_name(),
                 deprecation_reason,
             )]);
-            directives.push(directive_definition.class().new_instance_kw(args)?)?;
+            directives.push(directive_definition.class()?.new_instance_kw(args)?)?;
         }
         let directives = directives.try_into()?;
         Ok(Self {

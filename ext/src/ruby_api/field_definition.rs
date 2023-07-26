@@ -9,7 +9,7 @@ use magnus::{
     scan_args::{get_kwargs, KwArgs},
     typed_data::Obj,
     value::Id,
-    DataTypeFunctions, Error, Module, Object, RArray, RHash, RString, Symbol, TypedData,
+    DataTypeFunctions, Error, Module, Object, RArray, RClass, RHash, RString, Symbol, TypedData,
 };
 
 #[derive(Debug, TypedData)]
@@ -79,7 +79,12 @@ impl FieldDefinition {
                     .ruby_name(),
                 deprecation_reason,
             )]);
-            directives.push(directive_definition.class().new_instance_kw(args)?)?;
+            directives.push(
+                directive_definition
+                    .wrapper()
+                    .try_convert::<RClass>()?
+                    .new_instance_kw(args)?,
+            )?;
         }
         let directives = directives.try_into()?;
         let is_builtin = name.starts_with("__");

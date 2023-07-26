@@ -10,7 +10,7 @@ pub use public_name::public_name;
 pub use typed_frozen_r_array::TypedFrozenRArray;
 pub use variables::Variables;
 pub use warden::Warden;
-pub use wrapped_definition::{HasDefinitionWrapper, WrappedDefinition};
+pub use wrapped_definition::{HasDefinitionWrapper, WrappedDefinition, Wrapper};
 
 use bluejay_core::{AsIter, ObjectValue, Value as CoreValue, ValueReference, Variable};
 use magnus::{RArray, RHash, TryConvert, Value, QNIL};

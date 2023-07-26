@@ -1,9 +1,9 @@
 use super::{object_type_definition::ObjectTypeDefinition, root};
-use crate::helpers::WrappedDefinition;
+use crate::helpers::{WrappedDefinition, Wrapper};
 use magnus::{
     function,
     scan_args::{get_kwargs, KwArgs},
-    DataTypeFunctions, Error, Module, Object, RClass, RHash, TypedData,
+    DataTypeFunctions, Error, Module, Object, RHash, TypedData,
 };
 
 #[derive(Clone, Debug, TypedData)]
@@ -14,7 +14,7 @@ pub struct UnionMemberType {
 
 impl UnionMemberType {
     pub fn new(kw: RHash) -> Result<Self, Error> {
-        let args: KwArgs<(RClass,), (), ()> = get_kwargs(kw, &["type"], &[])?;
+        let args: KwArgs<(Wrapper,), (), ()> = get_kwargs(kw, &["type"], &[])?;
         let (r#type,) = args.required;
         WrappedDefinition::new(r#type).map(|r#type| Self { r#type })
     }

@@ -75,7 +75,7 @@ impl CustomScalarTypeDefinition {
                     .ruby_name(),
                 specified_by_url,
             )]);
-            directives.push(directive_definition.class().new_instance_kw(args)?)?;
+            directives.push(directive_definition.class()?.new_instance_kw(args)?)?;
         }
         let directives: Directives = directives.try_into()?;
         Ok(Self {

@@ -61,7 +61,7 @@ impl SchemaDefinition {
             RClass,
         ) = args.required;
         if !query
-            .class()
+            .wrapper()
             .singleton_class()?
             .is_inherited(Self::query_root_module())
         {
@@ -69,7 +69,7 @@ impl SchemaDefinition {
                 exception::type_error(),
                 format!(
                     "no implicit conversion of {} into {}",
-                    query.class(),
+                    query.wrapper(),
                     Self::query_root_module(),
                 ),
             ));
