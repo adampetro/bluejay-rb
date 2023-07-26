@@ -13,9 +13,12 @@ module Bluejay
         description: T.nilable(String),
         directives: T::Array[Base::Directive],
         ruby_class: Base::ObjectType::ClassMethods,
+        visibility: T.nilable(Visibility),
       ).void
     end
-    def initialize(name:, field_definitions:, interface_implementations:, description:, directives:, ruby_class:); end
+    def initialize(name:, field_definitions:, interface_implementations:, description:, directives:, ruby_class:,
+      visibility:)
+    end
 
     sig { returns(String) }
     def name; end

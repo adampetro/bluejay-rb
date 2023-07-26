@@ -66,6 +66,7 @@ module Bluejay
             field_definitions: field_definitions + [Builtin.typename_field_definition],
             interface_implementations:,
             directives:,
+            visibility: nil,
           )
         end
       end

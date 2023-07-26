@@ -10,8 +10,9 @@ module Bluejay
         description: T.nilable(String),
         directives: T::Array[Base::Directive],
         field_definitions: T::Array[FieldDefinition],
+        visibility: T.nilable(Visibility),
       ).void
     end
-    def initialize(name:, member_types:, description:, directives:, field_definitions:); end
+    def initialize(name:, member_types:, description:, directives:, field_definitions:, visibility:); end
   end
 end

@@ -10,9 +10,10 @@ module Bluejay
         description: T.nilable(String),
         directives: T::Array[Base::Directive],
         ruby_class: Base::InputObjectType::ClassMethods,
+        visibility: T.nilable(Visibility),
       ).void
     end
-    def initialize(name:, input_field_definitions:, description:, directives:, ruby_class:); end
+    def initialize(name:, input_field_definitions:, description:, directives:, ruby_class:, visibility:); end
 
     sig { params(value: T.untyped, context: T.untyped).returns(Result[T.untyped, T::Array[CoercionError]]) }
     def coerce_input(value, context); end

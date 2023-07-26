@@ -41,6 +41,7 @@ module Bluejay
             member_types:,
             directives:,
             field_definitions: [Builtin.typename_field_definition],
+            visibility: nil,
           ),
           T.nilable(UnionTypeDefinition),
         )

@@ -1,7 +1,7 @@
 use crate::helpers::HasDefinitionWrapper;
 use crate::ruby_api::{
-    base, introspection, root, Directives, FieldDefinition, FieldsDefinition,
-    InterfaceImplementations,
+    base, introspection, root, Directives, FieldDefinition, FieldsDefinition, HasVisibility,
+    InterfaceImplementations, Visibility,
 };
 use crate::visibility_scoped::{ScopedInterfaceTypeDefinition, ScopedObjectTypeDefinition};
 use bluejay_core::{definition::prelude::*, AsIter};
@@ -19,6 +19,7 @@ pub struct ObjectTypeDefinition {
     directives: Directives,
     interface_implementations: InterfaceImplementations,
     is_builtin: bool,
+    visibility: Option<Visibility>,
 }
 
 impl ObjectTypeDefinition {
@@ -32,6 +33,7 @@ impl ObjectTypeDefinition {
                 "description",
                 "directives",
                 "ruby_class",
+                "visibility",
             ],
             &[],
         )?;
@@ -42,7 +44,16 @@ impl ObjectTypeDefinition {
             description,
             directives,
             ruby_class,
-        ): (String, RArray, RArray, Option<String>, RArray, RClass) = args.required;
+            visibility,
+        ): (
+            String,
+            RArray,
+            RArray,
+            Option<String>,
+            RArray,
+            RClass,
+            Option<Visibility>,
+        ) = args.required;
         let fields_definition = FieldsDefinition::new(field_definitions)?;
         let interface_implementations = InterfaceImplementations::new(interface_implementations)?;
         let directives = directives.try_into()?;
@@ -54,6 +65,7 @@ impl ObjectTypeDefinition {
             directives,
             interface_implementations,
             is_builtin,
+            visibility,
         })
     }
 }
@@ -63,6 +75,7 @@ impl DataTypeFunctions for ObjectTypeDefinition {
         gc::mark(self.fields_definition);
         gc::mark(self.interface_implementations);
         self.directives.mark();
+        self.visibility.as_ref().map(Visibility::mark);
     }
 }
 
@@ -162,6 +175,12 @@ impl introspection::Type for ObjectTypeDefinition {
 
     fn name(&self) -> Option<&str> {
         Some(&self.name)
+    }
+}
+
+impl HasVisibility for ObjectTypeDefinition {
+    fn visibility(&self) -> Option<&Visibility> {
+        self.visibility.as_ref()
     }
 }
 

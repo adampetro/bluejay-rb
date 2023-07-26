@@ -49,6 +49,7 @@ module Bluejay
             locations:,
             is_repeatable: repeatable?,
             ruby_class: self,
+            visibility: nil,
           )
         end
       end

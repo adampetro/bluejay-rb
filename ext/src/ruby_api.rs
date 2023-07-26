@@ -70,7 +70,7 @@ pub use union_member_type::UnionMemberType;
 pub use union_member_types::UnionMemberTypes;
 pub use union_type_definition::UnionTypeDefinition;
 pub use validation_error::ValidationError;
-pub use visibility::Visibility;
+pub use visibility::{HasVisibility, Visibility};
 pub use wrapped_value::WrappedValue;
 
 pub fn root() -> RModule {

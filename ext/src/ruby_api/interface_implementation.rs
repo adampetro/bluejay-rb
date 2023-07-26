@@ -1,18 +1,31 @@
 use crate::helpers::WrappedDefinition;
-use crate::ruby_api::{interface_type_definition::InterfaceTypeDefinition, root};
+use crate::ruby_api::{
+    interface_type_definition::InterfaceTypeDefinition, root, HasVisibility, Visibility,
+};
 use magnus::{
-    function, method, typed_data::Obj, DataTypeFunctions, Error, Module, Object, RClass, TypedData,
+    function, method,
+    scan_args::{get_kwargs, KwArgs},
+    typed_data::Obj,
+    DataTypeFunctions, Error, Module, Object, RClass, RHash, TypedData,
 };
 
-#[derive(Clone, Debug, TypedData)]
+#[derive(Debug, TypedData)]
 #[magnus(class = "Bluejay::InterfaceImplementation", mark)]
 pub struct InterfaceImplementation {
     interface: WrappedDefinition<InterfaceTypeDefinition>,
+    visibility: Option<Visibility>,
 }
 
 impl InterfaceImplementation {
-    pub fn new(interface: RClass) -> Result<Self, Error> {
-        WrappedDefinition::new(interface).map(|interface| Self { interface })
+    fn new(kw: RHash) -> Result<Self, Error> {
+        let args: KwArgs<(RClass,), (Option<Option<Visibility>>,), ()> =
+            get_kwargs(kw, &["interface"], &["visibility"])?;
+        let (interface,) = args.required;
+        let (visibility,) = args.optional;
+        WrappedDefinition::new(interface).map(|interface| Self {
+            interface,
+            visibility: visibility.flatten(),
+        })
     }
 
     pub fn interface(&self) -> Obj<InterfaceTypeDefinition> {
@@ -23,6 +36,7 @@ impl InterfaceImplementation {
 impl DataTypeFunctions for InterfaceImplementation {
     fn mark(&self) {
         self.interface.mark();
+        self.visibility.as_ref().map(Visibility::mark);
     }
 }
 
@@ -31,6 +45,12 @@ impl bluejay_core::definition::InterfaceImplementation for InterfaceImplementati
 
     fn interface(&self) -> &Self::InterfaceTypeDefinition {
         self.interface.as_ref()
+    }
+}
+
+impl HasVisibility for InterfaceImplementation {
+    fn visibility(&self) -> Option<&Visibility> {
+        self.visibility.as_ref()
     }
 }
 

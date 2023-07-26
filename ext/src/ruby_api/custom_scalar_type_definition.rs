@@ -2,14 +2,15 @@ use crate::execution::{CoerceResult, FieldError};
 use crate::helpers::{value_from_core_value, HasDefinitionWrapper, NewInstanceKw, Variables};
 use crate::ruby_api::{
     base, introspection, root, wrapped_value::value_inner_from_ruby_const_value, CoerceInput,
-    CoercionError, DirectiveDefinition, Directives, RResult, WrappedValue,
+    CoercionError, DirectiveDefinition, Directives, HasVisibility, RResult, Visibility,
+    WrappedValue,
 };
 use crate::visibility_scoped::ScopedScalarTypeDefinition;
 use bluejay_core::AsIter;
 use bluejay_parser::ast::Value as ParserValue;
 use bluejay_validator::Path;
 use magnus::{
-    function, memoize, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj, value::Id,
+    function, gc, memoize, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj, value::Id,
     DataTypeFunctions, Error, ExceptionClass, Module, Object, RArray, RClass, RHash, RModule,
     TypedData, Value,
 };
@@ -25,6 +26,7 @@ pub struct CustomScalarTypeDefinition {
     internal_representation_sorbet_type_name: String,
     input_coercion_method_signature: CoercionMethodSignature,
     result_coercion_method_signature: CoercionMethodSignature,
+    visibility: Option<Visibility>,
 }
 
 impl CustomScalarTypeDefinition {
@@ -40,6 +42,7 @@ impl CustomScalarTypeDefinition {
                 "internal_representation_sorbet_type_name",
                 "input_coercion_method_signature",
                 "result_coercion_method_signature",
+                "visibility",
             ],
             &[],
         )?;
@@ -52,6 +55,7 @@ impl CustomScalarTypeDefinition {
             String,
             Obj<CoercionMethodSignature>,
             Obj<CoercionMethodSignature>,
+            Option<Visibility>,
         );
         let (
             name,
@@ -62,6 +66,7 @@ impl CustomScalarTypeDefinition {
             internal_representation_sorbet_type_name,
             input_coercion_method_signature,
             result_coercion_method_signature,
+            visibility,
         ): RequiredArgs = args.required;
         if let Some(specified_by_url) = specified_by_url.as_deref() {
             let directive_definition = DirectiveDefinition::specified_by();
@@ -87,6 +92,7 @@ impl CustomScalarTypeDefinition {
             internal_representation_sorbet_type_name,
             input_coercion_method_signature: input_coercion_method_signature.get().clone(),
             result_coercion_method_signature: result_coercion_method_signature.get().clone(),
+            visibility,
         })
     }
 
@@ -147,6 +153,8 @@ impl CustomScalarTypeDefinition {
 impl DataTypeFunctions for CustomScalarTypeDefinition {
     fn mark(&self) {
         self.directives.mark();
+        gc::mark(self.ruby_class);
+        self.visibility.as_ref().map(Visibility::mark);
     }
 }
 
@@ -253,6 +261,12 @@ impl introspection::Type for CustomScalarTypeDefinition {
 
     fn specified_by_url(&self) -> Option<&str> {
         self.specified_by_url()
+    }
+}
+
+impl HasVisibility for CustomScalarTypeDefinition {
+    fn visibility(&self) -> Option<&Visibility> {
+        self.visibility.as_ref()
     }
 }
 

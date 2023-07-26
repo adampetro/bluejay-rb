@@ -9,9 +9,10 @@ module Bluejay
         description: T.nilable(String),
         directives: T::Array[Base::Directive],
         deprecation_reason: T.nilable(String),
+        visibility: T.nilable(Visibility),
       ).void
     end
-    def initialize(name:, description: nil, directives: [], deprecation_reason: nil); end
+    def initialize(name:, description: nil, directives: [], deprecation_reason: nil, visibility: nil); end
 
     sig { returns(String) }
     def name; end

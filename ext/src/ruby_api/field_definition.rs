@@ -1,6 +1,7 @@
 use crate::helpers::NewInstanceKw;
 use crate::ruby_api::{
-    root, ArgumentsDefinition, DirectiveDefinition, Directives, OutputType, Visibility,
+    root, ArgumentsDefinition, DirectiveDefinition, Directives, HasVisibility, OutputType,
+    Visibility,
 };
 use bluejay_core::AsIter;
 use convert_case::{Case, Casing};
@@ -154,10 +155,6 @@ impl FieldDefinition {
     pub fn deprecation_reason(&self) -> Option<&str> {
         self.deprecation_reason.as_deref()
     }
-
-    pub fn visibility(&self) -> Option<&Visibility> {
-        self.visibility.as_ref()
-    }
 }
 
 impl DataTypeFunctions for FieldDefinition {
@@ -197,6 +194,12 @@ impl bluejay_core::definition::FieldDefinition for FieldDefinition {
 
     fn directives(&self) -> Option<&Self::Directives> {
         self.directives.to_option()
+    }
+}
+
+impl HasVisibility for FieldDefinition {
+    fn visibility(&self) -> Option<&Visibility> {
+        self.visibility.as_ref()
     }
 }
 

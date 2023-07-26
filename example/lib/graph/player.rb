@@ -23,7 +23,7 @@ module Graph
       sig { override.returns(T::Array[Bluejay::InterfaceImplementation]) }
       def interface_implementations
         [
-          Bluejay::InterfaceImplementation.new(Person),
+          Bluejay::InterfaceImplementation.new(interface: Person),
         ]
       end
     end

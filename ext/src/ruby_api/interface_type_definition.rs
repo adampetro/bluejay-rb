@@ -1,6 +1,7 @@
 use crate::helpers::HasDefinitionWrapper;
 use crate::ruby_api::{
-    base, introspection, root, Directives, FieldsDefinition, InterfaceImplementations,
+    base, introspection, root, Directives, FieldsDefinition, HasVisibility,
+    InterfaceImplementations, Visibility,
 };
 use magnus::{
     function, gc, memoize, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error,
@@ -15,6 +16,7 @@ pub struct InterfaceTypeDefinition {
     fields_definition: FieldsDefinition,
     directives: Directives,
     interface_implementations: InterfaceImplementations,
+    visibility: Option<Visibility>,
 }
 
 impl InterfaceTypeDefinition {
@@ -27,15 +29,24 @@ impl InterfaceTypeDefinition {
                 "interface_implementations",
                 "description",
                 "directives",
+                "visibility",
             ],
             &[],
         )?;
-        let (name, field_definitions, interface_implementations, description, directives): (
+        let (
+            name,
+            field_definitions,
+            interface_implementations,
+            description,
+            directives,
+            visibility,
+        ): (
             String,
             RArray,
             RArray,
             Option<String>,
             RArray,
+            Option<Visibility>,
         ) = args.required;
         let fields_definition = FieldsDefinition::new(field_definitions)?;
         let interface_implementations = InterfaceImplementations::new(interface_implementations)?;
@@ -46,6 +57,7 @@ impl InterfaceTypeDefinition {
             fields_definition,
             directives,
             interface_implementations,
+            visibility,
         })
     }
 
@@ -75,6 +87,7 @@ impl DataTypeFunctions for InterfaceTypeDefinition {
         gc::mark(self.fields_definition);
         gc::mark(self.interface_implementations);
         self.directives.mark();
+        self.visibility.as_ref().map(Visibility::mark);
     }
 }
 
@@ -131,6 +144,12 @@ impl introspection::Type for InterfaceTypeDefinition {
 
     fn name(&self) -> Option<&str> {
         Some(&self.name)
+    }
+}
+
+impl HasVisibility for InterfaceTypeDefinition {
+    fn visibility(&self) -> Option<&Visibility> {
+        self.visibility.as_ref()
     }
 }
 

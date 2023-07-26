@@ -62,6 +62,7 @@ module Bluejay
             internal_representation_sorbet_type_name:,
             input_coercion_method_signature: CustomScalarTypeDefinition::CoercionMethodSignature::Result,
             result_coercion_method_signature: CustomScalarTypeDefinition::CoercionMethodSignature::Result,
+            visibility: nil,
           ),
           T.nilable(CustomScalarTypeDefinition),
         )
