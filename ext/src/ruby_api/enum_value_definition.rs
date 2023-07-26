@@ -24,7 +24,7 @@ impl EnumValueDefinition {
         )?;
         let (name,) = args.required;
         let (description, directives, deprecation_reason): (
-            Option<String>,
+            Option<Option<String>>,
             Option<RArray>,
             Option<Option<String>>,
         ) = args.optional;
@@ -47,7 +47,7 @@ impl EnumValueDefinition {
         let directives = directives.try_into()?;
         Ok(Self {
             name,
-            description,
+            description: description.flatten(),
             directives,
             deprecation_reason,
         })
