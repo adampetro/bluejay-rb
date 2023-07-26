@@ -8,7 +8,7 @@ module Bluejay
         name: String,
         type: InputType,
         description: T.nilable(String),
-        directives: T::Array[Base::Directive],
+        directives: T::Array[Base::Directive::Instance],
         ruby_name: T.nilable(String),
         default_value: T.nilable(Object),
         visibility: T.nilable(Visibility),

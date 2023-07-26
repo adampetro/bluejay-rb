@@ -7,10 +7,9 @@ module Bluejay
   module Validation
     class TestWrappedDefinitionException < Minitest::Test
       class MyScalar
-        include(Bluejay::Base::CustomScalarType)
-
         class << self
           extend(T::Sig)
+          include(Bluejay::Base::CustomScalarType)
 
           sig { override.returns(Bluejay::CustomScalarTypeDefinition) }
           def definition

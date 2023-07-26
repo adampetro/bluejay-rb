@@ -60,7 +60,11 @@ impl SchemaDefinition {
             RArray,
             RClass,
         ) = args.required;
-        if !query.class().is_inherited(Self::query_root_module()) {
+        if !query
+            .class()
+            .singleton_class()?
+            .is_inherited(Self::query_root_module())
+        {
             return Err(Error::new(
                 exception::type_error(),
                 format!(

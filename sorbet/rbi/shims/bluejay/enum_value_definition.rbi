@@ -7,7 +7,7 @@ module Bluejay
       params(
         name: String,
         description: T.nilable(String),
-        directives: T::Array[Base::Directive],
+        directives: T::Array[Base::Directive::Instance],
         deprecation_reason: T.nilable(String),
       ).void
     end

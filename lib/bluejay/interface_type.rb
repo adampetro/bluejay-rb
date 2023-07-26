@@ -3,14 +3,13 @@
 
 module Bluejay
   class InterfaceType
-    include(Base::InterfaceType)
-
     class << self
       extend(T::Sig)
       extend(T::Helpers)
       include(OutputTypeShorthands)
       include(InputTypeShorthands)
       include(NameFromClass)
+      include(Base::InterfaceType)
 
       abstract!
 

@@ -3,10 +3,10 @@
 
 module Bluejay
   class InterfaceImplementation
-    sig { params(interface: Base::InterfaceType::ClassMethods).void }
+    sig { params(interface: Base::InterfaceType).void }
     def initialize(interface); end
 
-    sig { returns(Base::InterfaceType::ClassMethods) }
+    sig { returns(Base::InterfaceType) }
     def interface; end
   end
 end

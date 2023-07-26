@@ -3,12 +3,11 @@
 
 module Bluejay
   class UnionType
-    include(Base::UnionType)
-
     class << self
       extend(T::Sig)
       extend(T::Helpers)
       include(NameFromClass)
+      include(Base::UnionType)
 
       abstract!
 

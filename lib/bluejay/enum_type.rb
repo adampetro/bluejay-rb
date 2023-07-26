@@ -3,12 +3,11 @@
 
 module Bluejay
   class EnumType
-    include(Base::EnumType)
-
     class << self
       extend(T::Sig)
       extend(T::Helpers)
       include(NameFromClass)
+      include(Base::EnumType)
 
       abstract!
 

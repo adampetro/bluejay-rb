@@ -3,14 +3,12 @@
 
 module Bluejay
   class InputObjectType
-    extend(T::Sig)
-    include(Base::InputObjectType)
-
     class << self
       extend(T::Sig)
       extend(T::Helpers)
       include(InputTypeShorthands)
       include(NameFromClass)
+      include(Base::InputObjectType)
 
       abstract!
 

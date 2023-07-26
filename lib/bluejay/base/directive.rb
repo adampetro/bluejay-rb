@@ -7,19 +7,19 @@ module Bluejay
       extend(T::Sig)
       extend(T::Helpers)
 
-      interface!
-
-      module ClassMethods
+      module Instance
         extend(T::Sig)
         extend(T::Helpers)
 
-        abstract!
+        interface!
 
-        sig { abstract.returns(DirectiveDefinition) }
-        def definition; end
+        mixes_in_class_methods(Directive)
       end
 
-      mixes_in_class_methods(ClassMethods)
+      interface!
+
+      sig { abstract.returns(DirectiveDefinition) }
+      def definition; end
     end
   end
 end

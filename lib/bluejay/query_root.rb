@@ -3,11 +3,10 @@
 
 module Bluejay
   class QueryRoot < ObjectType
-    include(Base::QueryRoot)
-
     class << self
       extend(T::Sig)
       extend(T::Helpers)
+      include(Base::QueryRoot)
 
       abstract!
 
