@@ -60,6 +60,8 @@ module Bluejay
             specified_by_url:,
             ruby_class: self,
             internal_representation_sorbet_type_name:,
+            input_coercion_method_signature: CustomScalarTypeDefinition::CoercionMethodSignature::Result,
+            result_coercion_method_signature: CustomScalarTypeDefinition::CoercionMethodSignature::Result,
           ),
           T.nilable(CustomScalarTypeDefinition),
         )

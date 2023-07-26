@@ -11,10 +11,21 @@ module Bluejay
         specified_by_url: T.nilable(String),
         ruby_class: Base::CustomScalarType::ClassMethods,
         internal_representation_sorbet_type_name: String,
+        input_coercion_method_signature: CoercionMethodSignature,
+        result_coercion_method_signature: CoercionMethodSignature,
       ).void
     end
     def initialize(name:, description:, directives:, specified_by_url:, ruby_class:,
-      internal_representation_sorbet_type_name:)
+      internal_representation_sorbet_type_name:, input_coercion_method_signature:, result_coercion_method_signature:)
+    end
+
+    class CoercionMethodSignature
+      Result = T.let(T.unsafe(nil), CoercionMethodSignature)
+
+      class << self
+        sig { params(exception_class: T.class_of(StandardError)).returns(T.attached_class) }
+        def exception(exception_class); end
+      end
     end
   end
 end

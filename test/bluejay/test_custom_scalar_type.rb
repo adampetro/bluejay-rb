@@ -37,5 +37,7 @@ module Bluejay
 
       assert_equal(Result.ok("2023-01-01"), DateScalar.coerce_result(date))
     end
+
+    # TODO: test coerce_input and coerce_result with signatures that raise instead of return results
   end
 end
