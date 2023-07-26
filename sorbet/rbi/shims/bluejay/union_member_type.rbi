@@ -3,7 +3,7 @@
 
 module Bluejay
   class UnionMemberType
-    sig { params(type: Base::ObjectType::ClassMethods).void }
+    sig { params(type: Base::ObjectType).void }
     def initialize(type:); end
   end
 end

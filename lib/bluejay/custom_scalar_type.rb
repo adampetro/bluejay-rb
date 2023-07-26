@@ -4,7 +4,6 @@
 module Bluejay
   class CustomScalarType
     extend(T::Generic)
-    include(Base::CustomScalarType)
 
     InternalRepresentation = type_template
 
@@ -12,6 +11,7 @@ module Bluejay
       extend(T::Sig)
       extend(T::Helpers)
       include(NameFromClass)
+      include(Base::CustomScalarType)
 
       abstract!
 

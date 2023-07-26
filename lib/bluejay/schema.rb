@@ -4,11 +4,10 @@
 module Bluejay
   class Schema
     extend(Finalize)
-    include(Base::Schema)
-
     class << self
       extend(T::Sig)
       extend(T::Helpers)
+      include(Base::Schema)
 
       abstract!
 

@@ -6,10 +6,10 @@ module Bluejay
     sig do
       params(
         description: T.nilable(String),
-        query: Base::QueryRoot::ClassMethods,
-        mutation: T.nilable(Base::ObjectType::ClassMethods),
-        directives: T::Array[Base::Directive],
-        ruby_class: Base::Schema::ClassMethods,
+        query: Base::QueryRoot,
+        mutation: T.nilable(Base::ObjectType),
+        directives: T::Array[Base::Directive::Instance],
+        ruby_class: Base::Schema,
       ).void
     end
     def initialize(description:, query:, mutation:, directives:, ruby_class:); end

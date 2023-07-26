@@ -1,10 +1,11 @@
 use magnus::{
-    exception, gc, memoize, typed_data::Obj, value::Id, Error, IntoValue, Module, RClass, RModule,
-    Ruby, TryConvert, TypedData, Value,
+    exception, gc, memoize, typed_data::Obj, value::Id, Error, IntoValue, Module, Object, RClass,
+    RModule, Ruby, TryConvert, TypedData, Value,
 };
 use once_cell::unsync::OnceCell;
 
 pub trait HasDefinitionWrapper: TypedData {
+    /// module that the wrapper must include in its singleton (a.k.a. extend)
     fn required_module() -> RModule;
 }
 
@@ -25,7 +26,7 @@ impl<T: HasDefinitionWrapper> Clone for WrappedDefinition<T> {
 
 impl<T: HasDefinitionWrapper> WrappedDefinition<T> {
     pub fn new(cls: RClass) -> Result<Self, Error> {
-        if cls.is_inherited(T::required_module()) {
+        if cls.singleton_class()?.is_inherited(T::required_module()) {
             Ok(Self {
                 cls,
                 memoized_definition: OnceCell::new(),
@@ -33,7 +34,11 @@ impl<T: HasDefinitionWrapper> WrappedDefinition<T> {
         } else {
             Err(Error::new(
                 exception::type_error(),
-                format!("class {} does not include {}", cls, T::required_module()),
+                format!(
+                    "class {} singleton does not include {}",
+                    cls,
+                    T::required_module()
+                ),
             ))
         }
     }

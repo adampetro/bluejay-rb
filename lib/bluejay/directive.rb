@@ -3,13 +3,14 @@
 
 module Bluejay
   class Directive
-    include(Base::Directive)
+    include(Base::Directive::Instance)
 
     class << self
       extend(T::Sig)
       extend(T::Helpers)
       include(InputTypeShorthands)
       include(NameFromClass)
+      include(Base::Directive)
 
       abstract!
 

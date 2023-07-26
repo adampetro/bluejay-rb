@@ -8,8 +8,8 @@ module Bluejay
         name: String,
         enum_value_definitions: T::Array[EnumValueDefinition],
         description: T.nilable(String),
-        directives: T::Array[Base::Directive],
-        ruby_class: Base::EnumType::ClassMethods,
+        directives: T::Array[Base::Directive::Instance],
+        ruby_class: Base::EnumType,
       ).void
     end
     def initialize(name:, enum_value_definitions:, description:, directives:, ruby_class:); end

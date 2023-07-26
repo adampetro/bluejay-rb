@@ -7,9 +7,9 @@ module Bluejay
       params(
         name: String,
         description: T.nilable(String),
-        directives: T::Array[Base::Directive],
+        directives: T::Array[Base::Directive::Instance],
         specified_by_url: T.nilable(String),
-        ruby_class: Base::CustomScalarType::ClassMethods,
+        ruby_class: Base::CustomScalarType,
         internal_representation_sorbet_type_name: String,
         input_coercion_method_signature: CoercionMethodSignature,
         result_coercion_method_signature: CoercionMethodSignature,

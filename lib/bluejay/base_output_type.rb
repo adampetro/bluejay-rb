@@ -5,11 +5,11 @@ module Bluejay
   BaseOutputType = T.type_alias do
     T.any(
       Scalar,
-      Base::EnumType::ClassMethods,
-      Base::ObjectType::ClassMethods,
-      Base::UnionType::ClassMethods,
-      Base::InterfaceType::ClassMethods,
-      Base::CustomScalarType::ClassMethods,
+      Base::EnumType,
+      Base::ObjectType,
+      Base::UnionType,
+      Base::InterfaceType,
+      Base::CustomScalarType,
     )
   end
 end

@@ -3,14 +3,13 @@
 
 module Bluejay
   class ObjectType
-    include(Base::ObjectType)
-
     class << self
       extend(T::Sig)
       extend(T::Helpers)
       include(OutputTypeShorthands)
       include(InputTypeShorthands)
       include(NameFromClass)
+      include(Base::ObjectType)
 
       abstract!
 
