@@ -1,5 +1,8 @@
 use crate::helpers::HasDefinitionWrapper;
-use crate::ruby_api::{base, introspection, root, Directives, FieldsDefinition, UnionMemberTypes};
+use crate::ruby_api::{
+    base, introspection, root, Directives, FieldsDefinition, HasVisibility, UnionMemberTypes,
+    Visibility,
+};
 use crate::visibility_scoped::{ScopedObjectTypeDefinition, ScopedUnionTypeDefinition};
 use bluejay_core::{definition::prelude::*, AsIter};
 use magnus::{
@@ -15,6 +18,7 @@ pub struct UnionTypeDefinition {
     directives: Directives,
     member_types: UnionMemberTypes,
     fields_definition: FieldsDefinition,
+    visibility: Option<Visibility>,
 }
 
 impl UnionTypeDefinition {
@@ -27,15 +31,17 @@ impl UnionTypeDefinition {
                 "description",
                 "directives",
                 "field_definitions",
+                "visibility",
             ],
             &[],
         )?;
-        let (name, member_types, description, directives, field_definitions): (
+        let (name, member_types, description, directives, field_definitions, visibility): (
             String,
             RArray,
             Option<String>,
             RArray,
             RArray,
+            Option<Visibility>,
         ) = args.required;
         let member_types = UnionMemberTypes::new(member_types)?;
         let directives = directives.try_into()?;
@@ -46,6 +52,7 @@ impl UnionTypeDefinition {
             directives,
             member_types,
             fields_definition,
+            visibility,
         })
     }
 
@@ -93,6 +100,7 @@ impl DataTypeFunctions for UnionTypeDefinition {
         gc::mark(self.member_types);
         self.directives.mark();
         gc::mark(self.fields_definition);
+        self.visibility.as_ref().map(Visibility::mark);
     }
 }
 
@@ -147,6 +155,12 @@ impl introspection::Type for UnionTypeDefinition {
 
     fn possible_types(&self) -> Option<UnionMemberTypes> {
         Some(self.member_types)
+    }
+}
+
+impl HasVisibility for UnionTypeDefinition {
+    fn visibility(&self) -> Option<&Visibility> {
+        self.visibility.as_ref()
     }
 }
 

@@ -1,5 +1,5 @@
 use crate::helpers::NewInstanceKw;
-use crate::ruby_api::{root, DirectiveDefinition, Directives};
+use crate::ruby_api::{root, DirectiveDefinition, Directives, HasVisibility, Visibility};
 use bluejay_core::{definition::EnumValueDefinition as CoreEnumValueDefinition, AsIter};
 use magnus::{
     function, method, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error, Module,
@@ -13,6 +13,7 @@ pub struct EnumValueDefinition {
     description: Option<String>,
     directives: Directives,
     deprecation_reason: Option<String>,
+    visibility: Option<Visibility>,
 }
 
 impl EnumValueDefinition {
@@ -20,14 +21,21 @@ impl EnumValueDefinition {
         let args: KwArgs<(String,), _, ()> = get_kwargs(
             kw,
             &["name"],
-            &["description", "directives", "deprecation_reason"],
+            &[
+                "description",
+                "directives",
+                "deprecation_reason",
+                "visibility",
+            ],
         )?;
         let (name,) = args.required;
-        let (description, directives, deprecation_reason): (
+        type OptionalArgs = (
             Option<Option<String>>,
             Option<RArray>,
             Option<Option<String>>,
-        ) = args.optional;
+            Option<Option<Visibility>>,
+        );
+        let (description, directives, deprecation_reason, visibility): OptionalArgs = args.optional;
         let deprecation_reason = deprecation_reason.flatten();
         let directives = directives.unwrap_or_else(RArray::new);
         if let Some(deprecation_reason) = deprecation_reason.as_deref() {
@@ -50,6 +58,7 @@ impl EnumValueDefinition {
             description: description.flatten(),
             directives,
             deprecation_reason,
+            visibility: visibility.flatten(),
         })
     }
 
@@ -73,6 +82,7 @@ impl EnumValueDefinition {
 impl DataTypeFunctions for EnumValueDefinition {
     fn mark(&self) {
         self.directives.mark();
+        self.visibility.as_ref().map(Visibility::mark);
     }
 }
 
@@ -89,6 +99,12 @@ impl CoreEnumValueDefinition for EnumValueDefinition {
 
     fn directives(&self) -> Option<&Self::Directives> {
         self.directives.to_option()
+    }
+}
+
+impl HasVisibility for EnumValueDefinition {
+    fn visibility(&self) -> Option<&Visibility> {
+        self.visibility.as_ref()
     }
 }
 

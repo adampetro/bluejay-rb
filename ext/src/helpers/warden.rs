@@ -1,4 +1,4 @@
-use crate::ruby_api::{SchemaDefinition, Visibility};
+use crate::ruby_api::{HasVisibility, SchemaDefinition};
 use bluejay_core::definition::SchemaDefinition as CoreSchemaDefinition;
 use magnus::Value;
 use std::cell::RefCell;
@@ -17,8 +17,8 @@ impl Warden {
         }
     }
 
-    fn evaluate_visibility(&self, visibility: Option<&Visibility>) -> bool {
-        visibility.map_or(true, |visibility| {
+    fn evaluate_visibility(&self, item: &impl HasVisibility) -> bool {
+        item.visibility().map_or(true, |visibility| {
             if let Some(cached) = self.cache.borrow().get(visibility.cache_key()).cloned() {
                 return cached;
             }
@@ -42,83 +42,83 @@ impl bluejay_visibility::Warden for Warden {
         &self,
         field_definition: &<Self::SchemaDefinition as CoreSchemaDefinition>::FieldDefinition,
     ) -> bool {
-        self.evaluate_visibility(field_definition.visibility())
+        self.evaluate_visibility(field_definition)
     }
 
     fn is_input_value_definition_visible(
         &self,
         input_value_definition: &<Self::SchemaDefinition as CoreSchemaDefinition>::InputValueDefinition,
     ) -> bool {
-        self.evaluate_visibility(input_value_definition.visibility())
+        self.evaluate_visibility(input_value_definition)
     }
 
     fn is_enum_value_definition_visible(
         &self,
-        _: &<Self::SchemaDefinition as CoreSchemaDefinition>::EnumValueDefinition,
+        enum_value_definition: &<Self::SchemaDefinition as CoreSchemaDefinition>::EnumValueDefinition,
     ) -> bool {
-        true
+        self.evaluate_visibility(enum_value_definition)
     }
 
     fn is_union_member_type_visible(
         &self,
-        _: &<Self::SchemaDefinition as CoreSchemaDefinition>::UnionMemberType,
+        union_member_type: &<Self::SchemaDefinition as CoreSchemaDefinition>::UnionMemberType,
     ) -> bool {
-        true
+        self.evaluate_visibility(union_member_type)
     }
 
     fn is_interface_implementation_visible(
         &self,
-        _: &<Self::SchemaDefinition as CoreSchemaDefinition>::InterfaceImplementation,
+        interface_implementation: &<Self::SchemaDefinition as CoreSchemaDefinition>::InterfaceImplementation,
     ) -> bool {
-        true
+        self.evaluate_visibility(interface_implementation)
     }
 
     fn is_directive_definition_visible(
         &self,
-        _: &<Self::SchemaDefinition as CoreSchemaDefinition>::DirectiveDefinition,
+        directive_definition: &<Self::SchemaDefinition as CoreSchemaDefinition>::DirectiveDefinition,
     ) -> bool {
-        true
+        self.evaluate_visibility(directive_definition)
     }
 
     fn is_custom_scalar_type_definition_visible(
         &self,
-        _: &<Self::SchemaDefinition as CoreSchemaDefinition>::CustomScalarTypeDefinition,
+        custom_scalar_type_definition: &<Self::SchemaDefinition as CoreSchemaDefinition>::CustomScalarTypeDefinition,
     ) -> bool {
-        true
+        self.evaluate_visibility(custom_scalar_type_definition)
     }
 
     fn is_enum_type_definition_visible(
         &self,
-        _: &<Self::SchemaDefinition as CoreSchemaDefinition>::EnumTypeDefinition,
+        enum_type_definition: &<Self::SchemaDefinition as CoreSchemaDefinition>::EnumTypeDefinition,
     ) -> bool {
-        true
+        self.evaluate_visibility(enum_type_definition)
     }
 
     fn is_input_object_type_definition_visible(
         &self,
-        _: &<Self::SchemaDefinition as CoreSchemaDefinition>::InputObjectTypeDefinition,
+        input_object_type_definition: &<Self::SchemaDefinition as CoreSchemaDefinition>::InputObjectTypeDefinition,
     ) -> bool {
-        true
+        self.evaluate_visibility(input_object_type_definition)
     }
 
     fn is_interface_type_definition_visible(
         &self,
-        _: &<Self::SchemaDefinition as CoreSchemaDefinition>::InterfaceTypeDefinition,
+        interface_type_definition: &<Self::SchemaDefinition as CoreSchemaDefinition>::InterfaceTypeDefinition,
     ) -> bool {
-        true
+        self.evaluate_visibility(interface_type_definition)
     }
 
     fn is_object_type_definition_visible(
         &self,
-        _: &<Self::SchemaDefinition as CoreSchemaDefinition>::ObjectTypeDefinition,
+        object_type_definition: &<Self::SchemaDefinition as CoreSchemaDefinition>::ObjectTypeDefinition,
     ) -> bool {
-        true
+        self.evaluate_visibility(object_type_definition)
     }
 
     fn is_union_type_definition_visible(
         &self,
-        _: &<Self::SchemaDefinition as CoreSchemaDefinition>::UnionTypeDefinition,
+        union_type_definition: &<Self::SchemaDefinition as CoreSchemaDefinition>::UnionTypeDefinition,
     ) -> bool {
-        true
+        self.evaluate_visibility(union_type_definition)
     }
 }

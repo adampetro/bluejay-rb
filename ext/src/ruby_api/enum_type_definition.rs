@@ -3,7 +3,7 @@ use crate::helpers::{public_name, HasDefinitionWrapper, Variables};
 use crate::ruby_api::{
     base, coerce_input::CoerceInput, coercion_error::CoercionError,
     enum_value_definitions::EnumValueDefinitions, introspection, root, wrapped_value::ValueInner,
-    Directives, WrappedValue,
+    Directives, HasVisibility, Visibility, WrappedValue,
 };
 use crate::visibility_scoped::ScopedEnumTypeDefinition;
 use bluejay_core::{definition::prelude::*, AsIter};
@@ -22,6 +22,7 @@ pub struct EnumTypeDefinition {
     enum_value_definitions: EnumValueDefinitions,
     directives: Directives,
     is_builtin: bool,
+    visibility: Option<Visibility>,
 }
 
 impl EnumTypeDefinition {
@@ -34,15 +35,17 @@ impl EnumTypeDefinition {
                 "description",
                 "directives",
                 "ruby_class",
+                "visibility",
             ],
             &[],
         )?;
-        let (name, enum_value_definitions, description, directives, ruby_class): (
+        let (name, enum_value_definitions, description, directives, ruby_class, visibility): (
             String,
             RArray,
             Option<String>,
             RArray,
             RClass,
+            Option<Visibility>,
         ) = args.required;
         let enum_value_definitions = EnumValueDefinitions::new(enum_value_definitions)?;
         let directives = directives.try_into()?;
@@ -53,6 +56,7 @@ impl EnumTypeDefinition {
             enum_value_definitions,
             directives,
             is_builtin,
+            visibility,
         })
     }
 
@@ -77,6 +81,7 @@ impl DataTypeFunctions for EnumTypeDefinition {
     fn mark(&self) {
         gc::mark(self.enum_value_definitions);
         self.directives.mark();
+        self.visibility.as_ref().map(Visibility::mark);
     }
 }
 
@@ -239,6 +244,12 @@ impl introspection::Type for EnumTypeDefinition {
 
     fn name(&self) -> Option<&str> {
         Some(&self.name)
+    }
+}
+
+impl HasVisibility for EnumTypeDefinition {
+    fn visibility(&self) -> Option<&Visibility> {
+        self.visibility.as_ref()
     }
 }
 

@@ -3,7 +3,8 @@ use crate::helpers::{
 };
 use crate::ruby_api::{
     base, introspection, root, wrapped_value::value_inner_from_ruby_const_value, CoerceInput,
-    CoercionError, Directives, InputFieldsDefinition, RResult, WrappedValue,
+    CoercionError, Directives, HasVisibility, InputFieldsDefinition, RResult, Visibility,
+    WrappedValue,
 };
 use crate::visibility_scoped::{ScopedInputObjectTypeDefinition, VisibilityCache};
 use bluejay_core::{definition::prelude::*, AsIter};
@@ -23,6 +24,7 @@ pub struct InputObjectTypeDefinition {
     input_fields_definition: InputFieldsDefinition,
     directives: Directives,
     ruby_class: RClass,
+    visibility: Option<Visibility>,
 }
 
 impl InputObjectTypeDefinition {
@@ -35,15 +37,17 @@ impl InputObjectTypeDefinition {
                 "description",
                 "directives",
                 "ruby_class",
+                "visibility",
             ],
             &[],
         )?;
-        let (name, input_field_definitions, description, directives, ruby_class): (
+        let (name, input_field_definitions, description, directives, ruby_class, visibility): (
             String,
             RArray,
             Option<String>,
             RArray,
             RClass,
+            Option<Visibility>,
         ) = args.required;
         let input_fields_definition = InputFieldsDefinition::new(input_field_definitions)?;
         let directives = directives.try_into()?;
@@ -53,6 +57,7 @@ impl InputObjectTypeDefinition {
             input_fields_definition,
             directives,
             ruby_class,
+            visibility,
         })
     }
 
@@ -78,6 +83,7 @@ impl DataTypeFunctions for InputObjectTypeDefinition {
         gc::mark(self.input_fields_definition);
         gc::mark(self.ruby_class);
         self.directives.mark();
+        self.visibility.as_ref().map(Visibility::mark);
     }
 }
 
@@ -356,6 +362,12 @@ impl introspection::Type for InputObjectTypeDefinition {
 
     fn name(&self) -> Option<&str> {
         Some(&self.name)
+    }
+}
+
+impl HasVisibility for InputObjectTypeDefinition {
+    fn visibility(&self) -> Option<&Visibility> {
+        self.visibility.as_ref()
     }
 }
 

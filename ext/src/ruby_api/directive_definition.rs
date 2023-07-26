@@ -1,5 +1,7 @@
 use crate::helpers::{HasDefinitionWrapper, WrappedDefinition};
-use crate::ruby_api::{base, root, ArgumentsDefinition, DirectiveLocation};
+use crate::ruby_api::{
+    base, root, ArgumentsDefinition, DirectiveLocation, HasVisibility, Visibility,
+};
 use bluejay_core::definition::{
     DirectiveDefinition as CoreDirectiveDefinition, DirectiveLocation as CoreDirectiveLocation,
 };
@@ -18,6 +20,7 @@ pub struct DirectiveDefinition {
     locations: Vec<CoreDirectiveLocation>,
     ruby_class: RClass,
     is_builtin: bool,
+    visibility: Option<Visibility>,
 }
 
 impl DirectiveDefinition {
@@ -31,17 +34,28 @@ impl DirectiveDefinition {
                 "is_repeatable",
                 "locations",
                 "ruby_class",
+                "visibility",
             ],
             &[],
         )?;
-        let (name, argument_definitions, description, is_repeatable, locations, ruby_class): (
+        type RequiredArgs = (
             String,
             RArray,
             Option<String>,
             bool,
             RArray,
             RClass,
-        ) = args.required;
+            Option<Visibility>,
+        );
+        let (
+            name,
+            argument_definitions,
+            description,
+            is_repeatable,
+            locations,
+            ruby_class,
+            visibility,
+        ): RequiredArgs = args.required;
         let arguments_definition = ArgumentsDefinition::new(argument_definitions)?;
         let locations: Result<Vec<CoreDirectiveLocation>, Error> = locations
             .each()
@@ -61,6 +75,7 @@ impl DirectiveDefinition {
             locations: locations?,
             ruby_class,
             is_builtin,
+            visibility,
         })
     }
 
@@ -103,6 +118,7 @@ impl DataTypeFunctions for DirectiveDefinition {
     fn mark(&self) {
         gc::mark(self.arguments_definition);
         gc::mark(self.ruby_class);
+        self.visibility.as_ref().map(Visibility::mark);
     }
 }
 
@@ -140,6 +156,12 @@ impl CoreDirectiveDefinition for DirectiveDefinition {
 
     fn is_builtin(&self) -> bool {
         self.is_builtin
+    }
+}
+
+impl HasVisibility for DirectiveDefinition {
+    fn visibility(&self) -> Option<&Visibility> {
+        self.visibility.as_ref()
     }
 }
 

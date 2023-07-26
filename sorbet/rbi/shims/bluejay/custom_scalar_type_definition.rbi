@@ -13,10 +13,11 @@ module Bluejay
         internal_representation_sorbet_type_name: String,
         input_coercion_method_signature: CoercionMethodSignature,
         result_coercion_method_signature: CoercionMethodSignature,
+        visibility: T.nilable(Visibility),
       ).void
     end
     def initialize(name:, description:, directives:, specified_by_url:, ruby_class:,
-      internal_representation_sorbet_type_name:, input_coercion_method_signature:, result_coercion_method_signature:)
+      internal_representation_sorbet_type_name:, input_coercion_method_signature:, result_coercion_method_signature:, visibility:)
     end
 
     class CoercionMethodSignature

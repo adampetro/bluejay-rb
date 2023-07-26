@@ -53,3 +53,7 @@ impl TryConvert for Visibility {
         })
     }
 }
+
+pub trait HasVisibility {
+    fn visibility(&self) -> Option<&Visibility>;
+}

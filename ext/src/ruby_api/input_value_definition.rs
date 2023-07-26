@@ -1,6 +1,6 @@
 use crate::ruby_api::{
-    errors, root, wrapped_value::ValueInner, CoerceInput, Directives, InputType, Visibility,
-    WrappedValue,
+    errors, root, wrapped_value::ValueInner, CoerceInput, Directives, HasVisibility, InputType,
+    Visibility, WrappedValue,
 };
 use crate::visibility_scoped::{ScopedInputType, VisibilityCache};
 use bluejay_core::Value as CoreValue;
@@ -101,10 +101,6 @@ impl InputValueDefinition {
         self.name_r_string
     }
 
-    pub(crate) fn visibility(&self) -> Option<&Visibility> {
-        self.visibility.as_ref()
-    }
-
     pub fn directives(&self) -> &Directives {
         &self.directives
     }
@@ -178,6 +174,12 @@ impl bluejay_core::definition::InputValueDefinition for InputValueDefinition {
 
     fn directives(&self) -> Option<&Self::Directives> {
         self.directives.to_option()
+    }
+}
+
+impl HasVisibility for InputValueDefinition {
+    fn visibility(&self) -> Option<&Visibility> {
+        self.visibility.as_ref()
     }
 }
 

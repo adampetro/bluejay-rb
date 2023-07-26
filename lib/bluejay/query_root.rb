@@ -55,6 +55,7 @@ module Bluejay
             interface_implementations:,
             directives:,
             ruby_class: self,
+            visibility: nil,
           )
         end
       end

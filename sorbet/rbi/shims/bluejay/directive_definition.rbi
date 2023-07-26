@@ -11,9 +11,11 @@ module Bluejay
         is_repeatable: T::Boolean,
         locations: T::Array[DirectiveLocation],
         ruby_class: Base::Directive,
+        visibility: T.nilable(Visibility),
       ).void
     end
-    def initialize(name:, argument_definitions:, description:, is_repeatable:, locations:, ruby_class:); end
+    def initialize(name:, argument_definitions:, description:, is_repeatable:, locations:, ruby_class:, visibility:)
+    end
 
     sig { returns(T::Array[InputValueDefinition]) }
     def argument_definitions; end
