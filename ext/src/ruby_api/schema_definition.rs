@@ -1,5 +1,5 @@
 use crate::execution::Engine as ExecutionEngine;
-use crate::helpers::WrappedDefinition;
+use crate::helpers::{Warden, WrappedDefinition};
 use crate::ruby_api::{
     base, root, ArgumentsDefinition, BaseInputType, BaseOutputType, CustomScalarTypeDefinition,
     DirectiveDefinition, Directives, EnumTypeDefinition, EnumValueDefinition, EnumValueDefinitions,
@@ -17,7 +17,6 @@ use bluejay_core::definition::{
 use bluejay_core::AsIter;
 use bluejay_printer::definition::DisplaySchemaDefinition;
 use bluejay_validator::executable::{BuiltinRulesValidator, Cache as ValidationCache};
-use bluejay_visibility::NullWarden;
 use magnus::{
     exception, function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs,
     typed_data::Obj, DataTypeFunctions, Error, Module, Object, RArray, RClass, RHash, RModule,
@@ -120,6 +119,7 @@ impl SchemaDefinition {
         operation_name: Option<String>,
         variable_values: RHash,
         initial_value: Value,
+        context: Value,
     ) -> Result<ExecutionResult, Error> {
         ExecutionEngine::execute_request(
             self,
@@ -127,14 +127,15 @@ impl SchemaDefinition {
             operation_name.as_deref(),
             variable_values,
             initial_value,
+            context,
         )
     }
 
-    fn validate_query(&self, query: String) -> RArray {
+    fn validate_query(&self, query: String, context: Value) -> RArray {
         if let Ok(document) =
             bluejay_parser::ast::executable::ExecutableDocument::parse(query.as_str())
         {
-            let warden = NullWarden::default();
+            let warden = Warden::new(context);
             let cache = VisibilityCache::new(warden);
             let scoped_schema_definition = ScopedSchemaDefinition::new(self, &cache);
 
@@ -151,8 +152,9 @@ impl SchemaDefinition {
         }
     }
 
-    fn to_definition(&self) -> String {
-        let cache = VisibilityCache::new(NullWarden::default());
+    fn to_definition(&self, context: Value) -> String {
+        let warden = Warden::new(context);
+        let cache = VisibilityCache::new(warden);
         let scoped_schema_definition = ScopedSchemaDefinition::new(self, &cache);
 
         DisplaySchemaDefinition::to_string(&scoped_schema_definition)
@@ -184,7 +186,8 @@ impl SchemaDefinition {
     fn validate_default_values(
         type_definitions: &BTreeMap<String, TypeDefinition>,
     ) -> Result<(), Error> {
-        let cache = VisibilityCache::new(bluejay_visibility::NullWarden::default());
+        // TODO: something better than a warden with nil context
+        let cache = VisibilityCache::new(Warden::new(*magnus::QNIL));
         type_definitions
             .values()
             .try_for_each(|type_definition| match type_definition {
@@ -513,12 +516,12 @@ pub fn init() -> Result<(), Error> {
     let class = root().define_class("SchemaDefinition", Default::default())?;
 
     class.define_singleton_method("new", function!(SchemaDefinition::new, 1))?;
-    class.define_method("execute", method!(SchemaDefinition::execute, 4))?;
+    class.define_method("execute", method!(SchemaDefinition::execute, 5))?;
     class.define_method(
         "validate_query",
-        method!(SchemaDefinition::validate_query, 1),
+        method!(SchemaDefinition::validate_query, 2),
     )?;
-    class.define_method("to_definition", method!(SchemaDefinition::to_definition, 0))?;
+    class.define_method("to_definition", method!(SchemaDefinition::to_definition, 1))?;
     class.define_method(
         "type",
         method!(|sd: &SchemaDefinition, name: String| sd.r#type(&name), 1),

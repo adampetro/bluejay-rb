@@ -2,7 +2,7 @@ use crate::execution::{
     CoerceResult, ExecutionError, FieldError, KeyStore, SelectionSetProvider,
     VariableDefinitionInputTypeCache,
 };
-use crate::helpers::{rhash_with_capacity, FuncallKw, NewInstanceKw, RArrayIter};
+use crate::helpers::{rhash_with_capacity, FuncallKw, NewInstanceKw, RArrayIter, Warden};
 use crate::ruby_api::{
     CoerceInput, ExecutionResult, ExtraResolverArg, ObjectTypeDefinition, SchemaDefinition,
     UnionTypeDefinition,
@@ -23,7 +23,6 @@ use bluejay_core::{
 use bluejay_parser::ast::executable::{ExecutableDocument, Field, OperationDefinition, Selection};
 use bluejay_parser::ast::{Directive, VariableArguments, VariableValue};
 use bluejay_validator::Path;
-use bluejay_visibility::NullWarden;
 use indexmap::IndexMap;
 use magnus::{Error, RArray, RHash, Value, QNIL};
 use std::cell::RefCell;
@@ -48,6 +47,7 @@ impl<'a> Engine<'a> {
         operation_name: Option<&str>,
         variable_values: RHash,
         initial_value: Value,
+        context: Value,
     ) -> Result<ExecutionResult, Error> {
         let document = match ExecutableDocument::parse(query) {
             Ok(document) => document,
@@ -69,7 +69,7 @@ impl<'a> Engine<'a> {
             }
         };
 
-        let visibility_cache = VisibilityCache::new(NullWarden::default());
+        let visibility_cache = VisibilityCache::new(Warden::new(context));
         let schema_definition = ScopedSchemaDefinition::new(schema, &visibility_cache);
         let variable_definition_input_type_cache = VariableDefinitionInputTypeCache::new();
 

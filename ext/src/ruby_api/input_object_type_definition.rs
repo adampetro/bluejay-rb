@@ -1,5 +1,5 @@
 use crate::helpers::{
-    public_name, rhash_with_capacity, HasDefinitionWrapper, NewInstanceKw, Variables,
+    public_name, rhash_with_capacity, HasDefinitionWrapper, NewInstanceKw, Variables, Warden,
 };
 use crate::ruby_api::{
     base, introspection, root, wrapped_value::value_inner_from_ruby_const_value, CoerceInput,
@@ -364,9 +364,11 @@ pub fn init() -> Result<(), Error> {
     class.define_method(
         "coerce_input",
         method!(
-            |itd: &InputObjectTypeDefinition, input: Value| -> Result<RResult, Error> {
-                let visibility_cache =
-                    VisibilityCache::new(bluejay_visibility::NullWarden::default());
+            |itd: &InputObjectTypeDefinition,
+             input: Value,
+             context: Value|
+             -> Result<RResult, Error> {
+                let visibility_cache = VisibilityCache::new(Warden::new(context));
                 let scoped_definition =
                     ScopedInputObjectTypeDefinition::new(itd, &visibility_cache);
                 scoped_definition
@@ -381,7 +383,7 @@ pub fn init() -> Result<(), Error> {
                             .into()
                     })
             },
-            1
+            2
         ),
     )?;
     class.define_method(

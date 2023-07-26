@@ -1,5 +1,7 @@
 use crate::helpers::NewInstanceKw;
-use crate::ruby_api::{root, ArgumentsDefinition, DirectiveDefinition, Directives, OutputType};
+use crate::ruby_api::{
+    root, ArgumentsDefinition, DirectiveDefinition, Directives, OutputType, Visibility,
+};
 use bluejay_core::AsIter;
 use convert_case::{Case, Casing};
 use magnus::{
@@ -24,6 +26,7 @@ pub struct FieldDefinition {
     name_r_string: RString,
     extra_resolver_args: Vec<ExtraResolverArg>,
     deprecation_reason: Option<String>,
+    visibility: Option<Visibility>,
 }
 
 impl FieldDefinition {
@@ -37,6 +40,7 @@ impl FieldDefinition {
                 "directives",
                 "resolver_method_name",
                 "deprecation_reason",
+                "visibility",
             ],
         )?;
         let (name_r_string, r#type): (RString, Obj<OutputType>) = args.required;
@@ -46,6 +50,7 @@ impl FieldDefinition {
             Option<RArray>,
             Option<Option<String>>,
             Option<Option<String>>,
+            Option<Option<Visibility>>,
         );
         let (
             argument_definitions,
@@ -53,6 +58,7 @@ impl FieldDefinition {
             directives,
             resolver_method_name,
             deprecation_reason,
+            visibility,
         ): OptionalArgs = args.optional;
         name_r_string.freeze();
         let name = name_r_string.to_string()?;
@@ -97,6 +103,7 @@ impl FieldDefinition {
             name_r_string,
             extra_resolver_args,
             deprecation_reason,
+            visibility: visibility.flatten(),
         })
     }
 
@@ -147,6 +154,10 @@ impl FieldDefinition {
     pub fn deprecation_reason(&self) -> Option<&str> {
         self.deprecation_reason.as_deref()
     }
+
+    pub fn visibility(&self) -> Option<&Visibility> {
+        self.visibility.as_ref()
+    }
 }
 
 impl DataTypeFunctions for FieldDefinition {
@@ -155,6 +166,7 @@ impl DataTypeFunctions for FieldDefinition {
         gc::mark(self.r#type);
         self.directives.mark();
         gc::mark(self.name_r_string);
+        self.visibility.as_ref().map(Visibility::mark);
     }
 }
 

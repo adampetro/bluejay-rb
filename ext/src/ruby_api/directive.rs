@@ -1,4 +1,4 @@
-use crate::helpers::WrappedDefinition;
+use crate::helpers::{Warden, WrappedDefinition};
 use crate::ruby_api::{wrapped_value::ValueInner, CoerceInput, DirectiveDefinition, WrappedValue};
 use crate::visibility_scoped::{ScopedDirectiveDefinition, VisibilityCache};
 use bluejay_core::{
@@ -20,7 +20,8 @@ impl TryConvert for Directive {
             WrappedDefinition::try_convert(*val.class())?;
         let obj: RObject = val.try_convert()?;
         obj.freeze();
-        let visibility_cache = VisibilityCache::new(bluejay_visibility::NullWarden::default());
+        // TODO: something better than a warden with nil context
+        let visibility_cache = VisibilityCache::new(Warden::new(*magnus::QNIL));
         let scoped_directive_definition =
             ScopedDirectiveDefinition::new(definition.as_ref(), &visibility_cache);
         let arguments: Result<Vec<Argument>, Error> = if let Some(arguments_definition) =

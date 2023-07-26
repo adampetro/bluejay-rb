@@ -20,15 +20,16 @@ module Bluejay
         operation_name: T.nilable(String),
         variables: T::Hash[String, T.untyped],
         initial_value: Object,
+        context: T.untyped,
       ).returns(ExecutionResult)
     end
-    def execute(query, operation_name, variables, initial_value); end
+    def execute(query, operation_name, variables, initial_value, context); end
 
-    sig { params(query: String).returns(T::Array[ValidationError]) }
-    def validate_query(query); end
+    sig { params(query: String, context: T.untyped).returns(T::Array[ValidationError]) }
+    def validate_query(query, context); end
 
-    sig { returns(String) }
-    def to_definition; end
+    sig { params(context: T.untyped).returns(String) }
+    def to_definition(context); end
 
     sig do
       params(name: String).returns(T.nilable(T.any(

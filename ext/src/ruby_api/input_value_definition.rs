@@ -1,5 +1,6 @@
 use crate::ruby_api::{
-    errors, root, wrapped_value::ValueInner, CoerceInput, Directives, InputType, WrappedValue,
+    errors, root, wrapped_value::ValueInner, CoerceInput, Directives, InputType, Visibility,
+    WrappedValue,
 };
 use crate::visibility_scoped::{ScopedInputType, VisibilityCache};
 use bluejay_core::Value as CoreValue;
@@ -23,6 +24,7 @@ pub struct InputValueDefinition {
     default_value: Option<(Value, OnceCell<WrappedValue>)>,
     ruby_name: Symbol,
     name_r_string: RString,
+    visibility: Option<Visibility>,
 }
 
 impl InputValueDefinition {
@@ -30,7 +32,13 @@ impl InputValueDefinition {
         let args: KwArgs<_, _, ()> = get_kwargs(
             kw,
             &["name", "type"],
-            &["description", "directives", "ruby_name", "default_value"],
+            &[
+                "description",
+                "directives",
+                "ruby_name",
+                "default_value",
+                "visibility",
+            ],
         )?;
         let (name, r#type): (String, Obj<InputType>) = args.required;
         type OptionalArgs = (
@@ -38,8 +46,10 @@ impl InputValueDefinition {
             Option<RArray>,
             Option<String>,
             Option<Option<Value>>,
+            Option<Option<Visibility>>,
         );
-        let (description, directives, ruby_name, default_value): OptionalArgs = args.optional;
+        let (description, directives, ruby_name, default_value, visibility): OptionalArgs =
+            args.optional;
         let description = description.unwrap_or_default();
         let directives = directives.try_into()?;
         let ruby_name = ruby_name.unwrap_or_else(|| name.to_case(Case::Snake));
@@ -53,6 +63,7 @@ impl InputValueDefinition {
             default_value: default_value.flatten().map(|v| (v, OnceCell::new())),
             ruby_name,
             name_r_string,
+            visibility: visibility.flatten(),
         })
     }
 
@@ -88,6 +99,10 @@ impl InputValueDefinition {
 
     pub(crate) fn name_r_string(&self) -> RString {
         self.name_r_string
+    }
+
+    pub(crate) fn visibility(&self) -> Option<&Visibility> {
+        self.visibility.as_ref()
     }
 
     pub fn directives(&self) -> &Directives {
@@ -134,6 +149,7 @@ impl DataTypeFunctions for InputValueDefinition {
         }
         gc::mark(self.ruby_name);
         gc::mark(self.name_r_string);
+        self.visibility.as_ref().map(Visibility::mark);
     }
 }
 

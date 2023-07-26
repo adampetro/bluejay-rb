@@ -32,9 +32,9 @@ module Bluejay
         []
       end
 
-      sig { params(value: T.untyped).returns(Result[T.untyped, T::Array[CoercionError]]) }
-      def coerce_input(value)
-        definition.coerce_input(value)
+      sig { params(value: T.untyped, context: T.untyped).returns(Result[T.untyped, T::Array[CoercionError]]) }
+      def coerce_input(value, context: nil)
+        definition.coerce_input(value, context)
       end
 
       private

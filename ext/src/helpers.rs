@@ -2,12 +2,14 @@ mod funcall_kw;
 mod public_name;
 mod typed_frozen_r_array;
 mod variables;
+mod warden;
 mod wrapped_definition;
 
 pub use funcall_kw::{FuncallKw, NewInstanceKw};
 pub use public_name::public_name;
 pub use typed_frozen_r_array::TypedFrozenRArray;
 pub use variables::Variables;
+pub use warden::Warden;
 pub use wrapped_definition::{HasDefinitionWrapper, WrappedDefinition};
 
 use bluejay_core::{AsIter, ObjectValue, Value as CoreValue, ValueReference, Variable};

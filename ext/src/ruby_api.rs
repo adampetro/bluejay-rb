@@ -34,6 +34,7 @@ mod union_member_type;
 mod union_member_types;
 mod union_type_definition;
 mod validation_error;
+mod visibility;
 mod wrapped_value;
 
 pub use arguments_definition::ArgumentsDefinition;
@@ -69,6 +70,7 @@ pub use union_member_type::UnionMemberType;
 pub use union_member_types::UnionMemberTypes;
 pub use union_type_definition::UnionTypeDefinition;
 pub use validation_error::ValidationError;
+pub use visibility::Visibility;
 pub use wrapped_value::WrappedValue;
 
 pub fn root() -> RModule {

@@ -14,8 +14,8 @@ module Bluejay
     end
     def initialize(name:, input_field_definitions:, description:, directives:, ruby_class:); end
 
-    sig { params(value: T.untyped).returns(Result[T.untyped, T::Array[CoercionError]]) }
-    def coerce_input(value); end
+    sig { params(value: T.untyped, context: T.untyped).returns(Result[T.untyped, T::Array[CoercionError]]) }
+    def coerce_input(value, context); end
 
     sig { returns(T::Array[InputValueDefinition]) }
     def input_field_definitions; end
