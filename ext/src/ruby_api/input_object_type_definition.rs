@@ -82,6 +82,8 @@ impl DataTypeFunctions for InputObjectTypeDefinition {
 }
 
 impl HasDefinitionWrapper for InputObjectTypeDefinition {
+    type Wrapper = Value;
+
     fn required_module() -> RModule {
         *memoize!(RModule: base().define_module("InputObjectType").unwrap())
     }

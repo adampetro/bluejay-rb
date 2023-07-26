@@ -107,6 +107,8 @@ impl DataTypeFunctions for DirectiveDefinition {
 }
 
 impl HasDefinitionWrapper for DirectiveDefinition {
+    type Wrapper = RClass;
+
     fn required_module() -> RModule {
         *memoize!(RModule: base().define_module("Directive").unwrap())
     }

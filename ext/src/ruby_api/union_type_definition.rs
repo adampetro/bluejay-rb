@@ -4,7 +4,7 @@ use crate::visibility_scoped::{ScopedObjectTypeDefinition, ScopedUnionTypeDefini
 use bluejay_core::{definition::prelude::*, AsIter};
 use magnus::{
     function, gc, memoize, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error,
-    Module, Object, RArray, RHash, RModule, TypedData,
+    Module, Object, RArray, RHash, RModule, TypedData, Value,
 };
 
 #[derive(Debug, TypedData)]
@@ -97,6 +97,8 @@ impl DataTypeFunctions for UnionTypeDefinition {
 }
 
 impl HasDefinitionWrapper for UnionTypeDefinition {
+    type Wrapper = Value;
+
     fn required_module() -> RModule {
         *memoize!(RModule: base().define_module("UnionType").unwrap())
     }

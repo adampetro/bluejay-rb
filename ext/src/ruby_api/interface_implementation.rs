@@ -1,7 +1,7 @@
 use crate::helpers::WrappedDefinition;
 use crate::ruby_api::{interface_type_definition::InterfaceTypeDefinition, root};
 use magnus::{
-    function, method, typed_data::Obj, DataTypeFunctions, Error, Module, Object, RClass, TypedData,
+    function, method, typed_data::Obj, DataTypeFunctions, Error, Module, Object, TypedData, Value,
 };
 
 #[derive(Clone, Debug, TypedData)]
@@ -11,7 +11,7 @@ pub struct InterfaceImplementation {
 }
 
 impl InterfaceImplementation {
-    pub fn new(interface: RClass) -> Result<Self, Error> {
+    pub fn new(interface: Value) -> Result<Self, Error> {
         WrappedDefinition::new(interface).map(|interface| Self { interface })
     }
 
@@ -40,7 +40,7 @@ pub fn init() -> Result<(), Error> {
     class.define_singleton_method("new", function!(InterfaceImplementation::new, 1))?;
     class.define_method(
         "interface",
-        method!(|ii: &InterfaceImplementation| ii.interface.class(), 0),
+        method!(|ii: &InterfaceImplementation| ii.interface.wrapper(), 0),
     )?;
 
     Ok(())

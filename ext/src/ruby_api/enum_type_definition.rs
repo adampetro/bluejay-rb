@@ -171,6 +171,8 @@ impl<'a> CoerceInput for ScopedEnumTypeDefinition<'a> {
 }
 
 impl HasDefinitionWrapper for EnumTypeDefinition {
+    type Wrapper = Value;
+
     fn required_module() -> RModule {
         *memoize!(RModule: base().define_module("EnumType").unwrap())
     }

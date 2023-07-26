@@ -1,42 +1,45 @@
 use magnus::{
-    exception, gc, memoize, typed_data::Obj, value::Id, Error, IntoValue, Module, Object, RClass,
-    RModule, Ruby, TryConvert, TypedData, Value,
+    exception, gc, memoize, typed_data::Obj, value::Id, Error, IntoValue, RModule, Ruby,
+    TryConvert, TypedData, Value,
 };
 use once_cell::unsync::OnceCell;
+use std::fmt::Display;
 
 pub trait HasDefinitionWrapper: TypedData {
+    type Wrapper: IntoValue + Clone + Copy + Display + TryConvert;
+
     /// module that the wrapper must include in its singleton (a.k.a. extend)
     fn required_module() -> RModule;
 }
 
 #[derive(Debug)]
 pub struct WrappedDefinition<T: HasDefinitionWrapper> {
-    cls: RClass,
+    wrapper: T::Wrapper,
     memoized_definition: OnceCell<Obj<T>>,
 }
 
 impl<T: HasDefinitionWrapper> Clone for WrappedDefinition<T> {
     fn clone(&self) -> Self {
         Self {
-            cls: self.cls,
+            wrapper: self.wrapper,
             memoized_definition: self.memoized_definition.clone(),
         }
     }
 }
 
 impl<T: HasDefinitionWrapper> WrappedDefinition<T> {
-    pub fn new(cls: RClass) -> Result<Self, Error> {
-        if cls.singleton_class()?.is_inherited(T::required_module()) {
+    pub fn new(wrapper: T::Wrapper) -> Result<Self, Error> {
+        if wrapper.into_value().is_kind_of(T::required_module()) {
             Ok(Self {
-                cls,
+                wrapper,
                 memoized_definition: OnceCell::new(),
             })
         } else {
             Err(Error::new(
                 exception::type_error(),
                 format!(
-                    "class {} singleton does not include {}",
-                    cls,
+                    "no implicit coversion of {} to {}",
+                    wrapper,
                     T::required_module()
                 ),
             ))
@@ -44,7 +47,9 @@ impl<T: HasDefinitionWrapper> WrappedDefinition<T> {
     }
 
     fn resolve_definition(&self) -> Result<Obj<T>, Error> {
-        self.cls.funcall(*memoize!(Id: Id::new("definition")), ())
+        self.wrapper
+            .into_value()
+            .funcall(*memoize!(Id: Id::new("definition")), ())
     }
 
     pub fn get(&self) -> &Obj<T> {
@@ -59,18 +64,18 @@ impl<T: HasDefinitionWrapper> WrappedDefinition<T> {
     }
 
     pub fn mark(&self) {
-        gc::mark(self.cls);
+        gc::mark(&self.wrapper.into_value());
         if let Some(obj) = self.memoized_definition.get() {
             gc::mark(*obj);
         }
     }
 
     pub fn fully_qualified_name(&self) -> String {
-        unsafe { self.cls.name() }.into_owned()
+        self.wrapper.to_string()
     }
 
-    pub fn class(&self) -> RClass {
-        self.cls
+    pub fn wrapper(&self) -> T::Wrapper {
+        self.wrapper
     }
 }
 
@@ -100,6 +105,9 @@ impl<T: HasDefinitionWrapper> IntoValue for &WrappedDefinition<T> {
 
 impl<T: HasDefinitionWrapper> PartialEq for WrappedDefinition<T> {
     fn eq(&self, other: &Self) -> bool {
-        self.cls.eql(other.cls).unwrap_or(false)
+        self.wrapper
+            .into_value()
+            .eql(&other.wrapper.into_value())
+            .unwrap_or(false)
     }
 }

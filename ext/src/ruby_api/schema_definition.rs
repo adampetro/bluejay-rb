@@ -60,16 +60,12 @@ impl SchemaDefinition {
             RArray,
             RClass,
         ) = args.required;
-        if !query
-            .class()
-            .singleton_class()?
-            .is_inherited(Self::query_root_module())
-        {
+        if !query.wrapper().is_kind_of(Self::query_root_module()) {
             return Err(Error::new(
                 exception::type_error(),
                 format!(
                     "no implicit conversion of {} into {}",
-                    query.class(),
+                    query.wrapper(),
                     Self::query_root_module(),
                 ),
             ));

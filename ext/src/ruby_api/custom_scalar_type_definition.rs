@@ -75,7 +75,7 @@ impl CustomScalarTypeDefinition {
                     .ruby_name(),
                 specified_by_url,
             )]);
-            directives.push(directive_definition.class().new_instance_kw(args)?)?;
+            directives.push(directive_definition.wrapper().new_instance_kw(args)?)?;
         }
         let directives: Directives = directives.try_into()?;
         Ok(Self {
@@ -151,6 +151,8 @@ impl DataTypeFunctions for CustomScalarTypeDefinition {
 }
 
 impl HasDefinitionWrapper for CustomScalarTypeDefinition {
+    type Wrapper = Value;
+
     fn required_module() -> RModule {
         *memoize!(RModule: base().define_module("CustomScalarType").unwrap())
     }

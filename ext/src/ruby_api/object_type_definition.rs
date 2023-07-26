@@ -7,7 +7,7 @@ use crate::visibility_scoped::{ScopedInterfaceTypeDefinition, ScopedObjectTypeDe
 use bluejay_core::{definition::prelude::*, AsIter};
 use magnus::{
     function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions,
-    Error, Module, Object, RArray, RClass, RHash, RModule, TypedData,
+    Error, Module, Object, RArray, RClass, RHash, RModule, TypedData, Value,
 };
 
 #[derive(Debug, TypedData)]
@@ -67,6 +67,8 @@ impl DataTypeFunctions for ObjectTypeDefinition {
 }
 
 impl HasDefinitionWrapper for ObjectTypeDefinition {
+    type Wrapper = Value;
+
     fn required_module() -> RModule {
         *memoize!(RModule: base().define_module("ObjectType").unwrap())
     }
