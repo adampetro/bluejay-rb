@@ -15,9 +15,9 @@ use bluejay_parser::ast::executable::VariableType;
 use bluejay_parser::ast::Value as ParserValue;
 use bluejay_validator::Path;
 use magnus::{
-    exception, function, gc, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,
-    DataTypeFunctions, Error, Float, Integer, Module, Object, RArray, RHash, RString, TryConvert,
-    TypedData, Value, QNIL,
+    class, exception, function, gc, method, scan_args::get_kwargs, scan_args::KwArgs,
+    typed_data::Obj, DataTypeFunctions, Error, Float, Integer, Module, Object, RArray, RHash,
+    RString, TryConvert, TypedData, Value, QNIL,
 };
 
 #[derive(Debug, Clone)]
@@ -82,8 +82,15 @@ impl BaseInputType {
     }
 
     fn coerce_string(value: Value, path: Path) -> Result<Value, Vec<CoercionError>> {
-        if RString::from_value(value).is_some() {
+        if value.is_kind_of(class::string()) {
             Ok(value)
+        } else if value.is_kind_of(class::symbol()) {
+            value.to_r_string().map(|r_str| *r_str).map_err(|_| {
+                vec![CoercionError::new(
+                    "Symbols must be convertible to strings".to_owned(),
+                    path.to_vec(),
+                )]
+            })
         } else {
             Err(vec![CoercionError::new(
                 format!("No implicit conversion of {} to String", public_name(value)),

@@ -5,10 +5,10 @@ use bluejay_core::{
 use bluejay_parser::ast::ConstValue as ParserConstValue;
 use indexmap::IndexMap;
 use magnus::{
-    exception, gc,
+    class, exception, gc,
     r_hash::ForEach,
     value::{Qfalse, Qtrue},
-    Error, Float, Integer, RArray, RHash, RString, Value,
+    Error, Integer, RArray, RHash, RString, TryConvert, Value,
 };
 
 #[derive(Debug)]
@@ -180,14 +180,17 @@ pub fn value_inner_from_ruby_const_value(val: Value) -> Result<ValueInner, Error
         // TODO: reconcile if we need to handle integers bigger than 32 bits
         // and if not, produce a better error for the user
         Ok(ValueInner::Integer(i.to_i32()?))
-    } else if let Some(f) = Float::from_value(val) {
-        Ok(ValueInner::Float(f.to_f64()))
+    } else if let Ok(f) = f64::try_convert(val) {
+        Ok(ValueInner::Float(f))
     } else if Qtrue::from_value(val).is_some() {
         Ok(ValueInner::Boolean(true))
     } else if Qfalse::from_value(val).is_some() {
         Ok(ValueInner::Boolean(false))
     } else if let Some(s) = RString::from_value(val) {
         Ok(ValueInner::String(s.to_string()?))
+    } else if val.is_kind_of(class::symbol()) {
+        val.to_r_string()
+            .and_then(|s| s.to_string().map(ValueInner::String))
     } else if val.is_nil() {
         Ok(ValueInner::Null)
     } else if let Some(arr) = RArray::from_value(val) {

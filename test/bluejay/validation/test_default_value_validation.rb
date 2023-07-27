@@ -5,7 +5,7 @@ require "test_helper"
 
 module Bluejay
   module Validation
-    class TestDefaultValueError < Minitest::Test
+    class TestDefaultValueValidation < Minitest::Test
       class QueryRoot < Bluejay::QueryRoot
         class << self
           extend(T::Sig)
@@ -17,9 +17,19 @@ module Bluejay
                 name: "myField",
                 argument_definitions: [
                   InputValueDefinition.new(
-                    name: "myArgument",
+                    name: "myArgumentWithInvalidDefaultValue",
                     type: it!(Scalar::String),
                     default_value: 1,
+                  ),
+                  InputValueDefinition.new(
+                    name: "myArgumentWithValidSymbolDefaultValue",
+                    type: it!(Scalar::String),
+                    default_value: :a_symbol,
+                  ),
+                  InputValueDefinition.new(
+                    name: "myArgumentWithValidBigDecimalDefaultValue",
+                    type: it!(Scalar::Float),
+                    default_value: BigDecimal("1.0"),
                   ),
                 ],
                 type: ot!(Scalar::Int),
@@ -29,7 +39,7 @@ module Bluejay
         end
       end
 
-      def test_default_value_error
+      def test_default_value_validation
         klass = Class.new(Schema) do
           class << self
             def query
@@ -44,7 +54,7 @@ module Bluejay
 
         assert_equal(
           <<~ERROR.chomp,
-            Invalid default value `1` on input value definition `myArgument`. Errors:
+            Invalid default value `1` on input value definition `myArgumentWithInvalidDefaultValue`. Errors:
             No implicit conversion of integer to String
           ERROR
           e.message,

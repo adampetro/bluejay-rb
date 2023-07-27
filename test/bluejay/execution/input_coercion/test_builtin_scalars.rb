@@ -326,6 +326,26 @@ module Bluejay
           )
         end
 
+        def test_coerce_string_from_variables_converts_symbol_to_string
+          query = <<~GQL
+            query Query($string: String!) {
+              string(string: $string)
+            }
+          GQL
+
+          result = MySchema.execute(
+            query:,
+            variables: { "string" => :this_is_a_symbol },
+            initial_value: Domain::SchemaRoot,
+          )
+
+          assert_empty(result.errors)
+          assert_equal(
+            { "string" => "this_is_a_symbol" },
+            result.value,
+          )
+        end
+
         def test_coerce_string_from_variables_invalid_wrong_type
           query = <<~GQL
             query Query($string: String!) {
