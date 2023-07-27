@@ -8,9 +8,8 @@ use bluejay_printer::value::DisplayValue;
 use bluejay_validator::Path;
 use convert_case::{Case, Casing};
 use magnus::{
-    function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj,
-    Class, DataTypeFunctions, Error, ExceptionClass, Module, Object, RArray, RHash, RString,
-    Symbol, TypedData, Value,
+    function, gc, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj, Class,
+    DataTypeFunctions, Error, Module, Object, RArray, RHash, RString, Symbol, TypedData, Value,
 };
 use once_cell::sync::OnceCell;
 
@@ -125,7 +124,8 @@ impl InputValueDefinition {
                             result.map_err(|coercion_errors| {
                                 let arr =
                                     RArray::from_iter(coercion_errors.into_iter().map(Obj::wrap));
-                                match default_value_error().new_instance((arr, *raw_value)) {
+                                match errors::default_value_error().new_instance((arr, *raw_value))
+                                {
                                     Ok(exception) => Error::Exception(exception),
                                     Err(error) => error,
                                 }
@@ -185,10 +185,6 @@ impl HasVisibility for InputValueDefinition {
     fn visibility(&self) -> Option<&Visibility> {
         self.visibility.as_ref()
     }
-}
-
-fn default_value_error() -> ExceptionClass {
-    *memoize!(ExceptionClass: errors().define_error("DefaultValueError", Default::default()).unwrap())
 }
 
 pub fn init() -> Result<(), Error> {
