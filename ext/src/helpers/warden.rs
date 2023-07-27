@@ -19,7 +19,10 @@ impl Warden {
 
     fn evaluate_visibility(&self, item: &impl HasVisibility) -> bool {
         item.visibility().map_or(true, |visibility| {
-            if let Some(cached) = self.cache.borrow().get(visibility.cache_key()).cloned() {
+            // TODO: error handling
+            let cache_key = visibility.cache_key().unwrap();
+
+            if let Some(cached) = self.cache.borrow().get(cache_key).cloned() {
                 return cached;
             }
 
@@ -28,7 +31,7 @@ impl Warden {
 
             self.cache
                 .borrow_mut()
-                .insert(visibility.cache_key().to_string(), is_visible);
+                .insert(cache_key.to_string(), is_visible);
 
             is_visible
         })

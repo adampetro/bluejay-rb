@@ -1,9 +1,10 @@
 use crate::ruby_api::root;
 use magnus::{class, exception, gc, memoize, value::Id, Error, Module, RModule, TryConvert, Value};
+use once_cell::sync::OnceCell;
 
 #[derive(Debug)]
 pub struct Visibility {
-    cache_key: String,
+    cache_key: OnceCell<String>,
     inner: Value,
 }
 
@@ -29,8 +30,10 @@ impl Visibility {
             })
     }
 
-    pub(crate) fn cache_key(&self) -> &str {
-        &self.cache_key
+    pub(crate) fn cache_key(&self) -> Result<&str, Error> {
+        self.cache_key
+            .get_or_try_init(|| self.inner.funcall(*memoize!(Id: Id::new("cache_key")), ()))
+            .map(|s| s.as_str())
     }
 }
 
@@ -46,9 +49,8 @@ impl TryConvert for Visibility {
                 format!("expected a Visibility, got {}", val.class()),
             ));
         }
-        let cache_key: String = val.funcall(*memoize!(Id: Id::new("cache_key")), ())?;
         Ok(Self {
-            cache_key,
+            cache_key: OnceCell::new(),
             inner: val,
         })
     }
