@@ -1,10 +1,12 @@
+use crate::helpers::rhash_with_capacity;
+
 use super::root;
 use magnus::{
     function, method,
     rb_sys::AsRawValue,
     scan_args::scan_args,
     typed_data::{self, Obj},
-    Error, Module, Object, Value,
+    Error, Module, Object, RHash, Value,
 };
 use std::borrow::Cow;
 
@@ -39,6 +41,13 @@ impl ExecutionError {
         self.path.clone()
     }
 
+    fn to_h(&self) -> Result<RHash, Error> {
+        let ruby_h = rhash_with_capacity(2);
+        ruby_h.aset("path", self.path())?;
+        ruby_h.aset("message", self.message())?;
+        Ok(ruby_h)
+    }
+
     fn inspect(rb_self: Obj<Self>) -> Result<String, Error> {
         let rs_self = rb_self.get();
 
@@ -62,6 +71,7 @@ pub fn init() -> Result<(), Error> {
         method!(<ExecutionError as typed_data::IsEql>::is_eql, 1),
     )?;
     class.define_method("inspect", method!(ExecutionError::inspect, 0))?;
+    class.define_method("to_h", method!(ExecutionError::to_h, 0))?;
 
     Ok(())
 }
