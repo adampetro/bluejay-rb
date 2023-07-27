@@ -24,6 +24,7 @@ pub struct InputValueDefinition {
     default_value: Option<(Value, OnceCell<WrappedValue>)>,
     ruby_name: Symbol,
     name_r_string: RString,
+    deprecation_reason: Option<String>,
     visibility: Option<Visibility>,
 }
 
@@ -37,6 +38,7 @@ impl InputValueDefinition {
                 "directives",
                 "ruby_name",
                 "default_value",
+                "deprecation_reason",
                 "visibility",
             ],
         )?;
@@ -46,9 +48,10 @@ impl InputValueDefinition {
             Option<RArray>,
             Option<String>,
             Option<Option<Value>>,
+            Option<Option<String>>,
             Option<Option<Visibility>>,
         );
-        let (description, directives, ruby_name, default_value, visibility): OptionalArgs =
+        let (description, directives, ruby_name, default_value, deprecation_reason, visibility): OptionalArgs =
             args.optional;
         let description = description.unwrap_or_default();
         let directives = directives.try_into()?;
@@ -63,6 +66,7 @@ impl InputValueDefinition {
             default_value: default_value.flatten().map(|v| (v, OnceCell::new())),
             ruby_name,
             name_r_string,
+            deprecation_reason: deprecation_reason.flatten(),
             visibility: visibility.flatten(),
         })
     }
@@ -201,6 +205,20 @@ pub fn init() -> Result<(), Error> {
             |ivd: &InputValueDefinition| ivd
                 .default_value()
                 .map(|v| DisplayValue::to_string(&v.as_ref().as_ref())),
+            0
+        ),
+    )?;
+    class.define_method(
+        "deprecated?",
+        method!(
+            |ivd: &InputValueDefinition| ivd.deprecation_reason.is_some(),
+            0
+        ),
+    )?;
+    class.define_method(
+        "deprecation_reason",
+        method!(
+            |ivd: &InputValueDefinition| ivd.deprecation_reason.as_deref(),
             0
         ),
     )?;

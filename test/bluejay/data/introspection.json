@@ -164,7 +164,9 @@
                                 "ofType": null
                             }
                         },
-                        "defaultValue": null
+                        "defaultValue": null,
+                        "isDeprecated": true,
+                        "deprecationReason": "Testing deprecation"
                     },
                     {
                         "__typename": "__InputValue",
@@ -180,7 +182,9 @@
                                 "ofType": null
                             }
                         },
-                        "defaultValue": null
+                        "defaultValue": null,
+                        "isDeprecated": false,
+                        "deprecationReason": null
                     }
                 ],
                 "interfaces": null,
@@ -213,7 +217,9 @@
                                         "ofType": null
                                     }
                                 },
-                                "defaultValue": "{ first: \"DefaultFirst\", last: \"DefaultLast\" }"
+                                "defaultValue": "{ first: \"DefaultFirst\", last: \"DefaultLast\" }",
+                                "isDeprecated": false,
+                                "deprecationReason": null
                             }
                         ],
                         "type": {
@@ -266,7 +272,9 @@
                                         "ofType": null
                                     }
                                 },
-                                "defaultValue": null
+                                "defaultValue": null,
+                                "isDeprecated": false,
+                                "deprecationReason": null
                             }
                         ],
                         "type": {
@@ -835,6 +843,38 @@
                         },
                         "isDeprecated": false,
                         "deprecationReason": null
+                    },
+                    {
+                        "__typename": "__Field",
+                        "name": "isDeprecated",
+                        "description": null,
+                        "args": [],
+                        "type": {
+                            "__typename": "__Type",
+                            "kind": "NON_NULL",
+                            "name": null,
+                            "ofType": {
+                                "kind": "SCALAR",
+                                "name": "Boolean",
+                                "ofType": null
+                            }
+                        },
+                        "isDeprecated": false,
+                        "deprecationReason": null
+                    },
+                    {
+                        "__typename": "__Field",
+                        "name": "deprecationReason",
+                        "description": null,
+                        "args": [],
+                        "type": {
+                            "__typename": "__Type",
+                            "kind": "SCALAR",
+                            "name": "String",
+                            "ofType": null
+                        },
+                        "isDeprecated": false,
+                        "deprecationReason": null
                     }
                 ],
                 "inputFields": null,
@@ -1033,7 +1073,9 @@
                                     "name": "Boolean",
                                     "ofType": null
                                 },
-                                "defaultValue": "false"
+                                "defaultValue": "false",
+                                "isDeprecated": false,
+                                "deprecationReason": null
                             }
                         ],
                         "type": {
@@ -1112,7 +1154,9 @@
                                     "name": "Boolean",
                                     "ofType": null
                                 },
-                                "defaultValue": "false"
+                                "defaultValue": "false",
+                                "isDeprecated": false,
+                                "deprecationReason": null
                             }
                         ],
                         "type": {
@@ -1267,7 +1311,9 @@
                             "name": "String",
                             "ofType": null
                         },
-                        "defaultValue": null
+                        "defaultValue": null,
+                        "isDeprecated": false,
+                        "deprecationReason": null
                     }
                 ],
                 "locations": [
@@ -1294,7 +1340,9 @@
                                 "ofType": null
                             }
                         },
-                        "defaultValue": null
+                        "defaultValue": null,
+                        "isDeprecated": false,
+                        "deprecationReason": null
                     }
                 ],
                 "locations": [
@@ -1322,7 +1370,9 @@
                                 "ofType": null
                             }
                         },
-                        "defaultValue": null
+                        "defaultValue": null,
+                        "isDeprecated": false,
+                        "deprecationReason": null
                     }
                 ],
                 "locations": [
@@ -1350,7 +1400,9 @@
                                 "ofType": null
                             }
                         },
-                        "defaultValue": null
+                        "defaultValue": null,
+                        "isDeprecated": false,
+                        "deprecationReason": null
                     }
                 ],
                 "locations": [

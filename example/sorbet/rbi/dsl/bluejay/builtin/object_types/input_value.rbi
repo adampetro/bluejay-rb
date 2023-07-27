@@ -10,6 +10,12 @@ module Bluejay::Builtin::ObjectTypes::InputValue::Interface
   sig { abstract.returns(T.nilable(String)) }
   def default_value; end
 
+  sig { abstract.returns(T::Boolean) }
+  def deprecated?; end
+
+  sig { abstract.returns(T.nilable(String)) }
+  def deprecation_reason; end
+
   sig { abstract.returns(T.nilable(String)) }
   def description; end
 

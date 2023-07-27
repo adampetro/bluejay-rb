@@ -12,7 +12,11 @@ module Bluejay
         sig { override.returns(T::Array[InputValueDefinition]) }
         def input_field_definitions
           [
-            InputValueDefinition.new(name: "first", type: it!(Scalar::String)),
+            InputValueDefinition.new(
+              name: "first",
+              type: it!(Scalar::String),
+              deprecation_reason: "Testing deprecation",
+            ),
             InputValueDefinition.new(name: "last", type: it!(Scalar::String)),
           ]
         end
@@ -443,6 +447,8 @@ module Bluejay
           description
           type { ...TypeRef }
           defaultValue
+          isDeprecated
+          deprecationReason
         }
 
         fragment TypeRef on __Type {
