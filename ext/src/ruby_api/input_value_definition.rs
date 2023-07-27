@@ -124,8 +124,11 @@ impl InputValueDefinition {
                             result.map_err(|coercion_errors| {
                                 let arr =
                                     RArray::from_iter(coercion_errors.into_iter().map(Obj::wrap));
-                                match errors::default_value_error().new_instance((arr, *raw_value))
-                                {
+                                match errors::default_value_error().new_instance((
+                                    arr,
+                                    *raw_value,
+                                    self.name_r_string,
+                                )) {
                                     Ok(exception) => Error::Exception(exception),
                                     Err(error) => error,
                                 }

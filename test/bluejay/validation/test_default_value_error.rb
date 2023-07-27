@@ -44,7 +44,7 @@ module Bluejay
 
         assert_equal(
           <<~ERROR.chomp,
-            Invalid default value: 1. Errors:
+            Invalid default value `1` on input value definition `myArgument`. Errors:
             No implicit conversion of integer to String
           ERROR
           e.message,
