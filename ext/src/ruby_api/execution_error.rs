@@ -6,7 +6,7 @@ use magnus::{
     rb_sys::AsRawValue,
     scan_args::scan_args,
     typed_data::{self, Obj},
-    Error, Module, Object, Value, RHash,
+    Error, Module, Object, RHash, Value,
 };
 use std::borrow::Cow;
 
