@@ -43,7 +43,7 @@ impl TryConvert for Directive {
             Ok(Vec::new())
         };
         let arguments = Arguments(arguments?);
-        Ok(Self {
+        visibility_cache.warden().to_result().map(|_| Self {
             obj,
             definition,
             arguments,

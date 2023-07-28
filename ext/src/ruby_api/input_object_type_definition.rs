@@ -387,6 +387,7 @@ pub fn init() -> Result<(), Error> {
                     ScopedInputObjectTypeDefinition::new(itd, &visibility_cache);
                 scoped_definition
                     .coerce_ruby_const_value(input, Default::default())
+                    .and_then(|result| visibility_cache.warden().to_result().map(|_| result))
                     .map(|result| {
                         result
                             .map_err(|errors| {

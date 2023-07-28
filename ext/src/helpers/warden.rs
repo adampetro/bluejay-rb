@@ -1,12 +1,13 @@
 use crate::ruby_api::{HasVisibility, SchemaDefinition};
 use bluejay_core::definition::SchemaDefinition as CoreSchemaDefinition;
-use magnus::Value;
+use magnus::{Error, Value};
 use std::cell::RefCell;
 use std::collections::HashMap;
 
 pub struct Warden {
     context: Value,
     cache: RefCell<HashMap<String, bool>>,
+    visibility_error: RefCell<Option<Error>>,
 }
 
 impl Warden {
@@ -14,20 +15,31 @@ impl Warden {
         Self {
             context,
             cache: Default::default(),
+            visibility_error: Default::default(),
         }
     }
 
     fn evaluate_visibility(&self, item: &impl HasVisibility) -> bool {
         item.visibility().map_or(true, |visibility| {
-            // TODO: error handling
-            let cache_key = visibility.cache_key().unwrap();
+            let cache_key = match visibility.cache_key() {
+                Ok(s) => s,
+                Err(error) => {
+                    self.visibility_error.borrow_mut().get_or_insert(error);
+                    return false;
+                }
+            };
 
             if let Some(cached) = self.cache.borrow().get(cache_key).cloned() {
                 return cached;
             }
 
-            // TODO: error handling
-            let is_visible = visibility.is_visible(self.context).unwrap();
+            let is_visible = match visibility.is_visible(self.context) {
+                Ok(is_visible) => is_visible,
+                Err(error) => {
+                    self.visibility_error.borrow_mut().get_or_insert(error);
+                    return false;
+                }
+            };
 
             self.cache
                 .borrow_mut()
@@ -35,6 +47,13 @@ impl Warden {
 
             is_visible
         })
+    }
+
+    pub(crate) fn to_result(&self) -> Result<(), Error> {
+        self.visibility_error
+            .borrow_mut()
+            .take()
+            .map_or(Ok(()), Err)
     }
 }
 

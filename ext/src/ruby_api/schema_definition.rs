@@ -131,7 +131,7 @@ impl SchemaDefinition {
         )
     }
 
-    fn validate_query(&self, query: String, context: Value) -> RArray {
+    fn validate_query(&self, query: String, context: Value) -> Result<RArray, Error> {
         if let Ok(document) =
             bluejay_parser::ast::executable::ExecutableDocument::parse(query.as_str())
         {
@@ -139,25 +139,27 @@ impl SchemaDefinition {
             let cache = VisibilityCache::new(warden);
             let scoped_schema_definition = ScopedSchemaDefinition::new(self, &cache);
 
-            RArray::from_iter(
+            let r_array = RArray::from_iter(
                 BuiltinRulesValidator::validate(
                     &document,
                     &scoped_schema_definition,
                     &ValidationCache::new(&document, &scoped_schema_definition),
                 )
                 .map(|error| -> Obj<ValidationError> { Obj::wrap(error.into()) }),
-            )
+            );
+            cache.warden().to_result().map(|_| r_array)
         } else {
-            RArray::new()
+            Ok(RArray::new())
         }
     }
 
-    fn to_definition(&self, context: Value) -> String {
+    fn to_definition(&self, context: Value) -> Result<String, Error> {
         let warden = Warden::new(context);
         let cache = VisibilityCache::new(warden);
         let scoped_schema_definition = ScopedSchemaDefinition::new(self, &cache);
 
-        DisplaySchemaDefinition::to_string(&scoped_schema_definition)
+        let s = DisplaySchemaDefinition::to_string(&scoped_schema_definition);
+        cache.warden().to_result().map(|_| s)
     }
 
     fn interface_implementors(
@@ -211,7 +213,8 @@ impl SchemaDefinition {
                     })
                 }
                 _ => Ok(()),
-            })
+            })?;
+        cache.warden().to_result()
     }
 
     fn query_root_module() -> RModule {

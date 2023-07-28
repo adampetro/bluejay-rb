@@ -94,7 +94,9 @@ impl<'a> Engine<'a> {
             collect_fields_cache: Default::default(),
         };
 
-        instance.execute_operation(operation_definition, initial_value)
+        instance
+            .execute_operation(operation_definition, initial_value)
+            .and_then(|exc_result| visibility_cache.warden().to_result().map(|_| exc_result))
     }
 
     fn get_operation<'b>(
