@@ -1,5 +1,6 @@
-use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, ObjectTypeDefinition, FieldDefinition, FieldsDefinition, ArgumentsDefinition, InputValueDefinition, OutputType, InterfaceImplementation, InterfaceTypeDefinition};
+use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, ObjectTypeDefinition, FieldDefinition, FieldsDefinition, ArgumentsDefinition, InputValueDefinition, OutputType, InterfaceImplementation, InterfaceTypeDefinition, InputType};
 use bluejay_core::AsIter;
+use bluejay_core::Value;
 use super::changes::*;
 use super::helpers::{type_description, type_kind};
 
@@ -18,6 +19,13 @@ pub struct Field<'a, S: SchemaDefinition> {
     new_type: &'a S::ObjectTypeDefinition,
     old_field: &'a S::FieldDefinition,
     new_field: &'a S::FieldDefinition,
+}
+
+pub struct Argument<'a, S: SchemaDefinition> {
+    object_type: &'a S::ObjectTypeDefinition,
+    field: &'a S::FieldDefinition,
+    old_argument: &'a S::InputValueDefinition,
+    new_argument: &'a S::InputValueDefinition,
 }
 
 impl<'a, S: SchemaDefinition> Schema<'a, S> {
@@ -251,5 +259,71 @@ impl<'a, S: SchemaDefinition+'a> Field<'a, S> {
         });
 
         removed_arguments
+    }
+}
+
+impl<'a, S: SchemaDefinition+'a> Argument<'a, S> {
+    pub fn new(object_type: &'a S::ObjectTypeDefinition, field: &'a S::FieldDefinition, old_argument: &'a S::InputValueDefinition, new_argument: &'a S::InputValueDefinition) -> Self {
+        Self {
+            object_type,
+            field,
+            old_argument,
+            new_argument
+        }
+    }
+
+    pub fn diff(&self) -> Vec<Change<'a, S>> {
+        let mut changes = Vec::new();
+
+        if self.old_argument.description() != self.new_argument.description() {
+            changes.push(Change::FieldArgumentDescriptionChanged {
+                object_type: self.object_type,
+                field: self.field,
+                old_argument: self.old_argument,
+                new_argument: self.new_argument,
+            });
+        }
+
+        if self.old_argument.r#type().as_ref().display_name() != self.new_argument.r#type().as_ref().display_name() {
+            changes.push(Change::FieldArgumentTypeChanged {
+                object_type: self.object_type,
+                field: self.field,
+                old_argument: self.old_argument,
+                new_argument: self.new_argument,
+            });
+        }
+
+        match (self.old_argument.default_value(), self.new_argument.default_value()) {
+            (Some(old_default), Some(new_default)) => {
+                if old_default.as_ref() != new_default.as_ref() {
+                    changes.push(Change::FieldArgumentDefaultValueChanged {
+                        object_type: self.object_type,
+                        field: self.field,
+                        old_argument: self.old_argument,
+                        new_argument: self.new_argument,
+                    });
+                }
+            },
+            (Some(_), None) => {
+                changes.push(Change::FieldArgumentDefaultValueChanged {
+                    object_type: self.object_type,
+                    field: self.field,
+                    old_argument: self.old_argument,
+                    new_argument: self.new_argument,
+                });
+            },
+            (None, Some(_)) => {
+                changes.push(Change::FieldArgumentDefaultValueChanged {
+                    object_type: self.object_type,
+                    field: self.field,
+                    old_argument: self.old_argument,
+                    new_argument: self.new_argument,
+                });
+            },
+            (None, None) => { }
+        }
+
+        // TODO: directives
+        changes
     }
 }

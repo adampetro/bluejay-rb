@@ -1,4 +1,5 @@
-use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, ObjectTypeDefinition, FieldDefinition, InputValueDefinition, InterfaceTypeDefinition};
+use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, ObjectTypeDefinition, FieldDefinition, InputValueDefinition, InterfaceTypeDefinition, InputType};
+use bluejay_core::Value;
 use super::helpers::{type_description, type_kind};
 
 #[derive(Eq, Ord, PartialEq, PartialOrd)]
@@ -65,6 +66,24 @@ pub enum Change<'a, S: SchemaDefinition> {
         field: &'a S::FieldDefinition,
         argument: &'a S::InputValueDefinition,
     },
+    FieldArgumentDescriptionChanged{
+        object_type: &'a S::ObjectTypeDefinition,
+        field: &'a S::FieldDefinition,
+        old_argument: &'a S::InputValueDefinition,
+        new_argument: &'a S::InputValueDefinition,
+    },
+    FieldArgumentDefaultValueChanged{
+        object_type: &'a S::ObjectTypeDefinition,
+        field: &'a S::FieldDefinition,
+        old_argument: &'a S::InputValueDefinition,
+        new_argument: &'a S::InputValueDefinition,
+    },
+    FieldArgumentTypeChanged{
+        object_type: &'a S::ObjectTypeDefinition,
+        field: &'a S::FieldDefinition,
+        old_argument: &'a S::InputValueDefinition,
+        new_argument: &'a S::InputValueDefinition,
+    },
     ObjectInterfaceAddition{
         object_type: &'a S::ObjectTypeDefinition,
         interface: &'a S::InterfaceTypeDefinition,
@@ -114,12 +133,23 @@ impl<'a, S: SchemaDefinition>  Change<'a, S> {
                 // TODO conditional criticality
                 Criticality::breaking(Some("Removing a field argument is a breaking change because it will cause existing queries that use this argument to error.".to_string()))
             },
+            Self::FieldArgumentDescriptionChanged{ object_type, field, old_argument, new_argument } => {
+                Criticality::non_breaking(None)
+            },
+            Self::FieldArgumentDefaultValueChanged{ object_type, field, old_argument, new_argument } => {
+                // TODO conditional criticality
+                Criticality::dangerous(Some("Changing the default value for an argument may change the runtime behaviour of a field if it was never provided.".to_string()))
+            },
+            Self::FieldArgumentTypeChanged{ object_type, field, old_argument, new_argument } => {
+                // TODO conditional criticality
+                Criticality::dangerous(Some("Changing the type of a field's argument can cause existing queries that use this argument to error.".to_string()))
+            },
             Self::ObjectInterfaceAddition{ object_type, interface } => {
                 Criticality::dangerous(Some("Adding an interface to an object type may break existing clients that were not programming defensively against a new possible type.".to_string()))
             },
             Self::ObjectInterfaceRemoval{ object_type, interface } => {
                 // TODO conditional criticality
-                Criticality::breaking(Some("Removing an interface from an object type can cause existing queries that use this in a fragment spread to error.".to_string()))
+                Criticality::breaking(Some("Changing the type of a field's argument can cause existing queries that use this argume.".to_string()))
             },
         }
 
@@ -168,6 +198,31 @@ impl<'a, S: SchemaDefinition>  Change<'a, S> {
             Self::FieldArgumentRemoved{ object_type, field, argument } => {
                 format!("Argument `{}` was removed from field `{}.{}`", argument.name(), object_type.name(), field.name())
             },
+            Self::FieldArgumentDescriptionChanged{ object_type, field, old_argument, new_argument } => {
+                format!("Description for argument `{}` on field `{}.{}` changed from `{}` to `{}`", new_argument.name(), field.name(), object_type.name(), old_argument.description().unwrap_or(""), new_argument.description().unwrap_or(""))
+            },
+            Self::FieldArgumentDefaultValueChanged{ object_type, field, old_argument, new_argument } => {
+                // TODO: exhaustive cases here are weird
+                match (old_argument.default_value(), new_argument.default_value()) {
+                    (Some(old_default_value), Some(new_default_value)) => {
+                        if old_default_value.as_ref() != new_default_value.as_ref() {
+                            format!("Default value for argument `{}` on field `{}.{}` was changed from `{} to `{}`", old_argument.name(), object_type.name(), field.name(), old_default_value.as_ref(), new_default_value.as_ref())
+                        } else {
+                            "".to_string()
+                        }
+                    },
+                    (Some(old_default_value), None) => {
+                        format!("Default value `{}` was removed from argument `{}` on field `{}.{}`", old_default_value.as_ref(), old_argument.name(), object_type.name(), field.name())
+                    },
+                    (None, Some(new_default_value)) => {
+                        format!("Default value `{}` was added to argument `{}` on field `{}.{}`", new_default_value.as_ref(), new_argument.name(), object_type.name(), field.name())
+                    },
+                    (None, None) => { "".to_string() }
+                }
+            },
+            Self::FieldArgumentTypeChanged{ object_type, field, old_argument, new_argument } => {
+                format!("Type for argument `{}` on field `{}.{}` changed from `{}` to `{}`", new_argument.name(), field.name(), object_type.name(), old_argument.r#type().as_ref().display_name(), new_argument.r#type().as_ref().display_name())
+            },
             Self::ObjectInterfaceAddition{ object_type, interface } => {
                 format!("`{}` object implements `{}` interface", object_type.name(), interface.name())
             },
@@ -208,6 +263,15 @@ impl<'a, S: SchemaDefinition>  Change<'a, S> {
             },
             Self::FieldArgumentRemoved{ object_type, field, argument } => {
                 vec![object_type.name(), field.name(), argument.name()].join(".")
+            },
+            Self::FieldArgumentDescriptionChanged{ object_type, field, old_argument, new_argument } => {
+                vec![object_type.name(), field.name(), old_argument.name()].join(".")
+            },
+            Self::FieldArgumentDefaultValueChanged{ object_type, field, old_argument, new_argument } => {
+                vec![object_type.name(), field.name(), old_argument.name()].join(".")
+            },
+            Self::FieldArgumentTypeChanged{ object_type, field, old_argument, new_argument } => {
+                vec![object_type.name(), field.name(), old_argument.name()].join(".")
             },
             Self::ObjectInterfaceAddition{ object_type, interface } => {
                 object_type.name().to_string()
