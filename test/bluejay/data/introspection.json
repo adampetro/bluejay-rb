@@ -217,7 +217,7 @@
                                         "ofType": null
                                     }
                                 },
-                                "defaultValue": "{ first: \"DefaultFirst\", last: \"DefaultLast\" }",
+                                "defaultValue": null,
                                 "isDeprecated": false,
                                 "deprecationReason": null
                             }
@@ -1073,7 +1073,7 @@
                                     "name": "Boolean",
                                     "ofType": null
                                 },
-                                "defaultValue": "false",
+                                "defaultValue": null,
                                 "isDeprecated": false,
                                 "deprecationReason": null
                             }
@@ -1154,7 +1154,7 @@
                                     "name": "Boolean",
                                     "ofType": null
                                 },
-                                "defaultValue": "false",
+                                "defaultValue": null,
                                 "isDeprecated": false,
                                 "deprecationReason": null
                             }

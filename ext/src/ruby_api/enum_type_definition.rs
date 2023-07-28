@@ -110,6 +110,7 @@ impl<'a> CoerceInput for ScopedEnumTypeDefinition<'a> {
         &self,
         value: Value,
         path: Path,
+        _: Value,
     ) -> Result<Result<WrappedValue, Vec<CoercionError>>, Error> {
         let s: Result<String, _> = value.try_convert();
         match s {
@@ -144,6 +145,7 @@ impl<'a> CoerceInput for ScopedEnumTypeDefinition<'a> {
         value: &ParserValue<CONST>,
         path: Path,
         _: &impl Variables<CONST>,
+        _: Value,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         if let ParserValue::Enum(e) = value {
             Ok(coerce_from_name(self, e.as_str(), path))
@@ -159,6 +161,7 @@ impl<'a> CoerceInput for ScopedEnumTypeDefinition<'a> {
         &self,
         value: Value,
         path: Path,
+        _: Value,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         let s: Result<String, _> = value.try_convert();
         match s {

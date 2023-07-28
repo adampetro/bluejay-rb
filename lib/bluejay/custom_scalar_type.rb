@@ -40,8 +40,8 @@ module Bluejay
         Result.ok(value)
       end
 
-      sig { abstract.params(value: T.untyped).returns(Result[InternalRepresentation, String]) }
-      def coerce_input(value); end
+      sig { abstract.params(value: T.untyped, context: T.untyped).returns(Result[InternalRepresentation, String]) }
+      def coerce_input(value, context); end
 
       sig { overridable.returns(String) }
       def internal_representation_sorbet_type_name

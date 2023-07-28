@@ -41,7 +41,7 @@ pub use arguments_definition::ArgumentsDefinition;
 pub use coerce_input::CoerceInput;
 pub use coercion_error::CoercionError;
 pub use custom_scalar_type_definition::CustomScalarTypeDefinition;
-pub use directive::Directive;
+pub use directive::{Argument, Arguments, Directive};
 pub use directive_definition::DirectiveDefinition;
 pub use directive_location::DirectiveLocation;
 pub use directives::Directives;

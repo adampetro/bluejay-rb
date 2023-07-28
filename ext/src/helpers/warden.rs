@@ -24,7 +24,7 @@ impl Warden {
             let cache_key = match visibility.cache_key() {
                 Ok(s) => s,
                 Err(error) => {
-                    self.visibility_error.borrow_mut().get_or_insert(error);
+                    self.report_error(error);
                     return false;
                 }
             };
@@ -36,7 +36,7 @@ impl Warden {
             let is_visible = match visibility.is_visible(self.context) {
                 Ok(is_visible) => is_visible,
                 Err(error) => {
-                    self.visibility_error.borrow_mut().get_or_insert(error);
+                    self.report_error(error);
                     return false;
                 }
             };
@@ -54,6 +54,14 @@ impl Warden {
             .borrow_mut()
             .take()
             .map_or(Ok(()), Err)
+    }
+
+    pub(crate) fn report_error(&self, error: Error) {
+        self.visibility_error.borrow_mut().get_or_insert(error);
+    }
+
+    pub(crate) fn context(&self) -> Value {
+        self.context
     }
 }
 

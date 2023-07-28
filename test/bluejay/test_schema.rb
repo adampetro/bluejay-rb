@@ -48,8 +48,8 @@ module Bluejay
           end
         end
 
-        sig { override.params(value: T.untyped).returns(Result[Date, String]) }
-        def coerce_input(value)
+        sig { override.params(value: T.untyped, context: T.untyped).returns(Result[Date, String]) }
+        def coerce_input(value, context)
           if value.is_a?(String)
             begin
               Result.ok(Date.parse(value))

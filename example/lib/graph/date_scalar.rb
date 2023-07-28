@@ -20,8 +20,8 @@ module Graph
       end
 
       # TODO: bring back generic type on `Result` (to `Result[Date, String]`)
-      sig { override.params(value: T.untyped).returns(Bluejay::Result) }
-      def coerce_input(value)
+      sig { override.params(value: T.untyped, context: T.untyped).returns(Bluejay::Result) }
+      def coerce_input(value, context)
         if value.is_a?(String)
           begin
             Bluejay::Result.ok(Date.parse(value))

@@ -1,12 +1,13 @@
 use crate::execution::Engine as ExecutionEngine;
 use crate::helpers::{Warden, WrappedDefinition};
 use crate::ruby_api::{
-    base, root, ArgumentsDefinition, BaseInputType, BaseOutputType, CustomScalarTypeDefinition,
-    DirectiveDefinition, Directives, EnumTypeDefinition, EnumValueDefinition, EnumValueDefinitions,
-    ExecutionResult, FieldDefinition, FieldsDefinition, InputFieldsDefinition,
-    InputObjectTypeDefinition, InputType, InputValueDefinition, InterfaceImplementation,
-    InterfaceImplementations, InterfaceTypeDefinition, ObjectTypeDefinition, OutputType,
-    TypeDefinition, UnionMemberType, UnionMemberTypes, UnionTypeDefinition, ValidationError,
+    base, root, wrapped_value::ValueInner, Argument, Arguments, ArgumentsDefinition, BaseInputType,
+    BaseOutputType, CustomScalarTypeDefinition, Directive, DirectiveDefinition, Directives,
+    EnumTypeDefinition, EnumValueDefinition, EnumValueDefinitions, ExecutionResult,
+    FieldDefinition, FieldsDefinition, InputFieldsDefinition, InputObjectTypeDefinition, InputType,
+    InputValueDefinition, InterfaceImplementation, InterfaceImplementations,
+    InterfaceTypeDefinition, ObjectTypeDefinition, OutputType, TypeDefinition, UnionMemberType,
+    UnionMemberTypes, UnionTypeDefinition, ValidationError,
 };
 use crate::visibility_scoped::{ScopedSchemaDefinition, VisibilityCache};
 use bluejay_core::definition::{
@@ -78,8 +79,6 @@ impl SchemaDefinition {
                 &directives,
             )?;
         let interface_implementors = Self::interface_implementors(&contained_types);
-
-        Self::validate_default_values(&contained_types)?;
 
         Ok(Self {
             description,
@@ -185,38 +184,6 @@ impl SchemaDefinition {
         )
     }
 
-    fn validate_default_values(
-        type_definitions: &BTreeMap<String, TypeDefinition>,
-    ) -> Result<(), Error> {
-        // TODO: something better than a warden with nil context
-        let cache = VisibilityCache::new(Warden::new(*magnus::QNIL));
-        type_definitions
-            .values()
-            .try_for_each(|type_definition| match type_definition {
-                TypeDefinition::InputObject(iotd) => iotd
-                    .as_ref()
-                    .input_fields_definition()
-                    .iter()
-                    .try_for_each(|ivd| ivd.validate_default_value(&cache)),
-                TypeDefinition::Object(otd) => {
-                    otd.as_ref().fields_definition().iter().try_for_each(|fd| {
-                        fd.argument_definitions()
-                            .iter()
-                            .try_for_each(|ivd| ivd.validate_default_value(&cache))
-                    })
-                }
-                TypeDefinition::Interface(itd) => {
-                    itd.as_ref().fields_definition().iter().try_for_each(|fd| {
-                        fd.argument_definitions()
-                            .iter()
-                            .try_for_each(|ivd| ivd.validate_default_value(&cache))
-                    })
-                }
-                _ => Ok(()),
-            })?;
-        cache.warden().to_result()
-    }
-
     fn query_root_module() -> RModule {
         *memoize!(RModule: base().define_module("QueryRoot").unwrap())
     }
@@ -242,6 +209,10 @@ impl DataTypeFunctions for SchemaDefinition {
 }
 
 impl CoreSchemaDefinition for SchemaDefinition {
+    type Value = ValueInner;
+    type Argument = Argument;
+    type Arguments = Arguments;
+    type Directive = Directive;
     type InputValueDefinition = InputValueDefinition;
     type InputFieldsDefinition = InputFieldsDefinition;
     type ArgumentsDefinition = ArgumentsDefinition;
@@ -343,6 +314,11 @@ impl CoreSchemaDefinition for SchemaDefinition {
             .into_iter()
             .flatten()
     }
+}
+
+impl bluejay_visibility::SchemaDefinitionWithVisibility for SchemaDefinition {
+    type Warden = crate::helpers::Warden;
+    type InputValueDefinition = InputValueDefinition;
 }
 
 struct SchemaTypeVisitor {

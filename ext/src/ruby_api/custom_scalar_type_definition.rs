@@ -120,10 +120,11 @@ impl CustomScalarTypeDefinition {
         &self,
         value: Value,
         path: Path,
+        context: Value,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         match self
             .ruby_class
-            .funcall::<_, _, Value>(*memoize!(Id: Id::new("coerce_input")), (value,))
+            .funcall::<_, _, Value>(*memoize!(Id: Id::new("coerce_input")), (value, context))
         {
             Ok(value) => match self.input_coercion_method_signature {
                 CoercionMethodSignature::Result => {
@@ -171,11 +172,12 @@ impl<'a> CoerceInput for ScopedScalarTypeDefinition<'a> {
         &self,
         value: Value,
         path: Path,
+        context: Value,
     ) -> Result<Result<WrappedValue, Vec<CoercionError>>, Error> {
         let inner = value_inner_from_ruby_const_value(value)?;
 
         self.inner()
-            .coerce_input(value, path)
+            .coerce_input(value, path, context)
             .map(|r| r.map(|coerced_value| WrappedValue::from((coerced_value, inner))))
     }
 
@@ -184,18 +186,20 @@ impl<'a> CoerceInput for ScopedScalarTypeDefinition<'a> {
         value: &ParserValue<CONST>,
         path: Path,
         variables: &impl Variables<CONST>,
+        context: Value,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         let r_value = value_from_core_value(value, variables);
 
-        self.inner().coerce_input(r_value, path)
+        self.inner().coerce_input(r_value, path, context)
     }
 
     fn coerce_ruby_const_value(
         &self,
         value: Value,
         path: Path,
+        context: Value,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
-        self.inner().coerce_input(value, path)
+        self.inner().coerce_input(value, path, context)
     }
 }
 

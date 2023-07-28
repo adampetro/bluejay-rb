@@ -202,6 +202,7 @@ impl CoerceInput for BuiltinScalarDefinition {
         &self,
         value: Value,
         path: Path,
+        _: Value,
     ) -> Result<Result<WrappedValue, Vec<CoercionError>>, Error> {
         let r_value_result = match self {
             Self::String => BaseInputType::coerce_string(value, path),
@@ -221,6 +222,7 @@ impl CoerceInput for BuiltinScalarDefinition {
         value: &ParserValue<CONST>,
         path: Path,
         _: &impl Variables<CONST>,
+        _: Value,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         Ok(BaseInputType::coerce_parser_value(self, value, path))
     }
@@ -229,6 +231,7 @@ impl CoerceInput for BuiltinScalarDefinition {
         &self,
         value: Value,
         path: Path,
+        _: Value,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         Ok(match self {
             Self::String => BaseInputType::coerce_string(value, path),
@@ -245,12 +248,19 @@ impl<'a> CoerceInput for ScopedBaseInputType<'a> {
         &self,
         value: Value,
         path: Path,
+        context: Value,
     ) -> Result<Result<WrappedValue, Vec<CoercionError>>, Error> {
         match self {
-            Self::BuiltinScalar(bstd) => bstd.coerced_ruby_value_to_wrapped_value(value, path),
-            Self::InputObject(iotd) => iotd.coerced_ruby_value_to_wrapped_value(value, path),
-            Self::Enum(etd) => etd.coerced_ruby_value_to_wrapped_value(value, path),
-            Self::CustomScalar(cstd) => cstd.coerced_ruby_value_to_wrapped_value(value, path),
+            Self::BuiltinScalar(bstd) => {
+                bstd.coerced_ruby_value_to_wrapped_value(value, path, context)
+            }
+            Self::InputObject(iotd) => {
+                iotd.coerced_ruby_value_to_wrapped_value(value, path, context)
+            }
+            Self::Enum(etd) => etd.coerced_ruby_value_to_wrapped_value(value, path, context),
+            Self::CustomScalar(cstd) => {
+                cstd.coerced_ruby_value_to_wrapped_value(value, path, context)
+            }
         }
     }
 
@@ -259,12 +269,13 @@ impl<'a> CoerceInput for ScopedBaseInputType<'a> {
         value: &ParserValue<CONST>,
         path: Path,
         variables: &impl Variables<CONST>,
+        context: Value,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         match self {
-            Self::BuiltinScalar(bstd) => bstd.coerce_parser_value(value, path, variables),
-            Self::CustomScalar(cstd) => cstd.coerce_parser_value(value, path, variables),
-            Self::Enum(etd) => etd.coerce_parser_value(value, path, variables),
-            Self::InputObject(iotd) => iotd.coerce_parser_value(value, path, variables),
+            Self::BuiltinScalar(bstd) => bstd.coerce_parser_value(value, path, variables, context),
+            Self::CustomScalar(cstd) => cstd.coerce_parser_value(value, path, variables, context),
+            Self::Enum(etd) => etd.coerce_parser_value(value, path, variables, context),
+            Self::InputObject(iotd) => iotd.coerce_parser_value(value, path, variables, context),
         }
     }
 
@@ -272,12 +283,13 @@ impl<'a> CoerceInput for ScopedBaseInputType<'a> {
         &self,
         value: Value,
         path: Path,
+        context: Value,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         match self {
-            Self::BuiltinScalar(bstd) => bstd.coerce_ruby_const_value(value, path),
-            Self::InputObject(iotd) => iotd.coerce_ruby_const_value(value, path),
-            Self::Enum(etd) => etd.coerce_ruby_const_value(value, path),
-            Self::CustomScalar(cstd) => cstd.coerce_ruby_const_value(value, path),
+            Self::BuiltinScalar(bstd) => bstd.coerce_ruby_const_value(value, path, context),
+            Self::InputObject(iotd) => iotd.coerce_ruby_const_value(value, path, context),
+            Self::Enum(etd) => etd.coerce_ruby_const_value(value, path, context),
+            Self::CustomScalar(cstd) => cstd.coerce_ruby_const_value(value, path, context),
         }
     }
 }
@@ -445,6 +457,7 @@ impl InputType {
         value: &ParserValue<CONST>,
         path: Path,
         variables: &impl Variables<CONST>,
+        context: Value,
         allow_implicit_list: bool,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         let required = scoped_self.as_ref().is_required();
@@ -471,7 +484,7 @@ impl InputType {
             }
             _ => match scoped_self {
                 ScopedInputType::Base(inner, _) => {
-                    inner.coerce_parser_value(value, path, variables)
+                    inner.coerce_parser_value(value, path, variables, context)
                 }
                 ScopedInputType::List(inner, _) => {
                     if let ParserValue::List(l) = value {
@@ -481,7 +494,9 @@ impl InputType {
                         for (idx, value) in l.iter().enumerate() {
                             let path = path.push(idx);
 
-                            match Self::coerce_parser_value(inner, value, path, variables, false)? {
+                            match Self::coerce_parser_value(
+                                inner, value, path, variables, context, false,
+                            )? {
                                 Ok(coerced_value) => {
                                     coerced.push(coerced_value).unwrap();
                                 }
@@ -497,8 +512,9 @@ impl InputType {
                             Err(errors)
                         })
                     } else if allow_implicit_list {
-                        let inner_result =
-                            Self::coerce_parser_value(inner, value, path, variables, true)?;
+                        let inner_result = Self::coerce_parser_value(
+                            inner, value, path, variables, context, true,
+                        )?;
                         Ok(inner_result.map(|coerced_value| *RArray::from_slice(&[coerced_value])))
                     } else {
                         Ok(Err(vec![CoercionError::new(
@@ -518,6 +534,7 @@ impl InputType {
         scoped_self: &ScopedInputType,
         value: Value,
         path: Path,
+        context: Value,
         allow_implicit_list: bool,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
         match scoped_self {
@@ -525,7 +542,7 @@ impl InputType {
                 value,
                 *required,
                 path,
-                |value, path| inner.coerce_ruby_const_value(value, path),
+                |value, path| inner.coerce_ruby_const_value(value, path, context),
                 || Ok(*QNIL),
             ),
             ScopedInputType::List(inner, required) => Self::coerce_required_ruby(
@@ -540,7 +557,8 @@ impl InputType {
                         for (idx, value) in RArrayIter::<Value>::from(&array).enumerate() {
                             let path = path.push(idx);
 
-                            match Self::coerce_ruby_const_value(inner, value, path, false)? {
+                            match Self::coerce_ruby_const_value(inner, value, path, context, false)?
+                            {
                                 Ok(coerced_value) => {
                                     coerced.push(coerced_value).unwrap();
                                 }
@@ -556,7 +574,8 @@ impl InputType {
                             Err(errors)
                         })
                     } else if allow_implicit_list {
-                        let inner_result = Self::coerce_ruby_const_value(inner, value, path, true)?;
+                        let inner_result =
+                            Self::coerce_ruby_const_value(inner, value, path, context, true)?;
                         Ok(inner_result.map(|coerced_value| *RArray::from_slice(&[coerced_value])))
                     } else {
                         Ok(Err(vec![CoercionError::new(
@@ -580,13 +599,14 @@ impl<'a> CoerceInput for ScopedInputType<'a> {
         &self,
         value: Value,
         path: Path,
+        context: Value,
     ) -> Result<Result<WrappedValue, Vec<CoercionError>>, Error> {
         match self {
             Self::Base(inner, required) => InputType::coerce_required_ruby(
                 value,
                 *required,
                 path,
-                |value, path| inner.coerced_ruby_value_to_wrapped_value(value, path),
+                |value, path| inner.coerced_ruby_value_to_wrapped_value(value, path, context),
                 || (*QNIL).try_into(),
             ),
             Self::List(inner, required) => InputType::coerce_required_ruby(
@@ -602,7 +622,7 @@ impl<'a> CoerceInput for ScopedInputType<'a> {
                         for (idx, value) in RArrayIter::<Value>::from(&array).enumerate() {
                             let path = path.push(idx);
 
-                            match inner.coerced_ruby_value_to_wrapped_value(value, path)? {
+                            match inner.coerced_ruby_value_to_wrapped_value(value, path, context)? {
                                 Ok(coerced_value) => {
                                     let (r_value, inner) = coerced_value.into();
                                     coerced.push(r_value).unwrap();
@@ -621,7 +641,7 @@ impl<'a> CoerceInput for ScopedInputType<'a> {
                         })
                     } else {
                         let inner_result =
-                            inner.coerced_ruby_value_to_wrapped_value(value, path)?;
+                            inner.coerced_ruby_value_to_wrapped_value(value, path, context)?;
                         Ok(inner_result.map(|coerced_value| {
                             let (r_value, inner) = coerced_value.into();
                             (
@@ -642,16 +662,18 @@ impl<'a> CoerceInput for ScopedInputType<'a> {
         value: &ParserValue<CONST>,
         path: Path,
         variables: &impl Variables<CONST>,
+        context: Value,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
-        InputType::coerce_parser_value(self, value, path, variables, true)
+        InputType::coerce_parser_value(self, value, path, variables, context, true)
     }
 
     fn coerce_ruby_const_value(
         &self,
         value: Value,
         path: Path,
+        context: Value,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error> {
-        InputType::coerce_ruby_const_value(self, value, path, true)
+        InputType::coerce_ruby_const_value(self, value, path, context, true)
     }
 }
 

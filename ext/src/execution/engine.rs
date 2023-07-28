@@ -38,6 +38,7 @@ pub struct Engine<'a> {
     variables: &'a RHash,
     key_store: KeyStore<'a>,
     collect_fields_cache: CollectFieldsCache<'a>,
+    context: Value,
 }
 
 impl<'a> Engine<'a> {
@@ -79,6 +80,7 @@ impl<'a> Engine<'a> {
             variable_values,
             &visibility_cache,
             &variable_definition_input_type_cache,
+            context,
         ) {
             Ok(cvv) => cvv,
             Err(errors) => {
@@ -92,6 +94,7 @@ impl<'a> Engine<'a> {
             variables: &variables,
             key_store: KeyStore::new(),
             collect_fields_cache: Default::default(),
+            context,
         };
 
         instance
@@ -124,6 +127,7 @@ impl<'a> Engine<'a> {
         variable_values: RHash,
         visibility_cache: &'b VisibilityCache<'b>,
         variable_definition_input_type_cache: &'b VariableDefinitionInputTypeCache,
+        context: Value,
     ) -> Result<RHash, Vec<ExecutionError<'b>>> {
         let coerced_variables = RHash::new();
         let mut errors: Vec<ExecutionError<'b>> = Vec::new();
@@ -141,7 +145,12 @@ impl<'a> Engine<'a> {
                 let path = Path::new(variable_name);
                 match default_value {
                     Some(default_value) if !has_value => {
-                        match scoped_variable_type.coerce_parser_value(default_value, path, &()) {
+                        match scoped_variable_type.coerce_parser_value(
+                            default_value,
+                            path,
+                            &(),
+                            context,
+                        ) {
                             Ok(Ok(coerced_value)) => {
                                 coerced_variables
                                     .aset(variable_name, coerced_value)
@@ -164,7 +173,8 @@ impl<'a> Engine<'a> {
                             });
                         } else {
                             let value = value.unwrap_or_default();
-                            match scoped_variable_type.coerce_ruby_const_value(value, path) {
+                            match scoped_variable_type.coerce_ruby_const_value(value, path, context)
+                            {
                                 Ok(Ok(coerced_value)) => {
                                     coerced_variables
                                         .aset(variable_name, coerced_value)
@@ -506,7 +516,9 @@ impl<'a> Engine<'a> {
     ) -> Result<Value, Vec<ExecutionError<'a>>> {
         let argument_name = argument_definition.name();
         let argument_type = argument_definition.r#type();
-        let default_value = argument_definition.inner().default_value();
+        let default_value = argument_definition
+            .inner()
+            .default_value(self.schema_definition.cache());
         let argument_value: Option<&VariableValue> = arguments.and_then(|arguments| {
             arguments
                 .iter()
@@ -527,6 +539,7 @@ impl<'a> Engine<'a> {
                         argument_value,
                         Path::new(argument_name),
                         self.variables,
+                        self.context,
                     ) {
                         Ok(Ok(coerced_value)) => Ok(coerced_value),
                         Ok(Err(coercion_errors)) => Err(coercion_errors

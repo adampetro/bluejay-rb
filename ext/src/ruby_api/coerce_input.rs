@@ -10,12 +10,14 @@ pub trait CoerceInput {
         &self,
         value: Value,
         path: Path,
+        context: Value,
     ) -> Result<Result<WrappedValue, Vec<CoercionError>>, Error>;
 
     fn coerce_ruby_const_value(
         &self,
         value: Value,
         path: Path,
+        context: Value,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error>;
 
     fn coerce_parser_value<const CONST: bool>(
@@ -23,5 +25,6 @@ pub trait CoerceInput {
         value: &ParserValue<CONST>,
         path: Path,
         variables: &impl Variables<CONST>,
+        context: Value,
     ) -> Result<Result<Value, Vec<CoercionError>>, Error>;
 }

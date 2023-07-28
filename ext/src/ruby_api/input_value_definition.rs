@@ -5,9 +5,13 @@ use crate::ruby_api::{
 };
 use crate::visibility_scoped::{ScopedInputType, VisibilityCache};
 use bluejay_core::AsIter;
+<<<<<<< HEAD
 use bluejay_printer::value::ValuePrinter;
+=======
+>>>>>>> bbe692e (WIP)
 use bluejay_validator::Path;
 use convert_case::{Case, Casing};
+use magnus::QNIL;
 use magnus::{
     function, gc, method, scan_args::get_kwargs, scan_args::KwArgs, typed_data::Obj, Class,
     DataTypeFunctions, Error, Module, Object, RArray, RHash, RString, Symbol, TypedData, Value,
@@ -99,10 +103,44 @@ impl InputValueDefinition {
         self.r#type.get()
     }
 
-    pub fn default_value(&self) -> Option<&WrappedValue> {
-        self.default_value
-            .as_ref()
-            .map(|v| v.1.get().expect("Default value not coerced"))
+    pub fn default_value<'a>(
+        &'a self,
+        visibility_cache: &'a VisibilityCache<'a>,
+    ) -> Option<&WrappedValue> {
+        if let Some((raw_value, wrapped_value)) = self.default_value.as_ref() {
+            match wrapped_value.get_or_try_init(|| {
+                let scoped_type = ScopedInputType::new(self.r#type.get(), visibility_cache);
+                let path: Path = Default::default();
+                scoped_type
+                    .unwrap()
+                    .coerced_ruby_value_to_wrapped_value(
+                        *raw_value,
+                        path,
+                        visibility_cache.warden().context(),
+                    )
+                    .and_then(|result| {
+                        result.map_err(|coercion_errors| {
+                            let arr = RArray::from_iter(coercion_errors.into_iter().map(Obj::wrap));
+                            match errors::default_value_error().new_instance((
+                                arr,
+                                *raw_value,
+                                self.name_r_string,
+                            )) {
+                                Ok(exception) => Error::Exception(exception),
+                                Err(error) => error,
+                            }
+                        })
+                    })
+            }) {
+                Ok(v) => Some(v),
+                Err(error) => {
+                    visibility_cache.warden().report_error(error);
+                    None
+                }
+            }
+        } else {
+            None
+        }
     }
 
     pub fn is_required(&self) -> bool {
@@ -123,39 +161,6 @@ impl InputValueDefinition {
 
     pub fn directives(&self) -> &Directives {
         &self.directives
-    }
-
-    pub fn validate_default_value<'a>(
-        &'a self,
-        visibility_cache: &'a VisibilityCache<'a>,
-    ) -> Result<(), Error> {
-        if let Some((raw_value, wrapped_value)) = self.default_value.as_ref() {
-            wrapped_value
-                .get_or_try_init(|| {
-                    let scoped_type = ScopedInputType::new(self.r#type.get(), visibility_cache);
-                    let path: Path = Default::default();
-                    scoped_type
-                        .unwrap()
-                        .coerced_ruby_value_to_wrapped_value(*raw_value, path)
-                        .and_then(|result| {
-                            result.map_err(|coercion_errors| {
-                                let arr =
-                                    RArray::from_iter(coercion_errors.into_iter().map(Obj::wrap));
-                                match errors::default_value_error().new_instance((
-                                    arr,
-                                    *raw_value,
-                                    self.name_r_string,
-                                )) {
-                                    Ok(exception) => Error::Exception(exception),
-                                    Err(error) => error,
-                                }
-                            })
-                        })
-                })
-                .map(|_| ())
-        } else {
-            Ok(())
-        }
     }
 }
 
@@ -198,6 +203,17 @@ impl bluejay_core::definition::InputValueDefinition for InputValueDefinition {
 
     fn directives(&self) -> Option<&Self::Directives> {
         self.directives.to_option()
+    }
+}
+
+impl bluejay_visibility::InputValueDefinitionWithVisibility for InputValueDefinition {
+    type SchemaDefinition = crate::ruby_api::SchemaDefinition;
+
+    fn default_value<'a>(
+        &'a self,
+        visibility_cache: &'a bluejay_visibility::Cache<'a, Self::SchemaDefinition>,
+    ) -> Option<&Self::Value> {
+        self.default_value(visibility_cache).map(|v| v.as_ref())
     }
 }
 

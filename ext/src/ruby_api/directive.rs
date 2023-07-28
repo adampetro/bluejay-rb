@@ -33,7 +33,11 @@ impl TryConvert for Directive {
                     let value: Value = obj.funcall(ivd.inner().ruby_name(), ())?;
                     let value: WrappedValue = ivd
                         .r#type()
-                        .coerced_ruby_value_to_wrapped_value(value, Default::default())?
+                        .coerced_ruby_value_to_wrapped_value(
+                            value,
+                            Default::default(),
+                            *magnus::QNIL,
+                        )?
                         .unwrap();
                     let name = ivd.name().to_string();
                     Ok(Argument { name, value })

@@ -39,17 +39,20 @@ module Bluejay
         end
       end
 
-      def test_default_value_validation
-        klass = Class.new(Schema) do
-          class << self
-            def query
-              QueryRoot
-            end
+      class Schema < Bluejay::Schema
+        class << self
+          extend(T::Sig)
+
+          sig { override.returns(T.class_of(Bluejay::QueryRoot)) }
+          def query
+            QueryRoot
           end
         end
+      end
 
+      def test_default_value_validation
         e = assert_raises(Errors::DefaultValueError) do
-          klass.send(:definition)
+          Schema.to_definition
         end
 
         assert_equal(

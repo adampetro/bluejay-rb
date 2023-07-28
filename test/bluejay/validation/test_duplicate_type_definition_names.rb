@@ -14,8 +14,8 @@ module Bluejay
         class << self
           extend(T::Sig)
 
-          sig { override.params(value: T.untyped).returns(Result[InternalRepresentation, String]) }
-          def coerce_input(value)
+          sig { override.params(value: T.untyped, context: T.untyped).returns(Result[InternalRepresentation, String]) }
+          def coerce_input(value, context)
             raise NotImplementedError
           end
         end
