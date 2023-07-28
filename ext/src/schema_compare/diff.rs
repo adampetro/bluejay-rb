@@ -115,9 +115,9 @@ impl<'a, S: SchemaDefinition+'a> ObjectType<'a, S> {
         let mut changes = Vec::new();
 
         changes.extend(self.interface_additions().into_iter()
-            .map(|field| Change::FieldAdded { added_field: field, object_type: self.old_type }));
+            .map(|interface| Change::ObjectInterfaceAddition { object_type: self.old_type, interface: interface }));
         changes.extend(self.interface_removals().into_iter()
-            .map(|field| Change::FieldRemoved { removed_field: field, object_type: self.new_type }));
+            .map(|interface| Change::ObjectInterfaceRemoval { object_type: self.old_type, interface: interface }));
 
         changes.extend(self.field_additions().into_iter()
             .map(|field| Change::FieldAdded { added_field: field, object_type: self.old_type }));
@@ -162,25 +162,13 @@ impl<'a, S: SchemaDefinition+'a> ObjectType<'a, S> {
     fn interface_additions(&self) -> Vec<&'a S::InterfaceTypeDefinition> {
         let mut added_interfaces = Vec::new();
 
-        match self.new_type.interface_implementations() {
-            Some(new_interfaces) => {
-                new_interfaces.iter().for_each(|new_interface_impl: &'a<S as SchemaDefinition>::InterfaceImplementation| {
-                    match self.old_type.interface_implementations() {
-                        Some(old_interfaces) => {
-                            if old_interfaces.iter().find(|old_interface_impl| {
-                                old_interface_impl.interface().name() == new_interface_impl.interface().name()
-                            }).is_none() {
-                                added_interfaces.push(new_interface_impl.interface());
-                            }
-                        },
-                        None => {
-                            added_interfaces.push(new_interface_impl.interface());
-                        }
-                    }
-                });
-            },
-            None => { }
-        }
+        self.new_type.interface_implementations().map(|ii| ii.iter()).into_iter().flatten().for_each(|new_interface_impl: &'a<S as SchemaDefinition>::InterfaceImplementation| {
+            if self.old_type.interface_implementations().map(|ii| ii.iter()).into_iter().flatten().find(|old_interface_impl| {
+                old_interface_impl.interface().name() == new_interface_impl.interface().name()
+            }).is_none() {
+                added_interfaces.push(new_interface_impl.interface());
+            }
+        });
 
         added_interfaces
     }
@@ -188,25 +176,13 @@ impl<'a, S: SchemaDefinition+'a> ObjectType<'a, S> {
     fn interface_removals(&self) -> Vec<&'a S::InterfaceTypeDefinition> {
         let mut removed_interfaces = Vec::new();
 
-        match self.old_type.interface_implementations() {
-            Some(old_interfaces) => {
-                old_interfaces.iter().for_each(|old_interface_impl: &'a<S as SchemaDefinition>::InterfaceImplementation| {
-                    match self.new_type.interface_implementations() {
-                        Some(new_interfaces) => {
-                            if new_interfaces.iter().find(|new_interface_impl| {
-                                old_interface_impl.interface().name() == new_interface_impl.interface().name()
-                            }).is_none() {
-                                removed_interfaces.push(old_interface_impl.interface());
-                            }
-                        },
-                        None => {
-                            removed_interfaces.push(old_interface_impl.interface());
-                        }
-                    }
-                });
-            },
-            None => { }
-        }
+        self.old_type.interface_implementations().map(|ii| ii.iter()).into_iter().flatten().for_each(|old_interface_impl: &'a<S as SchemaDefinition>::InterfaceImplementation| {
+            if self.new_type.interface_implementations().map(|ii| ii.iter()).into_iter().flatten().find(|new_interface_impl| {
+                old_interface_impl.interface().name() == new_interface_impl.interface().name()
+            }).is_none() {
+                removed_interfaces.push(old_interface_impl.interface());
+            }
+        });
 
         removed_interfaces
     }
