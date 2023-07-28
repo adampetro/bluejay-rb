@@ -1,4 +1,4 @@
-use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, ObjectTypeDefinition, FieldDefinition, FieldsDefinition};
+use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, ObjectTypeDefinition, FieldDefinition, FieldsDefinition, ArgumentsDefinition, InputValueDefinition};
 use bluejay_core::AsIter;
 use super::changes::*;
 use super::helpers::{type_description, type_kind};
@@ -11,6 +11,13 @@ pub struct Schema<'a, S: SchemaDefinition> {
 pub struct ObjectType<'a, S: SchemaDefinition> {
     old_type: &'a S::ObjectTypeDefinition,
     new_type: &'a S::ObjectTypeDefinition,
+}
+
+pub struct Field<'a, S: SchemaDefinition> {
+    old_type: &'a S::ObjectTypeDefinition,
+    new_type: &'a S::ObjectTypeDefinition,
+    old_field: &'a S::FieldDefinition,
+    new_field: &'a S::FieldDefinition,
 }
 
 impl<'a, S: SchemaDefinition> Schema<'a, S> {
@@ -116,7 +123,7 @@ impl<'a, S: SchemaDefinition+'a> ObjectType<'a, S> {
             let new_field: Option<&'a<S as SchemaDefinition>::FieldDefinition> = self.new_type.fields_definition().get(old_field.name());
 
             if new_field.is_some() {
-                changes.extend(self.changes_in_field(old_field, new_field.unwrap()).into_iter());
+                changes.extend(Field::new(self.old_type, self.new_type, old_field, new_field.unwrap()).diff());
             }
         });
 
@@ -146,22 +153,65 @@ impl<'a, S: SchemaDefinition+'a> ObjectType<'a, S> {
 
         removed_fields
     }
+}
 
-    fn changes_in_field(&self, old_field: &'a S::FieldDefinition, new_field: &'a S::FieldDefinition) -> Vec<Change<'a, S>> {
-        let mut changes: Vec<Change<'_, S>> = Vec::new();
+impl<'a, S: SchemaDefinition+'a> Field<'a, S> {
+    pub fn new(old_type: &'a S::ObjectTypeDefinition, new_type: &'a S::ObjectTypeDefinition, old_field: &'a S::FieldDefinition, new_field: &'a S::FieldDefinition) -> Self {
+        Self {
+            old_type,
+            new_type,
+            old_field,
+            new_field
+        }
+    }
 
-        if old_field.description() != new_field.description() {
+    pub fn diff(&self) -> Vec<Change<'a, S>> {
+        let mut changes = Vec::new();
+
+        if self.old_field.description() != self.new_field.description() {
             changes.push(Change::FieldDescriptionChanged {
                 object_type: self.old_type,
-                old_field,
-                new_field,
+                old_field: self.old_field,
+                new_field: self.new_field,
             });
         }
 
+
+        changes.extend(self.argument_additions().into_iter()
+            .map(|arg| Change::FieldArgumentAdded { object_type: self.new_type, field: self.new_field, argument: arg }));
+
+        changes.extend(self.argument_removals().into_iter()
+            .map(|arg| Change::FieldArgumentRemoved { object_type: self.new_type, field: self.old_field, argument: arg }));
+
         // TODO: deprecation reason - check directives
-        // TODO: type sig
-        // TODO: arguments
+        // TODO: type signature change - not sure how to handle output type yet
 
         changes
+    }
+
+    fn argument_additions(&self) -> Vec<&'a S::InputValueDefinition> {
+        let mut added_arguments = Vec::new();
+
+        self.new_field.arguments_definition().unwrap().iter().for_each(|new_arg: &'a<S as SchemaDefinition>::InputValueDefinition| {
+            if self.old_field.arguments_definition().unwrap().get(new_arg.name()).is_some() {
+                added_arguments.push(new_arg);
+            }
+        });
+
+        added_arguments
+    }
+
+    fn argument_removals(&self) -> Vec<&'a S::InputValueDefinition> {
+        let mut removed_arguments: Vec<&<S as SchemaDefinition>::InputValueDefinition> = Vec::new();
+
+        self.old_field.arguments_definition().unwrap().iter().for_each(|old_arg: &'a<S as SchemaDefinition>::InputValueDefinition| {
+            if self.new_field.arguments_definition().unwrap().iter().find(|new_arg| {
+                old_arg.name() == new_arg.name()
+            }).is_none() {
+                removed_arguments.push(old_arg);
+            }
+        });
+
+        removed_arguments
     }
 }

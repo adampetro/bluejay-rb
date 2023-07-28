@@ -1,4 +1,4 @@
-use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, prelude::*};
+use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, ObjectTypeDefinition, FieldDefinition, InputValueDefinition};
 use super::helpers::{type_description, type_kind};
 
 #[derive(Eq, Ord, PartialEq, PartialOrd)]
@@ -50,6 +50,21 @@ pub enum Change<'a, S: SchemaDefinition> {
         old_field: &'a S::FieldDefinition,
         new_field: &'a S::FieldDefinition,
     },
+    FieldTypeChanged{
+        object_type: &'a S::ObjectTypeDefinition,
+        old_field: &'a S::FieldDefinition,
+        new_field: &'a S::FieldDefinition,
+    },
+    FieldArgumentAdded{
+        object_type: &'a S::ObjectTypeDefinition,
+        field: &'a S::FieldDefinition,
+        argument: &'a S::InputValueDefinition,
+    },
+    FieldArgumentRemoved{
+        object_type: &'a S::ObjectTypeDefinition,
+        field: &'a S::FieldDefinition,
+        argument: &'a S::InputValueDefinition,
+    },
 }
 
 impl<'a, S: SchemaDefinition>  Change<'a, S> {
@@ -79,7 +94,20 @@ impl<'a, S: SchemaDefinition>  Change<'a, S> {
                 Criticality::non_breaking(None)
             },
             Self::FieldDescriptionChanged{ object_type, old_field, new_field } => Criticality::non_breaking(None),
+            Self::FieldTypeChanged{ object_type, old_field, new_field } => {
+                // TODO: conditional criticality depending on safe type change
+                Criticality::non_breaking(None)
+            },
+            Self::FieldArgumentAdded{ object_type, field, argument } => {
+                // TODO conditional criticality
+                Criticality::non_breaking(None)
+            },
+            Self::FieldArgumentRemoved{ object_type, field, argument } => {
+                // TODO conditional criticality
+                Criticality::breaking(Some("Removing a field argument is a breaking change because it will cause existing queries that use this argument to error.".to_string()))
+            },
         }
+
     }
 
     pub fn message(&self) -> String {
@@ -115,6 +143,16 @@ impl<'a, S: SchemaDefinition>  Change<'a, S> {
             Self::FieldDescriptionChanged{ object_type, old_field, new_field } => {
                 format!("Field `{}` description changed from `{} to `{}`", self.path(), old_field.description().unwrap_or(""), new_field.description().unwrap_or(""))
             },
+            Self::FieldTypeChanged{ object_type, old_field, new_field } => {
+                //format!("Field `{}` changed type from `{}` to `{}`", self.path(), old_field.type().name(), new_field.type().name())
+                format!("Field `{}.{}` type changed.", object_type.name(), old_field.name())
+            },
+            Self::FieldArgumentAdded{ object_type, field, argument } => {
+                format!("Argument `{}` was added to field `{}.{}`", argument.name(), object_type.name(), field.name())
+            },
+            Self::FieldArgumentRemoved{ object_type, field, argument } => {
+                format!("Argument `{}` was removed from field `{}.{}`", argument.name(), object_type.name(), field.name())
+            },
         }
     }
 
@@ -140,6 +178,15 @@ impl<'a, S: SchemaDefinition>  Change<'a, S> {
             },
             Self::FieldDescriptionChanged{ object_type, old_field, new_field} => {
                 vec![object_type.name(), old_field.name()].join(".")
+            },
+            Self::FieldTypeChanged{ object_type, old_field, new_field } => {
+                vec![object_type.name(), old_field.name()].join(".")
+            },
+            Self::FieldArgumentAdded{ object_type, field, argument } => {
+                vec![object_type.name(), field.name(), argument.name()].join(".")
+            },
+            Self::FieldArgumentRemoved{ object_type, field, argument } => {
+                vec![object_type.name(), field.name(), argument.name()].join(".")
             },
         }
     }
