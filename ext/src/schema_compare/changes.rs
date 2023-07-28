@@ -1,4 +1,4 @@
-use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, ObjectTypeDefinition, FieldDefinition, InputValueDefinition};
+use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, ObjectTypeDefinition, FieldDefinition, InputValueDefinition, InterfaceTypeDefinition};
 use super::helpers::{type_description, type_kind};
 
 #[derive(Eq, Ord, PartialEq, PartialOrd)]
@@ -65,6 +65,14 @@ pub enum Change<'a, S: SchemaDefinition> {
         field: &'a S::FieldDefinition,
         argument: &'a S::InputValueDefinition,
     },
+    ObjectInterfaceAddition{
+        object_type: &'a S::ObjectTypeDefinition,
+        interface: &'a S::InterfaceTypeDefinition,
+    },
+    ObjectInterfaceRemoval{
+        object_type: &'a S::ObjectTypeDefinition,
+        interface: &'a S::InterfaceTypeDefinition,
+    },
 }
 
 impl<'a, S: SchemaDefinition>  Change<'a, S> {
@@ -105,6 +113,13 @@ impl<'a, S: SchemaDefinition>  Change<'a, S> {
             Self::FieldArgumentRemoved{ object_type, field, argument } => {
                 // TODO conditional criticality
                 Criticality::breaking(Some("Removing a field argument is a breaking change because it will cause existing queries that use this argument to error.".to_string()))
+            },
+            Self::ObjectInterfaceAddition{ object_type, interface } => {
+                Criticality::dangerous(Some("Adding an interface to an object type may break existing clients that were not programming defensively against a new possible type.".to_string()))
+            },
+            Self::ObjectInterfaceRemoval{ object_type, interface } => {
+                // TODO conditional criticality
+                Criticality::breaking(Some("Removing an interface from an object type can cause existing queries that use this in a fragment spread to error.".to_string()))
             },
         }
 
@@ -153,6 +168,12 @@ impl<'a, S: SchemaDefinition>  Change<'a, S> {
             Self::FieldArgumentRemoved{ object_type, field, argument } => {
                 format!("Argument `{}` was removed from field `{}.{}`", argument.name(), object_type.name(), field.name())
             },
+            Self::ObjectInterfaceAddition{ object_type, interface } => {
+                format!("`{}` object implements `{}` interface", object_type.name(), interface.name())
+            },
+            Self::ObjectInterfaceRemoval{ object_type, interface } => {
+                format!("`{}` object type no longer implements `{}` interface", object_type.name(), interface.name())
+            },
         }
     }
 
@@ -187,6 +208,12 @@ impl<'a, S: SchemaDefinition>  Change<'a, S> {
             },
             Self::FieldArgumentRemoved{ object_type, field, argument } => {
                 vec![object_type.name(), field.name(), argument.name()].join(".")
+            },
+            Self::ObjectInterfaceAddition{ object_type, interface } => {
+                object_type.name().to_string()
+            },
+            Self::ObjectInterfaceRemoval{ object_type, interface } => {
+                object_type.name().to_string()
             },
         }
     }

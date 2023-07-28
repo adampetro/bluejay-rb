@@ -1,4 +1,4 @@
-use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, ObjectTypeDefinition, FieldDefinition, FieldsDefinition, ArgumentsDefinition, InputValueDefinition};
+use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, ObjectTypeDefinition, FieldDefinition, FieldsDefinition, ArgumentsDefinition, InputValueDefinition, OutputType, InterfaceImplementation, InterfaceTypeDefinition};
 use bluejay_core::AsIter;
 use super::changes::*;
 use super::helpers::{type_description, type_kind};
@@ -114,6 +114,11 @@ impl<'a, S: SchemaDefinition+'a> ObjectType<'a, S> {
     pub fn diff(&self) -> Vec<Change<'a, S>> {
         let mut changes = Vec::new();
 
+        changes.extend(self.interface_additions().into_iter()
+            .map(|field| Change::FieldAdded { added_field: field, object_type: self.old_type }));
+        changes.extend(self.interface_removals().into_iter()
+            .map(|field| Change::FieldRemoved { removed_field: field, object_type: self.new_type }));
+
         changes.extend(self.field_additions().into_iter()
             .map(|field| Change::FieldAdded { added_field: field, object_type: self.old_type }));
         changes.extend(self.field_removals().into_iter()
@@ -153,6 +158,58 @@ impl<'a, S: SchemaDefinition+'a> ObjectType<'a, S> {
 
         removed_fields
     }
+
+    fn interface_additions(&self) -> Vec<&'a S::InterfaceTypeDefinition> {
+        let mut added_interfaces = Vec::new();
+
+        match self.new_type.interface_implementations() {
+            Some(new_interfaces) => {
+                new_interfaces.iter().for_each(|new_interface_impl: &'a<S as SchemaDefinition>::InterfaceImplementation| {
+                    match self.old_type.interface_implementations() {
+                        Some(old_interfaces) => {
+                            if old_interfaces.iter().find(|old_interface_impl| {
+                                old_interface_impl.interface().name() == new_interface_impl.interface().name()
+                            }).is_none() {
+                                added_interfaces.push(new_interface_impl.interface());
+                            }
+                        },
+                        None => {
+                            added_interfaces.push(new_interface_impl.interface());
+                        }
+                    }
+                });
+            },
+            None => { }
+        }
+
+        added_interfaces
+    }
+
+    fn interface_removals(&self) -> Vec<&'a S::InterfaceTypeDefinition> {
+        let mut removed_interfaces = Vec::new();
+
+        match self.old_type.interface_implementations() {
+            Some(old_interfaces) => {
+                old_interfaces.iter().for_each(|old_interface_impl: &'a<S as SchemaDefinition>::InterfaceImplementation| {
+                    match self.new_type.interface_implementations() {
+                        Some(new_interfaces) => {
+                            if new_interfaces.iter().find(|new_interface_impl| {
+                                old_interface_impl.interface().name() == new_interface_impl.interface().name()
+                            }).is_none() {
+                                removed_interfaces.push(old_interface_impl.interface());
+                            }
+                        },
+                        None => {
+                            removed_interfaces.push(old_interface_impl.interface());
+                        }
+                    }
+                });
+            },
+            None => { }
+        }
+
+        removed_interfaces
+    }
 }
 
 impl<'a, S: SchemaDefinition+'a> Field<'a, S> {
@@ -176,6 +233,13 @@ impl<'a, S: SchemaDefinition+'a> Field<'a, S> {
             });
         }
 
+        if self.old_field.r#type().as_ref().display_name() != self.new_field.r#type().as_ref().display_name() {
+            changes.push(Change::FieldTypeChanged {
+                object_type: self.old_type,
+                old_field: self.old_field,
+                new_field: self.new_field,
+            });
+        }
 
         changes.extend(self.argument_additions().into_iter()
             .map(|arg| Change::FieldArgumentAdded { object_type: self.new_type, field: self.new_field, argument: arg }));
@@ -184,8 +248,6 @@ impl<'a, S: SchemaDefinition+'a> Field<'a, S> {
             .map(|arg| Change::FieldArgumentRemoved { object_type: self.new_type, field: self.old_field, argument: arg }));
 
         // TODO: deprecation reason - check directives
-        // TODO: type signature change - not sure how to handle output type yet
-
         changes
     }
 
