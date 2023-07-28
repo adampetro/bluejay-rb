@@ -1,0 +1,167 @@
+use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, ObjectTypeDefinition, FieldDefinition, FieldsDefinition};
+use bluejay_core::AsIter;
+use super::changes::*;
+use super::helpers::{type_description, type_kind};
+
+pub struct Schema<'a, S: SchemaDefinition> {
+    old_schema: &'a S,
+    new_schema: &'a S,
+}
+
+pub struct ObjectType<'a, S: SchemaDefinition> {
+    old_type: &'a S::ObjectTypeDefinition,
+    new_type: &'a S::ObjectTypeDefinition,
+}
+
+impl<'a, S: SchemaDefinition> Schema<'a, S> {
+    pub fn new(old_schema: &'a S, new_schema: &'a S) -> Self {
+        Self {
+            old_schema,
+            new_schema,
+        }
+    }
+
+    pub fn diff(&self) -> Vec<Change<S>> {
+        let mut changes: Vec<Change<S>> = Vec::new();
+
+        changes.extend(self.removed_types().into_iter()
+            .map(|type_| Change::TypeRemoved {
+                removed_type: type_,
+            }));
+        changes.extend(self.added_types().into_iter()
+            .map(|type_| Change::TypeAdded {
+                added_type: type_
+            }));
+
+        self.old_schema.type_definitions().for_each(|old_type| {
+            let new_type = self.new_schema.get_type_definition(old_type.name());
+
+            if new_type.is_some() {
+                changes.extend(self.changes_in_type(old_type, new_type.unwrap()).into_iter());
+            }
+        });
+
+        changes
+    }
+
+    fn changes_in_type(&self, old_type: TypeDefinitionReference<'a, S::TypeDefinition>, new_type: TypeDefinitionReference<'a, S::TypeDefinition>) -> Vec<Change<S>> {
+        let mut changes: Vec<Change<S>> = Vec::new();
+
+        if type_kind(&old_type) != type_kind(&new_type) {
+            changes.push(Change::TypeKindChanged {
+                old_type,
+                new_type,
+            });
+        } else {
+            match (old_type, new_type) {
+                (TypeDefinitionReference::Object(old_type), TypeDefinitionReference::Object(new_type)) => {
+                    changes.extend(ObjectType::new(old_type, new_type).diff());
+                },
+                _ => { }
+            }
+        }
+
+        if type_description(&old_type) != type_description(&new_type) {
+            changes.push(Change::TypeDescriptionChanged {
+                old_type,
+                new_type,
+            });
+        }
+
+        changes
+    }
+
+    fn removed_types(&self) -> Vec<TypeDefinitionReference<'_, S::TypeDefinition>> {
+        let mut removed_types: Vec<TypeDefinitionReference<'_, S::TypeDefinition>> = Vec::new();
+
+        self.old_schema.type_definitions().for_each(|old_type| {
+            if self.new_schema.get_type_definition(old_type.name()).is_none() {
+                removed_types.push(old_type);
+            }
+        });
+
+        removed_types
+    }
+
+    fn added_types(&self) -> Vec<TypeDefinitionReference<'_, S::TypeDefinition>> {
+        let mut added_types: Vec<TypeDefinitionReference<'_, S::TypeDefinition>> = Vec::new();
+
+        self.new_schema.type_definitions().for_each(|new_type| {
+            if self.old_schema.get_type_definition(new_type.name()).is_none() {
+                added_types.push(new_type);
+            }
+        });
+
+        added_types
+    }
+}
+
+impl<'a, S: SchemaDefinition+'a> ObjectType<'a, S> {
+    pub fn new(old_type: &'a S::ObjectTypeDefinition, new_type: &'a S::ObjectTypeDefinition) -> Self {
+        Self {
+            old_type,
+            new_type,
+        }
+    }
+
+    pub fn diff(&self) -> Vec<Change<'a, S>> {
+        let mut changes = Vec::new();
+
+        changes.extend(self.field_additions().into_iter()
+            .map(|field| Change::FieldAdded { added_field: field, object_type: self.old_type }));
+        changes.extend(self.field_removals().into_iter()
+            .map(|field| Change::FieldRemoved { removed_field: field, object_type: self.new_type }));
+
+        self.old_type.fields_definition().iter().for_each(|old_field: &'a<S as SchemaDefinition>::FieldDefinition| {
+            let new_field: Option<&'a<S as SchemaDefinition>::FieldDefinition> = self.new_type.fields_definition().get(old_field.name());
+
+            if new_field.is_some() {
+                changes.extend(self.changes_in_field(old_field, new_field.unwrap()).into_iter());
+            }
+        });
+
+        changes
+    }
+
+    fn field_additions(&self) -> Vec<&'a S::FieldDefinition> {
+        let mut added_fields: Vec<&'a<S as SchemaDefinition>::FieldDefinition> = Vec::new();
+
+        self.new_type.fields_definition().iter().for_each(|field: &'a<S as SchemaDefinition>::FieldDefinition| {
+            if !self.old_type.fields_definition().contains_field(field.name()) {
+                added_fields.push(field);
+            }
+        });
+
+        added_fields
+    }
+
+    fn field_removals(&self) -> Vec<&'a S::FieldDefinition> {
+        let mut removed_fields: Vec<&'a<S as SchemaDefinition>::FieldDefinition> = Vec::new();
+
+        self.old_type.fields_definition().iter().for_each(|field: &'a<S as SchemaDefinition>::FieldDefinition| {
+            if !self.new_type.fields_definition().contains_field(field.name()) {
+                removed_fields.push(field);
+            }
+        });
+
+        removed_fields
+    }
+
+    fn changes_in_field(&self, old_field: &'a S::FieldDefinition, new_field: &'a S::FieldDefinition) -> Vec<Change<'a, S>> {
+        let mut changes: Vec<Change<'_, S>> = Vec::new();
+
+        if old_field.description() != new_field.description() {
+            changes.push(Change::FieldDescriptionChanged {
+                object_type: self.old_type,
+                old_field,
+                new_field,
+            });
+        }
+
+        // TODO: deprecation reason - check directives
+        // TODO: type sig
+        // TODO: arguments
+
+        changes
+    }
+}
