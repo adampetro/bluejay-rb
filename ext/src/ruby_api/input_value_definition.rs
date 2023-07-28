@@ -1,9 +1,10 @@
+use crate::helpers::NewInstanceKw;
 use crate::ruby_api::{
-    errors, root, wrapped_value::ValueInner, CoerceInput, Directives, HasVisibility, InputType,
-    Visibility, WrappedValue,
+    errors, root, wrapped_value::ValueInner, CoerceInput, DirectiveDefinition, Directives,
+    HasVisibility, InputType, Visibility, WrappedValue,
 };
 use crate::visibility_scoped::{ScopedInputType, VisibilityCache};
-use bluejay_core::Value as CoreValue;
+use bluejay_core::{AsIter, Value as CoreValue};
 use bluejay_printer::value::DisplayValue;
 use bluejay_validator::Path;
 use convert_case::{Case, Casing};
@@ -53,6 +54,22 @@ impl InputValueDefinition {
         let (description, directives, ruby_name, default_value, deprecation_reason, visibility): OptionalArgs =
             args.optional;
         let description = description.unwrap_or_default();
+        let directives = directives.unwrap_or_else(RArray::new);
+        let deprecation_reason = deprecation_reason.flatten();
+        if let Some(deprecation_reason) = deprecation_reason.as_deref() {
+            let directive_definition = DirectiveDefinition::deprecated();
+            let args = RHash::from_iter([(
+                directive_definition
+                    .as_ref()
+                    .arguments_definition()
+                    .iter()
+                    .next()
+                    .unwrap()
+                    .ruby_name(),
+                deprecation_reason,
+            )]);
+            directives.push(directive_definition.wrapper().new_instance_kw(args)?)?;
+        }
         let directives = directives.try_into()?;
         let ruby_name = ruby_name.unwrap_or_else(|| name.to_case(Case::Snake));
         let ruby_name = Symbol::new(ruby_name.as_str());
@@ -65,7 +82,7 @@ impl InputValueDefinition {
             default_value: default_value.flatten().map(|v| (v, OnceCell::new())),
             ruby_name,
             name_r_string,
-            deprecation_reason: deprecation_reason.flatten(),
+            deprecation_reason,
             visibility: visibility.flatten(),
         })
     }

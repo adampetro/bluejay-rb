@@ -1318,7 +1318,9 @@
                 ],
                 "locations": [
                     "FIELD_DEFINITION",
-                    "ENUM_VALUE"
+                    "ENUM_VALUE",
+                    "ARGUMENT_DEFINITION",
+                    "INPUT_FIELD_DEFINITION"
                 ]
             },
             {

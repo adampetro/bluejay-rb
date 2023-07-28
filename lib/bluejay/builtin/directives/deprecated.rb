@@ -25,6 +25,8 @@ module Bluejay
             [
               DirectiveLocation::FIELD_DEFINITION,
               DirectiveLocation::ENUM_VALUE,
+              DirectiveLocation::ARGUMENT_DEFINITION,
+              DirectiveLocation::INPUT_FIELD_DEFINITION,
             ]
           end
         end

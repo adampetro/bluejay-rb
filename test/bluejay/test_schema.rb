@@ -353,7 +353,7 @@ module Bluejay
         }
 
         input NameInputObject {
-          first: String!
+          first: String! @deprecated(reason: "Testing deprecation")
 
           last: String!
         }
