@@ -5,10 +5,6 @@ use crate::ruby_api::{
 };
 use crate::visibility_scoped::{ScopedInputType, VisibilityCache};
 use bluejay_core::AsIter;
-<<<<<<< HEAD
-use bluejay_printer::value::ValuePrinter;
-=======
->>>>>>> bbe692e (WIP)
 use bluejay_validator::Path;
 use convert_case::{Case, Casing};
 use magnus::QNIL;
@@ -233,12 +229,7 @@ pub fn init() -> Result<(), Error> {
     class.define_method("description", method!(InputValueDefinition::description, 0))?;
     class.define_method(
         "default_value",
-        method!(
-            |ivd: &InputValueDefinition| ivd
-                .default_value()
-                .map(|v| ValuePrinter::to_string(v.as_ref())),
-            0
-        ),
+        method!(|_: &InputValueDefinition| *QNIL, 0),
     )?;
     class.define_method(
         "deprecated?",

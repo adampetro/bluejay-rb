@@ -25,7 +25,9 @@ impl Warden {
                 Ok(s) => s,
                 Err(error) => {
                     self.report_error(error);
-                    return false;
+                    // if all fields in the query root are hidden, a panic occurs
+                    // so return true to avoid that when an error occurs
+                    return true;
                 }
             };
 
@@ -37,7 +39,9 @@ impl Warden {
                 Ok(is_visible) => is_visible,
                 Err(error) => {
                     self.report_error(error);
-                    return false;
+                    // if all fields in the query root are hidden, a panic occurs
+                    // so return true to avoid that when an error occurs
+                    return true;
                 }
             };
 
