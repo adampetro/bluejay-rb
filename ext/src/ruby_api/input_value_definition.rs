@@ -4,8 +4,8 @@ use crate::ruby_api::{
     HasVisibility, InputType, Visibility, WrappedValue,
 };
 use crate::visibility_scoped::{ScopedInputType, VisibilityCache};
-use bluejay_core::{AsIter, Value as CoreValue};
-use bluejay_printer::value::DisplayValue;
+use bluejay_core::AsIter;
+use bluejay_printer::value::ValuePrinter;
 use bluejay_validator::Path;
 use convert_case::{Case, Casing};
 use magnus::{
@@ -220,7 +220,7 @@ pub fn init() -> Result<(), Error> {
         method!(
             |ivd: &InputValueDefinition| ivd
                 .default_value()
-                .map(|v| DisplayValue::to_string(&v.as_ref().as_ref())),
+                .map(|v| ValuePrinter::to_string(v.as_ref())),
             0
         ),
     )?;

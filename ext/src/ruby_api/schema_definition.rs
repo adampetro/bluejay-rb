@@ -15,7 +15,7 @@ use bluejay_core::definition::{
     TypeDefinitionReference,
 };
 use bluejay_core::AsIter;
-use bluejay_printer::definition::DisplaySchemaDefinition;
+use bluejay_printer::definition::SchemaDefinitionPrinter;
 use bluejay_validator::executable::{BuiltinRulesValidator, Cache as ValidationCache};
 use magnus::{
     exception, function, gc, memoize, method, scan_args::get_kwargs, scan_args::KwArgs,
@@ -158,7 +158,7 @@ impl SchemaDefinition {
         let cache = VisibilityCache::new(warden);
         let scoped_schema_definition = ScopedSchemaDefinition::new(self, &cache);
 
-        let s = DisplaySchemaDefinition::to_string(&scoped_schema_definition);
+        let s = SchemaDefinitionPrinter::to_string(&scoped_schema_definition);
         cache.warden().to_result().map(|_| s)
     }
 
