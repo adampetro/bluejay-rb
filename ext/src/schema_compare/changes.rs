@@ -1,4 +1,4 @@
-use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, ObjectTypeDefinition, FieldDefinition, InputValueDefinition, InterfaceTypeDefinition, InputType, EnumTypeDefinition, EnumValueDefinition};
+use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, ObjectTypeDefinition, FieldDefinition, InputValueDefinition, InterfaceTypeDefinition, InputType, EnumTypeDefinition, EnumValueDefinition, UnionTypeDefinition};
 use bluejay_core::Value;
 use super::helpers::{type_description, type_kind};
 
@@ -105,6 +105,14 @@ pub enum Change<'a, S: SchemaDefinition> {
         old_enum_value: &'a S::EnumValueDefinition,
         new_enum_value: &'a S::EnumValueDefinition,
     },
+    UnionMemberAdded{
+        union_type: &'a S::UnionTypeDefinition,
+        union_member: &'a S::ObjectTypeDefinition,
+    },
+    UnionMemberRemoved{
+        union_type: &'a S::UnionTypeDefinition,
+        union_member: &'a S::ObjectTypeDefinition,
+    },
 }
 
 impl<'a, S: SchemaDefinition>  Change<'a, S> {
@@ -172,6 +180,12 @@ impl<'a, S: SchemaDefinition>  Change<'a, S> {
             },
             Self::EnumValueDescriptionChanged{ enum_type, old_enum_value, new_enum_value } => {
                 Criticality::non_breaking(None)
+            },
+            Self::UnionMemberAdded{ union_type, union_member } => {
+                Criticality::dangerous(Some("Adding a possible type to Unions may break existing clients that were not programming defensively against a new possible type..".to_string()))
+            },
+            Self::UnionMemberRemoved{ union_type, union_member } => {
+                Criticality::breaking(Some("Removing a union member from a union can cause existing queries that use this union member in a fragment spread to error.".to_string()))
             },
         }
 
@@ -260,6 +274,12 @@ impl<'a, S: SchemaDefinition>  Change<'a, S> {
             Self::EnumValueDescriptionChanged{ enum_type, old_enum_value, new_enum_value } => {
                 format!("Description for enum value `{}.{}` changed from `{}` to `{}`", enum_type.name(), new_enum_value.name(), old_enum_value.description().unwrap_or(""), new_enum_value.description().unwrap_or(""))
             },
+            Self::UnionMemberAdded{ union_type, union_member } => {
+                format!("Union member `{}` was added to from union type `{}`", union_member.name(), union_type.name())
+            },
+            Self::UnionMemberRemoved{ union_type, union_member } => {
+                format!("Union member `{}` was removed from union type `{}`", union_member.name(), union_type.name())
+            },
         }
     }
 
@@ -318,6 +338,12 @@ impl<'a, S: SchemaDefinition>  Change<'a, S> {
             },
             Self::EnumValueDescriptionChanged{ enum_type, old_enum_value, new_enum_value } => {
                 vec![enum_type.name(), old_enum_value.name()].join(".")
+            },
+            Self::UnionMemberAdded{ union_type, union_member } => {
+                union_type.name().to_string()
+            },
+            Self::UnionMemberRemoved{ union_type, union_member } => {
+                union_type.name().to_string()
             },
         }
     }

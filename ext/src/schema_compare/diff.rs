@@ -1,4 +1,4 @@
-use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, ObjectTypeDefinition, FieldDefinition, FieldsDefinition, ArgumentsDefinition, InputValueDefinition, OutputType, InterfaceImplementation, InterfaceTypeDefinition, InputType, EnumTypeDefinition, EnumValueDefinition};
+use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, ObjectTypeDefinition, FieldDefinition, FieldsDefinition, ArgumentsDefinition, InputValueDefinition, OutputType, InterfaceImplementation, InterfaceTypeDefinition, InputType, EnumTypeDefinition, EnumValueDefinition, UnionTypeDefinition, UnionMemberTypes, UnionMemberType};
 use bluejay_core::{AsIter, Value};
 use super::changes::*;
 use super::helpers::{type_description, type_kind};
@@ -30,6 +30,11 @@ pub struct Argument<'a, S: SchemaDefinition> {
 pub struct Enum<'a, S: SchemaDefinition> {
     old_type: &'a S::EnumTypeDefinition,
     new_type: &'a S::EnumTypeDefinition,
+}
+
+pub struct Union<'a, S: SchemaDefinition> {
+    old_type: &'a S::UnionTypeDefinition,
+    new_type: &'a S::UnionTypeDefinition,
 }
 
 impl<'a, S: SchemaDefinition> Schema<'a, S> {
@@ -78,6 +83,9 @@ impl<'a, S: SchemaDefinition> Schema<'a, S> {
                 },
                 (TypeDefinitionReference::Enum(old_type), TypeDefinitionReference::Enum(new_type)) => {
                     changes.extend(Enum::new(old_type, new_type).diff());
+                },
+                (TypeDefinitionReference::Union(old_type), TypeDefinitionReference::Union(new_type)) => {
+                    changes.extend(Union::new(old_type, new_type).diff());
                 },
                 _ => { }
             }
@@ -399,5 +407,52 @@ impl<'a, S: SchemaDefinition+'a> Enum<'a, S> {
         });
 
         removed_values
+    }
+}
+
+impl<'a, S: SchemaDefinition+'a> Union<'a, S> {
+    pub fn new(old_type: &'a S::UnionTypeDefinition, new_type: &'a S::UnionTypeDefinition) -> Self {
+        Self {
+            old_type,
+            new_type,
+
+        }
+    }
+
+    pub fn diff(&self) -> Vec<Change<'a, S>> {
+        let mut changes = Vec::new();
+
+        changes.extend(self.member_additions().into_iter()
+            .map(|arg| Change::UnionMemberAdded { union_type: self.new_type, union_member: arg }));
+
+        changes.extend(self.member_removals().into_iter()
+            .map(|arg| Change::UnionMemberRemoved { union_type: self.new_type, union_member: arg }));
+
+
+        changes
+    }
+
+    fn member_removals(&self) -> Vec<&'a S::ObjectTypeDefinition> {
+        let mut member_removals: Vec<&<S as SchemaDefinition>::ObjectTypeDefinition> = Vec::new();
+
+        self.old_type.union_member_types().iter().for_each(|old_member_type| {
+            if !self.new_type.union_member_types().contains_type(old_member_type.member_type().name()) {
+                member_removals.push(old_member_type.member_type());
+            }
+        });
+
+        member_removals
+    }
+
+    fn member_additions(&self) -> Vec<&'a S::ObjectTypeDefinition> {
+        let mut member_additions: Vec<&<S as SchemaDefinition>::ObjectTypeDefinition> = Vec::new();
+
+        self.new_type.union_member_types().iter().for_each(|new_member_type| {
+            if !self.old_type.union_member_types().contains_type(new_member_type.member_type().name()) {
+                member_additions.push(new_member_type.member_type());
+            }
+        });
+
+        member_additions
     }
 }
