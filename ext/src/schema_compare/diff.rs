@@ -1,6 +1,5 @@
-use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, ObjectTypeDefinition, FieldDefinition, FieldsDefinition, ArgumentsDefinition, InputValueDefinition, OutputType, InterfaceImplementation, InterfaceTypeDefinition, InputType};
-use bluejay_core::AsIter;
-use bluejay_core::Value;
+use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, ObjectTypeDefinition, FieldDefinition, FieldsDefinition, ArgumentsDefinition, InputValueDefinition, OutputType, InterfaceImplementation, InterfaceTypeDefinition, InputType, EnumTypeDefinition, EnumValueDefinition};
+use bluejay_core::{AsIter, Value};
 use super::changes::*;
 use super::helpers::{type_description, type_kind};
 
@@ -26,6 +25,11 @@ pub struct Argument<'a, S: SchemaDefinition> {
     field: &'a S::FieldDefinition,
     old_argument: &'a S::InputValueDefinition,
     new_argument: &'a S::InputValueDefinition,
+}
+
+pub struct Enum<'a, S: SchemaDefinition> {
+    old_type: &'a S::EnumTypeDefinition,
+    new_type: &'a S::EnumTypeDefinition,
 }
 
 impl<'a, S: SchemaDefinition> Schema<'a, S> {
@@ -71,6 +75,9 @@ impl<'a, S: SchemaDefinition> Schema<'a, S> {
             match (old_type, new_type) {
                 (TypeDefinitionReference::Object(old_type), TypeDefinitionReference::Object(new_type)) => {
                     changes.extend(ObjectType::new(old_type, new_type).diff());
+                },
+                (TypeDefinitionReference::Enum(old_type), TypeDefinitionReference::Enum(new_type)) => {
+                    changes.extend(Enum::new(old_type, new_type).diff());
                 },
                 _ => { }
             }
@@ -231,14 +238,13 @@ impl<'a, S: SchemaDefinition+'a> Field<'a, S> {
         changes.extend(self.argument_removals().into_iter()
             .map(|arg| Change::FieldArgumentRemoved { object_type: self.new_type, field: self.old_field, argument: arg }));
 
-        // TODO: deprecation reason - check directives
         changes
     }
 
     fn argument_additions(&self) -> Vec<&'a S::InputValueDefinition> {
         let mut added_arguments = Vec::new();
 
-        self.new_field.arguments_definition().unwrap().iter().for_each(|new_arg: &'a<S as SchemaDefinition>::InputValueDefinition| {
+        self.new_field.arguments_definition().map(|ii| ii.iter()).into_iter().flatten().for_each(|new_arg: &'a<S as SchemaDefinition>::InputValueDefinition| {
             if self.old_field.arguments_definition().unwrap().get(new_arg.name()).is_some() {
                 added_arguments.push(new_arg);
             }
@@ -250,8 +256,8 @@ impl<'a, S: SchemaDefinition+'a> Field<'a, S> {
     fn argument_removals(&self) -> Vec<&'a S::InputValueDefinition> {
         let mut removed_arguments: Vec<&<S as SchemaDefinition>::InputValueDefinition> = Vec::new();
 
-        self.old_field.arguments_definition().unwrap().iter().for_each(|old_arg: &'a<S as SchemaDefinition>::InputValueDefinition| {
-            if self.new_field.arguments_definition().unwrap().iter().find(|new_arg| {
+        self.old_field.arguments_definition().map(|ii| ii.iter()).into_iter().flatten().for_each(|old_arg: &'a<S as SchemaDefinition>::InputValueDefinition| {
+            if self.new_field.arguments_definition().map(|ii| ii.iter()).into_iter().flatten().find(|new_arg| {
                 old_arg.name() == new_arg.name()
             }).is_none() {
                 removed_arguments.push(old_arg);
@@ -325,5 +331,73 @@ impl<'a, S: SchemaDefinition+'a> Argument<'a, S> {
 
         // TODO: directives
         changes
+    }
+}
+
+impl<'a, S: SchemaDefinition+'a> Enum<'a, S> {
+    pub fn new(old_type: &'a S::EnumTypeDefinition, new_type: &'a S::EnumTypeDefinition) -> Self {
+        Self {
+            old_type,
+            new_type,
+
+        }
+    }
+
+    pub fn diff(&self) -> Vec<Change<'a, S>> {
+        let mut changes = Vec::new();
+
+        changes.extend(self.value_additions().into_iter()
+            .map(|arg| Change::EnumValueAdded { enum_type: self.new_type, enum_value: arg }));
+
+        changes.extend(self.value_removals().into_iter()
+            .map(|arg| Change::EnumValueRemoved { enum_type: self.old_type, enum_value: arg }));
+
+        self.old_type.enum_value_definitions().iter().for_each(|old_enum_value| {
+            let new_enum_value = self.new_type.enum_value_definitions().iter().find(|new_enum_value| {
+                old_enum_value.name() == new_enum_value.name()
+            });
+
+            if new_enum_value.is_some() {
+                if old_enum_value.description() != new_enum_value.unwrap().description() {
+                    changes.push(Change::EnumValueDescriptionChanged {
+                        enum_type: self.old_type,
+                        old_enum_value,
+                        new_enum_value: new_enum_value.unwrap(),
+                    });
+                }
+
+                // TODO: directives
+            }
+        });
+
+        changes
+    }
+
+    fn value_additions(&self) -> Vec<&'a S::EnumValueDefinition> {
+        let mut added_values: Vec<&<S as SchemaDefinition>::EnumValueDefinition>= Vec::new();
+
+        self.new_type.enum_value_definitions().iter().for_each(|new_enum_value| {
+            if self.old_type.enum_value_definitions().iter().find(|old_enum_value| {
+                old_enum_value.name() == new_enum_value.name()
+            }).is_none() {
+                added_values.push(new_enum_value);
+            }
+        });
+
+        added_values
+    }
+
+    fn value_removals(&self) -> Vec<&'a S::EnumValueDefinition> {
+        let mut removed_values: Vec<&<S as SchemaDefinition>::EnumValueDefinition> = Vec::new();
+
+        self.old_type.enum_value_definitions().iter().for_each(|old_enum_value: &'a<S as SchemaDefinition>::EnumValueDefinition| {
+            if self.new_type.enum_value_definitions().iter().find(|new_enum_value| {
+                old_enum_value.name() == new_enum_value.name()
+            }).is_none() {
+                removed_values.push(old_enum_value);
+            }
+        });
+
+        removed_values
     }
 }

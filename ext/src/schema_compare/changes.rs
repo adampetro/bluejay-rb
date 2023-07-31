@@ -1,4 +1,4 @@
-use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, ObjectTypeDefinition, FieldDefinition, InputValueDefinition, InterfaceTypeDefinition, InputType};
+use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, ObjectTypeDefinition, FieldDefinition, InputValueDefinition, InterfaceTypeDefinition, InputType, EnumTypeDefinition, EnumValueDefinition};
 use bluejay_core::Value;
 use super::helpers::{type_description, type_kind};
 
@@ -92,6 +92,19 @@ pub enum Change<'a, S: SchemaDefinition> {
         object_type: &'a S::ObjectTypeDefinition,
         interface: &'a S::InterfaceTypeDefinition,
     },
+    EnumValueAdded{
+        enum_type: &'a S::EnumTypeDefinition,
+        enum_value: &'a S::EnumValueDefinition,
+    },
+    EnumValueRemoved{
+        enum_type: &'a S::EnumTypeDefinition,
+        enum_value: &'a S::EnumValueDefinition,
+    },
+    EnumValueDescriptionChanged{
+        enum_type: &'a S::EnumTypeDefinition,
+        old_enum_value: &'a S::EnumValueDefinition,
+        new_enum_value: &'a S::EnumValueDefinition,
+    },
 }
 
 impl<'a, S: SchemaDefinition>  Change<'a, S> {
@@ -150,6 +163,15 @@ impl<'a, S: SchemaDefinition>  Change<'a, S> {
             Self::ObjectInterfaceRemoval{ object_type, interface } => {
                 // TODO conditional criticality
                 Criticality::breaking(Some("Changing the type of a field's argument can cause existing queries that use this argume.".to_string()))
+            },
+            Self::EnumValueAdded{ enum_type, enum_value } => {
+                Criticality::dangerous(Some("Adding an enum value may break existing clients that were not programming defensively against an added case when querying an enum.".to_string()))
+            },
+            Self::EnumValueRemoved{ enum_type, enum_value } => {
+                Criticality::breaking(Some("Removing an enum value will cause existing queries that use this enum value to error.".to_string()))
+            },
+            Self::EnumValueDescriptionChanged{ enum_type, old_enum_value, new_enum_value } => {
+                Criticality::non_breaking(None)
             },
         }
 
@@ -229,6 +251,15 @@ impl<'a, S: SchemaDefinition>  Change<'a, S> {
             Self::ObjectInterfaceRemoval{ object_type, interface } => {
                 format!("`{}` object type no longer implements `{}` interface", object_type.name(), interface.name())
             },
+            Self::EnumValueAdded{ enum_type, enum_value } => {
+                format!("Enum value `{}` was added to enum `{}`", enum_value.name(), enum_type.name())
+            },
+            Self::EnumValueRemoved{ enum_type, enum_value } => {
+                format!("Enum value `{}` was removed from enum `{}`", enum_value.name(), enum_type.name())
+            },
+            Self::EnumValueDescriptionChanged{ enum_type, old_enum_value, new_enum_value } => {
+                format!("Description for enum value `{}.{}` changed from `{}` to `{}`", enum_type.name(), new_enum_value.name(), old_enum_value.description().unwrap_or(""), new_enum_value.description().unwrap_or(""))
+            },
         }
     }
 
@@ -278,6 +309,15 @@ impl<'a, S: SchemaDefinition>  Change<'a, S> {
             },
             Self::ObjectInterfaceRemoval{ object_type, interface } => {
                 object_type.name().to_string()
+            },
+            Self::EnumValueAdded{ enum_type, enum_value } => {
+                vec![enum_type.name(), enum_value.name()].join(".")
+            },
+            Self::EnumValueRemoved{ enum_type, enum_value } => {
+                vec![enum_type.name(), enum_value.name()].join(".")
+            },
+            Self::EnumValueDescriptionChanged{ enum_type, old_enum_value, new_enum_value } => {
+                vec![enum_type.name(), old_enum_value.name()].join(".")
             },
         }
     }
