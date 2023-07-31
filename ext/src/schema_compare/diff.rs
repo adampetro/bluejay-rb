@@ -1,4 +1,4 @@
-use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, ObjectTypeDefinition, FieldDefinition, FieldsDefinition, ArgumentsDefinition, InputObjectTypeDefinition, InputFieldsDefinition, InputValueDefinition, OutputType, InterfaceImplementation, InterfaceTypeDefinition, InputType, EnumTypeDefinition, EnumValueDefinition, UnionTypeDefinition, UnionMemberTypes, UnionMemberType};
+use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, ObjectTypeDefinition, FieldDefinition, FieldsDefinition, InputObjectTypeDefinition, InputFieldsDefinition, InputValueDefinition, OutputType, InterfaceImplementation, InterfaceTypeDefinition, InputType, EnumTypeDefinition, EnumValueDefinition, UnionTypeDefinition, UnionMemberTypes, UnionMemberType};
 use bluejay_core::{AsIter, Value};
 use super::changes::*;
 use super::helpers::{type_description, type_kind};
@@ -344,7 +344,11 @@ impl<'a, S: SchemaDefinition+'a> Field<'a, S> {
         let mut added_arguments = Vec::new();
 
         self.new_field.arguments_definition().map(|ii| ii.iter()).into_iter().flatten().for_each(|new_arg: &'a<S as SchemaDefinition>::InputValueDefinition| {
-            if self.old_field.arguments_definition().unwrap().get(new_arg.name()).is_some() {
+            let old_arg = self.old_field.arguments_definition().map(|ii| ii.iter()).into_iter().flatten().find(|old_arg| {
+                old_arg.name() == new_arg.name()
+            });
+
+            if old_arg.is_none() {
                 added_arguments.push(new_arg);
             }
         });
@@ -356,9 +360,11 @@ impl<'a, S: SchemaDefinition+'a> Field<'a, S> {
         let mut removed_arguments: Vec<&<S as SchemaDefinition>::InputValueDefinition> = Vec::new();
 
         self.old_field.arguments_definition().map(|ii| ii.iter()).into_iter().flatten().for_each(|old_arg: &'a<S as SchemaDefinition>::InputValueDefinition| {
-            if self.new_field.arguments_definition().map(|ii| ii.iter()).into_iter().flatten().find(|new_arg| {
+            let new_arg = self.new_field.arguments_definition().map(|ii| ii.iter()).into_iter().flatten().find(|new_arg| {
                 old_arg.name() == new_arg.name()
-            }).is_none() {
+            });
+
+            if new_arg.is_none() {
                 removed_arguments.push(old_arg);
             }
         });

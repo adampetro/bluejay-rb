@@ -38,7 +38,7 @@ module Bluejay
         interface AnotherInterface {
           anotherInterfaceField: String
         }
-        type WithInterfaces implements AnInterface, AnotherInterface {
+        type WithInterfaces implements AnInterface & AnotherInterface {
           a: String!
         }
         type WithArguments {
