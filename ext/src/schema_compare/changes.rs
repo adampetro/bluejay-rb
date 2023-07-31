@@ -1,4 +1,4 @@
-use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, ObjectTypeDefinition, FieldDefinition, InputValueDefinition, InterfaceTypeDefinition, InputType, EnumTypeDefinition, EnumValueDefinition, UnionTypeDefinition, OutputType};
+use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, ObjectTypeDefinition, FieldDefinition, InputValueDefinition, InputObjectTypeDefinition, InterfaceTypeDefinition, InputType, EnumTypeDefinition, EnumValueDefinition, UnionTypeDefinition, OutputType};
 use bluejay_core::Value;
 use super::helpers::{type_description, type_kind};
 use super::diff::TypeWithFields;
@@ -114,6 +114,29 @@ pub enum Change<'a, S: SchemaDefinition> {
         union_type: &'a S::UnionTypeDefinition,
         union_member: &'a S::ObjectTypeDefinition,
     },
+    InputFieldAdded{
+        input_object_type: &'a S::InputObjectTypeDefinition,
+        added_field: &'a S::InputValueDefinition,
+    },
+    InputFieldRemoved{
+        input_object_type: &'a S::InputObjectTypeDefinition,
+        removed_field: &'a S::InputValueDefinition,
+    },
+    InputFieldDescriptionChanged{
+        input_object_type: &'a S::InputObjectTypeDefinition,
+        old_field: &'a S::InputValueDefinition,
+        new_field: &'a S::InputValueDefinition,
+    },
+    InputFieldTypeChanged{
+        input_object_type: &'a S::InputObjectTypeDefinition,
+        old_field: &'a S::InputValueDefinition,
+        new_field: &'a S::InputValueDefinition,
+    },
+    InputFieldDefaultValueChanged{
+        input_object_type: &'a S::InputObjectTypeDefinition,
+        old_field: &'a S::InputValueDefinition,
+        new_field: &'a S::InputValueDefinition,
+    },
 }
 
 impl<'a, S: SchemaDefinition>  Change<'a, S> {
@@ -188,8 +211,24 @@ impl<'a, S: SchemaDefinition>  Change<'a, S> {
             Self::UnionMemberRemoved{ union_type, union_member } => {
                 Criticality::breaking(Some("Removing a union member from a union can cause existing queries that use this union member in a fragment spread to error.".to_string()))
             },
+            Self::InputFieldAdded{ input_object_type, added_field } => {
+                // TODO: conditional criticality
+                Criticality::breaking(Some("Adding a non-null input field without a default value to an existing input type will cause existing queries that use this input type to error because they will not provide a value for this new field.".to_string()))
+            },
+            Self::InputFieldRemoved{ input_object_type, removed_field } => {
+                Criticality::breaking(Some("Removing an input field will cause existing queries that use this input field to error.".to_string()))
+            },
+            Self::InputFieldTypeChanged { input_object_type, old_field, new_field } => {
+                // TODO: conditional criticality
+                Criticality::dangerous(Some("TODO".to_string()))
+            },
+            Self::InputFieldDescriptionChanged { input_object_type, old_field, new_field } => {
+                Criticality::non_breaking(None)
+            },
+            Self::InputFieldDefaultValueChanged { input_object_type, old_field, new_field } => {
+                Criticality::dangerous(Some("Changing the default value for an argument may change the runtime behaviour of a field if it was never provided.".to_string()))
+            },
         }
-
     }
 
     pub fn message(&self) -> String {
@@ -280,6 +319,37 @@ impl<'a, S: SchemaDefinition>  Change<'a, S> {
             Self::UnionMemberRemoved{ union_type, union_member } => {
                 format!("Union member `{}` was removed from union type `{}`", union_member.name(), union_type.name())
             },
+            Self::InputFieldAdded{ input_object_type, added_field } => {
+                format!("Input field `{}` was added to input object type `{}`", added_field.name(), input_object_type.name())
+            },
+            Self::InputFieldRemoved{ input_object_type, removed_field } => {
+                format!("Input field `{}` was removed from input object type `{}`", removed_field.name(), input_object_type.name())
+            },
+            Self::InputFieldDescriptionChanged{ input_object_type, old_field, new_field } => {
+                format!("Input field `{}.{}` description changed from `{}` to `{}`", input_object_type.name(), old_field.name(), old_field.description().unwrap_or(""), new_field.description().unwrap_or(""))
+            },
+            Self::InputFieldTypeChanged{ input_object_type, old_field, new_field } => {
+                format!("Input field `{}.{}` changed type from `{}` to `{}`", input_object_type.name(), new_field.name(), old_field.r#type().as_ref().display_name(), new_field.r#type().as_ref().display_name())
+            },
+            Self::InputFieldDefaultValueChanged { input_object_type, old_field, new_field } => {
+                // TODO: exhaustive cases here are weird
+                match (old_field.default_value(), new_field.default_value()) {
+                    (Some(old_default_value), Some(new_default_value)) => {
+                        if old_default_value.as_ref() != new_default_value.as_ref() {
+                            format!("Input field `{}.{}` default valut changed from `{}` to `{}`", input_object_type.name(), new_field.name(), old_default_value.as_ref(), new_default_value.as_ref())
+                        } else {
+                            "".to_string()
+                        }
+                    },
+                    (Some(old_default_value), None) => {
+                        format!("Default value `{}` was removed from input field `{}.{}`", old_default_value.as_ref(), input_object_type.name(), old_field.name())
+                    },
+                    (None, Some(new_default_value)) => {
+                        format!("Default value `{}` was added to input field `{}.{}`", new_default_value.as_ref(), input_object_type.name(), old_field.name())
+                    },
+                    (None, None) => { "".to_string() }
+                }
+            },
         }
     }
 
@@ -344,6 +414,21 @@ impl<'a, S: SchemaDefinition>  Change<'a, S> {
             },
             Self::UnionMemberRemoved{ union_type, union_member } => {
                 union_type.name().to_string()
+            },
+            Self::InputFieldAdded{ input_object_type, added_field } => {
+                vec![input_object_type.name(), added_field.name()].join(".")
+            },
+            Self::InputFieldRemoved{ input_object_type, removed_field } => {
+                vec![input_object_type.name(), removed_field.name()].join(".")
+            },
+            Self::InputFieldDescriptionChanged { input_object_type, old_field, new_field } => {
+                vec![input_object_type.name(), old_field.name()].join(".")
+            },
+            Self::InputFieldTypeChanged { input_object_type, old_field, new_field } => {
+                vec![input_object_type.name(), old_field.name()].join(".")
+            },
+            Self::InputFieldDefaultValueChanged { input_object_type, old_field, new_field } => {
+                vec![input_object_type.name(), old_field.name()].join(".")
             },
         }
     }

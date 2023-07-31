@@ -1,4 +1,4 @@
-use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, ObjectTypeDefinition, FieldDefinition, FieldsDefinition, ArgumentsDefinition, InputValueDefinition, OutputType, InterfaceImplementation, InterfaceTypeDefinition, InputType, EnumTypeDefinition, EnumValueDefinition, UnionTypeDefinition, UnionMemberTypes, UnionMemberType};
+use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, ObjectTypeDefinition, FieldDefinition, FieldsDefinition, ArgumentsDefinition, InputObjectTypeDefinition, InputFieldsDefinition, InputValueDefinition, OutputType, InterfaceImplementation, InterfaceTypeDefinition, InputType, EnumTypeDefinition, EnumValueDefinition, UnionTypeDefinition, UnionMemberTypes, UnionMemberType};
 use bluejay_core::{AsIter, Value};
 use super::changes::*;
 use super::helpers::{type_description, type_kind};
@@ -13,11 +13,23 @@ pub struct ObjectType<'a, S: SchemaDefinition> {
     new_type: &'a S::ObjectTypeDefinition,
 }
 
+pub struct InputObjectType<'a, S: SchemaDefinition> {
+    old_type: &'a S::InputObjectTypeDefinition,
+    new_type: &'a S::InputObjectTypeDefinition,
+}
+
 pub struct Field<'a, S: SchemaDefinition> {
     old_type: &'a TypeWithFields<'a, S>,
     new_type: &'a TypeWithFields<'a, S>,
     old_field: &'a S::FieldDefinition,
     new_field: &'a S::FieldDefinition,
+}
+
+pub struct InputField<'a, S: SchemaDefinition> {
+    old_type: &'a S::InputObjectTypeDefinition,
+    new_type: &'a S::InputObjectTypeDefinition,
+    old_field: &'a S::InputValueDefinition,
+    new_field: &'a S::InputValueDefinition,
 }
 
 pub struct Argument<'a, S: SchemaDefinition> {
@@ -108,6 +120,9 @@ impl<'a, S: SchemaDefinition> Schema<'a, S> {
                 },
                 (TypeDefinitionReference::Interface(old_type), TypeDefinitionReference::Interface(new_type)) => {
                     changes.extend(Interface::new(old_type, new_type).diff());
+                },
+                (TypeDefinitionReference::InputObject(old_type), TypeDefinitionReference::InputObject(new_type)) => {
+                    changes.extend(InputObjectType::new(old_type, new_type).diff());
                 },
                 _ => { }
             }
@@ -233,6 +248,62 @@ impl<'a, S: SchemaDefinition+'a> ObjectType<'a, S> {
     }
 }
 
+impl<'a, S: SchemaDefinition+'a> InputObjectType<'a, S> {
+    pub fn new(old_type: &'a S::InputObjectTypeDefinition, new_type: &'a S::InputObjectTypeDefinition) -> Self {
+        Self {
+            old_type,
+            new_type,
+        }
+    }
+
+    pub fn diff(&self) -> Vec<Change<'a, S>> {
+        let mut changes = Vec::new();
+
+        changes.extend(self.field_additions().into_iter()
+            .map(|field| Change::InputFieldAdded { added_field: field, input_object_type: self.new_type }));
+        changes.extend(self.field_removals().into_iter()
+            .map(|field| Change::InputFieldRemoved { removed_field: field, input_object_type: self.old_type }));
+
+        self.old_type.input_field_definitions().iter().for_each(|old_field: &'a<S as SchemaDefinition>::InputValueDefinition| {
+            let new_field: Option<&'a<S as SchemaDefinition>::InputValueDefinition> = self.new_type.input_field_definitions().get(old_field.name());
+
+            if new_field.is_some() {
+                changes.extend(InputField::new(self.old_type, self.new_type, old_field, new_field.unwrap()).diff());
+            }
+        });
+
+        changes
+    }
+
+    fn field_additions(&self) -> Vec<&'a S::InputValueDefinition> {
+        let mut added_fields: Vec<&'a<S as SchemaDefinition>::InputValueDefinition> = Vec::new();
+
+        self.new_type.input_field_definitions().iter().for_each(|new_field: &'a<S as SchemaDefinition>::InputValueDefinition| {
+            let old_field: Option<&'a<S as SchemaDefinition>::InputValueDefinition> = self.old_type.input_field_definitions().get(new_field.name());
+
+            if old_field.is_none() {
+                added_fields.push(new_field)
+            }
+        });
+
+        added_fields
+    }
+
+    fn field_removals(&self) -> Vec<&'a S::InputValueDefinition> {
+        let mut removed_fields: Vec<&'a<S as SchemaDefinition>::InputValueDefinition> = Vec::new();
+
+        self.old_type.input_field_definitions().iter().for_each(|old_field: &'a<S as SchemaDefinition>::InputValueDefinition| {
+            let new_field: Option<&'a<S as SchemaDefinition>::InputValueDefinition> = self.new_type.input_field_definitions().get(old_field.name());
+
+            if new_field.is_none() {
+                removed_fields.push(old_field)
+            }
+        });
+
+        removed_fields
+    }
+}
+
 impl<'a, S: SchemaDefinition+'a> Field<'a, S> {
     pub fn new(old_type: &'a TypeWithFields<'a, S>, new_type: &'a TypeWithFields<'a, S>, old_field: &'a S::FieldDefinition, new_field: &'a S::FieldDefinition) -> Self {
         Self {
@@ -295,6 +366,68 @@ impl<'a, S: SchemaDefinition+'a> Field<'a, S> {
         });
 
         removed_arguments
+    }
+}
+
+impl<'a, S: SchemaDefinition+'a> InputField<'a, S> {
+    pub fn new(old_type: &'a S::InputObjectTypeDefinition, new_type: &'a S::InputObjectTypeDefinition, old_field: &'a S::InputValueDefinition, new_field: &'a S::InputValueDefinition) -> Self {
+        Self {
+            old_type,
+            new_type,
+            old_field,
+            new_field
+        }
+    }
+
+    pub fn diff(&self) -> Vec<Change<'a, S>> {
+        let mut changes = Vec::new();
+
+        if self.old_field.description() != self.new_field.description() {
+            changes.push(Change::InputFieldDescriptionChanged {
+                input_object_type: self.old_type,
+                old_field: self.old_field,
+                new_field: self.new_field,
+            });
+        }
+
+        if self.old_field.r#type().as_ref().display_name() != self.new_field.r#type().as_ref().display_name() {
+            changes.push(Change::InputFieldTypeChanged {
+                input_object_type: self.old_type,
+                old_field: self.old_field,
+                new_field: self.new_field,
+            });
+        }
+
+        match (self.old_field.default_value(), self.new_field.default_value()) {
+            (Some(old_default), Some(new_default)) => {
+                if old_default.as_ref() != new_default.as_ref() {
+                    changes.push(Change::InputFieldDefaultValueChanged {
+                        input_object_type: self.old_type,
+                        old_field: self.old_field,
+                        new_field: self.new_field,
+                    });
+                }
+            },
+            (Some(_), None) => {
+                changes.push(Change::InputFieldDefaultValueChanged {
+                    input_object_type: self.old_type,
+                    old_field: self.old_field,
+                    new_field: self.new_field,
+                });
+            },
+            (None, Some(_)) => {
+                changes.push(Change::InputFieldDefaultValueChanged {
+                    input_object_type: self.old_type,
+                    old_field: self.old_field,
+                    new_field: self.new_field,
+                });
+            },
+            (None, None) => { }
+        }
+
+        // TODO: directives
+
+        changes
     }
 }
 
