@@ -14,14 +14,14 @@ pub struct ObjectType<'a, S: SchemaDefinition> {
 }
 
 pub struct Field<'a, S: SchemaDefinition> {
-    old_type: &'a S::ObjectTypeDefinition,
-    new_type: &'a S::ObjectTypeDefinition,
+    old_type: &'a TypeWithFields<'a, S>,
+    new_type: &'a TypeWithFields<'a, S>,
     old_field: &'a S::FieldDefinition,
     new_field: &'a S::FieldDefinition,
 }
 
 pub struct Argument<'a, S: SchemaDefinition> {
-    object_type: &'a S::ObjectTypeDefinition,
+    parent_type: &'a TypeWithFields<'a, S>,
     field: &'a S::FieldDefinition,
     old_argument: &'a S::InputValueDefinition,
     new_argument: &'a S::InputValueDefinition,
@@ -35,6 +35,25 @@ pub struct Enum<'a, S: SchemaDefinition> {
 pub struct Union<'a, S: SchemaDefinition> {
     old_type: &'a S::UnionTypeDefinition,
     new_type: &'a S::UnionTypeDefinition,
+}
+
+pub struct Interface<'a, S: SchemaDefinition> {
+    old_interface: &'a S::InterfaceTypeDefinition,
+    new_interface: &'a S::InterfaceTypeDefinition,
+}
+
+pub enum TypeWithFields<'a, S: SchemaDefinition> {
+    Object(&'a S::ObjectTypeDefinition),
+    Interface(&'a S::InterfaceTypeDefinition),
+}
+
+impl<'a, S: SchemaDefinition> TypeWithFields<'a, S> {
+    pub fn name(&self) -> &'a str {
+        match self {
+            Self::Object(object_type) => object_type.name(),
+            Self::Interface(interface_type) => interface_type.name(),
+        }
+    }
 }
 
 impl<'a, S: SchemaDefinition> Schema<'a, S> {
@@ -86,6 +105,9 @@ impl<'a, S: SchemaDefinition> Schema<'a, S> {
                 },
                 (TypeDefinitionReference::Union(old_type), TypeDefinitionReference::Union(new_type)) => {
                     changes.extend(Union::new(old_type, new_type).diff());
+                },
+                (TypeDefinitionReference::Interface(old_type), TypeDefinitionReference::Interface(new_type)) => {
+                    changes.extend(Interface::new(old_type, new_type).diff());
                 },
                 _ => { }
             }
@@ -143,15 +165,15 @@ impl<'a, S: SchemaDefinition+'a> ObjectType<'a, S> {
             .map(|interface| Change::ObjectInterfaceRemoval { object_type: self.old_type, interface: interface }));
 
         changes.extend(self.field_additions().into_iter()
-            .map(|field| Change::FieldAdded { added_field: field, object_type: self.old_type }));
+            .map(|field| Change::FieldAdded { added_field: field, parent_type: &TypeWithFields::Object(self.old_type) }));
         changes.extend(self.field_removals().into_iter()
-            .map(|field| Change::FieldRemoved { removed_field: field, object_type: self.new_type }));
+            .map(|field| Change::FieldRemoved { removed_field: field, parent_type: &TypeWithFields::Object(self.new_type) }));
 
         self.old_type.fields_definition().iter().for_each(|old_field: &'a<S as SchemaDefinition>::FieldDefinition| {
             let new_field: Option<&'a<S as SchemaDefinition>::FieldDefinition> = self.new_type.fields_definition().get(old_field.name());
 
             if new_field.is_some() {
-                changes.extend(Field::new(self.old_type, self.new_type, old_field, new_field.unwrap()).diff());
+                changes.extend(Field::new(&TypeWithFields::Object(self.old_type), &TypeWithFields::Object(self.new_type), old_field, new_field.unwrap()).diff());
             }
         });
 
@@ -212,7 +234,7 @@ impl<'a, S: SchemaDefinition+'a> ObjectType<'a, S> {
 }
 
 impl<'a, S: SchemaDefinition+'a> Field<'a, S> {
-    pub fn new(old_type: &'a S::ObjectTypeDefinition, new_type: &'a S::ObjectTypeDefinition, old_field: &'a S::FieldDefinition, new_field: &'a S::FieldDefinition) -> Self {
+    pub fn new(old_type: &'a TypeWithFields<'a, S>, new_type: &'a TypeWithFields<'a, S>, old_field: &'a S::FieldDefinition, new_field: &'a S::FieldDefinition) -> Self {
         Self {
             old_type,
             new_type,
@@ -226,7 +248,7 @@ impl<'a, S: SchemaDefinition+'a> Field<'a, S> {
 
         if self.old_field.description() != self.new_field.description() {
             changes.push(Change::FieldDescriptionChanged {
-                object_type: self.old_type,
+                parent_type: self.old_type,
                 old_field: self.old_field,
                 new_field: self.new_field,
             });
@@ -234,17 +256,17 @@ impl<'a, S: SchemaDefinition+'a> Field<'a, S> {
 
         if self.old_field.r#type().as_ref().display_name() != self.new_field.r#type().as_ref().display_name() {
             changes.push(Change::FieldTypeChanged {
-                object_type: self.old_type,
+                parent_type: self.old_type,
                 old_field: self.old_field,
                 new_field: self.new_field,
             });
         }
 
         changes.extend(self.argument_additions().into_iter()
-            .map(|arg| Change::FieldArgumentAdded { object_type: self.new_type, field: self.new_field, argument: arg }));
+            .map(|arg| Change::FieldArgumentAdded { parent_type: self.new_type, field: self.new_field, argument: arg }));
 
         changes.extend(self.argument_removals().into_iter()
-            .map(|arg| Change::FieldArgumentRemoved { object_type: self.new_type, field: self.old_field, argument: arg }));
+            .map(|arg| Change::FieldArgumentRemoved { parent_type: self.new_type, field: self.old_field, argument: arg }));
 
         changes
     }
@@ -277,9 +299,9 @@ impl<'a, S: SchemaDefinition+'a> Field<'a, S> {
 }
 
 impl<'a, S: SchemaDefinition+'a> Argument<'a, S> {
-    pub fn new(object_type: &'a S::ObjectTypeDefinition, field: &'a S::FieldDefinition, old_argument: &'a S::InputValueDefinition, new_argument: &'a S::InputValueDefinition) -> Self {
+    pub fn new(parent_type: &'a TypeWithFields<'a, S>, field: &'a S::FieldDefinition, old_argument: &'a S::InputValueDefinition, new_argument: &'a S::InputValueDefinition) -> Self {
         Self {
-            object_type,
+            parent_type,
             field,
             old_argument,
             new_argument
@@ -291,7 +313,7 @@ impl<'a, S: SchemaDefinition+'a> Argument<'a, S> {
 
         if self.old_argument.description() != self.new_argument.description() {
             changes.push(Change::FieldArgumentDescriptionChanged {
-                object_type: self.object_type,
+                parent_type: self.parent_type,
                 field: self.field,
                 old_argument: self.old_argument,
                 new_argument: self.new_argument,
@@ -300,7 +322,7 @@ impl<'a, S: SchemaDefinition+'a> Argument<'a, S> {
 
         if self.old_argument.r#type().as_ref().display_name() != self.new_argument.r#type().as_ref().display_name() {
             changes.push(Change::FieldArgumentTypeChanged {
-                object_type: self.object_type,
+                parent_type: self.parent_type,
                 field: self.field,
                 old_argument: self.old_argument,
                 new_argument: self.new_argument,
@@ -311,7 +333,7 @@ impl<'a, S: SchemaDefinition+'a> Argument<'a, S> {
             (Some(old_default), Some(new_default)) => {
                 if old_default.as_ref() != new_default.as_ref() {
                     changes.push(Change::FieldArgumentDefaultValueChanged {
-                        object_type: self.object_type,
+                        parent_type: self.parent_type,
                         field: self.field,
                         old_argument: self.old_argument,
                         new_argument: self.new_argument,
@@ -320,7 +342,7 @@ impl<'a, S: SchemaDefinition+'a> Argument<'a, S> {
             },
             (Some(_), None) => {
                 changes.push(Change::FieldArgumentDefaultValueChanged {
-                    object_type: self.object_type,
+                    parent_type: self.parent_type,
                     field: self.field,
                     old_argument: self.old_argument,
                     new_argument: self.new_argument,
@@ -328,7 +350,7 @@ impl<'a, S: SchemaDefinition+'a> Argument<'a, S> {
             },
             (None, Some(_)) => {
                 changes.push(Change::FieldArgumentDefaultValueChanged {
-                    object_type: self.object_type,
+                    parent_type: self.parent_type,
                     field: self.field,
                     old_argument: self.old_argument,
                     new_argument: self.new_argument,
@@ -454,5 +476,58 @@ impl<'a, S: SchemaDefinition+'a> Union<'a, S> {
         });
 
         member_additions
+    }
+}
+
+impl<'a, S: SchemaDefinition+'a> Interface<'a, S> {
+    pub fn new(old_interface: &'a S::InterfaceTypeDefinition, new_interface: &'a S::InterfaceTypeDefinition) -> Self {
+        Self {
+            old_interface,
+            new_interface,
+
+        }
+    }
+
+    pub fn diff(&self) -> Vec<Change<'a, S>> {
+        let mut changes: Vec<Change<'a, S>> = Vec::new();
+
+        changes.extend(self.field_additions().into_iter()
+            .map(|field| Change::FieldAdded { added_field: field, parent_type: &TypeWithFields::Interface(self.old_interface) }));
+        changes.extend(self.field_removals().into_iter()
+            .map(|field| Change::FieldRemoved { removed_field: field, parent_type: &TypeWithFields::Interface(self.new_interface) }));
+
+        self.old_interface.fields_definition().iter().for_each(|old_field: &'a<S as SchemaDefinition>::FieldDefinition| {
+            let new_field: Option<&'a<S as SchemaDefinition>::FieldDefinition> = self.new_interface.fields_definition().get(old_field.name());
+
+            if new_field.is_some() {
+                changes.extend(Field::new(&TypeWithFields::Interface(self.old_interface), &TypeWithFields::Interface(self.new_interface), old_field, new_field.unwrap()).diff());
+            }
+        });
+
+        changes
+    }
+
+    fn field_additions(&self) -> Vec<&'a S::FieldDefinition> {
+        let mut added_fields: Vec<&'a<S as SchemaDefinition>::FieldDefinition> = Vec::new();
+
+        self.new_interface.fields_definition().iter().for_each(|field: &'a<S as SchemaDefinition>::FieldDefinition| {
+            if !self.old_interface.fields_definition().contains_field(field.name()) {
+                added_fields.push(field);
+            }
+        });
+
+        added_fields
+    }
+
+    fn field_removals(&self) -> Vec<&'a S::FieldDefinition> {
+        let mut removed_fields: Vec<&'a<S as SchemaDefinition>::FieldDefinition> = Vec::new();
+
+        self.old_interface.fields_definition().iter().for_each(|field: &'a<S as SchemaDefinition>::FieldDefinition| {
+            if !self.new_interface.fields_definition().contains_field(field.name()) {
+                removed_fields.push(field);
+            }
+        });
+
+        removed_fields
     }
 }
