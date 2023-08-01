@@ -5,7 +5,6 @@ use crate::ruby_api::{
 use magnus::{
     function, method,
     scan_args::{get_kwargs, KwArgs},
-    typed_data::Obj,
     DataTypeFunctions, Error, Module, Object, RHash, TypedData, Value,
 };
 
@@ -28,8 +27,8 @@ impl InterfaceImplementation {
         })
     }
 
-    pub fn interface(&self) -> Obj<InterfaceTypeDefinition> {
-        *self.interface.get()
+    pub fn interface(&self) -> WrappedDefinition<InterfaceTypeDefinition> {
+        self.interface.clone()
     }
 }
 

@@ -173,7 +173,7 @@ impl SchemaDefinition {
                         |interface_implementation| {
                             let itd = interface_implementation.interface();
                             interface_implementors
-                                .entry(itd.get().name().to_owned())
+                                .entry(itd.as_ref().name().to_owned())
                                 .or_default()
                                 .push(otd.clone());
                         },
@@ -384,6 +384,9 @@ impl SchemaTypeVisitor {
 
     fn visit_object_type_definition(&mut self, otd: &ObjectTypeDefinition) -> Result<(), Error> {
         self.visit_field_definitions(otd.fields_definition())?;
+        otd.interface_implementations()
+            .iter()
+            .try_for_each(|ii| self.visit_type(TypeDefinition::Interface(ii.interface())))?;
         self.visit_directives(otd.directives())
     }
 
@@ -400,6 +403,9 @@ impl SchemaTypeVisitor {
         itd: &InterfaceTypeDefinition,
     ) -> Result<(), Error> {
         self.visit_field_definitions(itd.fields_definition())?;
+        itd.interface_implementations()
+            .iter()
+            .try_for_each(|ii| self.visit_type(TypeDefinition::Interface(ii.interface())))?;
         self.visit_directives(itd.directives())
     }
 

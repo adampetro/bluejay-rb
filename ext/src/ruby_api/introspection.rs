@@ -147,8 +147,9 @@ macro_rules! implement_type {
                 |t: &$t| <$t as crate::ruby_api::introspection::Type>::interfaces(t).map(
                     |interface_implemenations| {
                         magnus::RArray::from_iter(
-                            bluejay_core::AsIter::iter(&interface_implemenations)
-                                .map(crate::ruby_api::InterfaceImplementation::interface),
+                            bluejay_core::AsIter::iter(&interface_implemenations).map(|ii| {
+                                *crate::ruby_api::InterfaceImplementation::interface(ii).get()
+                            }),
                         )
                     }
                 ),
