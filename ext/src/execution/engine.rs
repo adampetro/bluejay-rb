@@ -574,6 +574,7 @@ impl<'a> Engine<'a> {
                 vec![ExecutionError::FieldError {
                     error: FieldError::ReturnedNullForNonNullType,
                     path,
+                    field: fields.first().unwrap(),
                 }],
             );
         } else if result.is_nil() {
@@ -584,15 +585,36 @@ impl<'a> Engine<'a> {
             OutputTypeReference::Base(inner, _) => match inner {
                 ScopedBaseOutputType::BuiltinScalar(bstd) => match bstd.coerce_result(result) {
                     Ok(value) => (value, vec![]),
-                    Err(error) => (*QNIL, vec![ExecutionError::FieldError { error, path }]),
+                    Err(error) => (
+                        *QNIL,
+                        vec![ExecutionError::FieldError {
+                            error,
+                            path,
+                            field: fields.first().unwrap(),
+                        }],
+                    ),
                 },
                 ScopedBaseOutputType::CustomScalar(cstd) => match cstd.coerce_result(result) {
                     Ok(value) => (value, vec![]),
-                    Err(error) => (*QNIL, vec![ExecutionError::FieldError { error, path }]),
+                    Err(error) => (
+                        *QNIL,
+                        vec![ExecutionError::FieldError {
+                            error,
+                            path,
+                            field: fields.first().unwrap(),
+                        }],
+                    ),
                 },
                 ScopedBaseOutputType::Enum(etd) => match etd.coerce_result(result) {
                     Ok(value) => (value, vec![]),
-                    Err(error) => (*QNIL, vec![ExecutionError::FieldError { error, path }]),
+                    Err(error) => (
+                        *QNIL,
+                        vec![ExecutionError::FieldError {
+                            error,
+                            path,
+                            field: fields.first().unwrap(),
+                        }],
+                    ),
                 },
                 ScopedBaseOutputType::Object(otd) => {
                     self.execute_selection_set(fields.into(), otd, result, path)
@@ -631,6 +653,7 @@ impl<'a> Engine<'a> {
                         vec![ExecutionError::FieldError {
                             error: FieldError::ReturnedNonListForListType,
                             path,
+                            field: fields.first().unwrap(),
                         }],
                     )
                 }

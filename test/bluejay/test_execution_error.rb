@@ -13,6 +13,15 @@ module Bluejay
       }
 
       assert_equal(expected_h, err.to_h)
+
+      err2 = Bluejay::ExecutionError.new("Something else went wrong", ["root"], [10, 12])
+      expected_h2 = {
+        "message" => "Something else went wrong",
+        "path" => ["root"],
+        "locations" => [10, 12],
+      }
+
+      assert_equal(expected_h2, err2.to_h)
     end
   end
 end

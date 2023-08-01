@@ -15,21 +15,30 @@ use std::borrow::Cow;
 pub struct ExecutionError {
     message: Cow<'static, str>,
     path: Option<Vec<String>>,
+    locations: Option<(usize, usize)>,
 }
 
 impl ExecutionError {
-    pub fn new(message: impl Into<Cow<'static, str>>, path: Option<Vec<String>>) -> Self {
+    pub fn new(
+        message: impl Into<Cow<'static, str>>,
+        path: Option<Vec<String>>,
+        locations: Option<(usize, usize)>,
+    ) -> Self {
         Self {
             message: message.into(),
             path,
+            locations,
         }
     }
 
     fn rb_new(args: &[Value]) -> Result<Self, Error> {
-        let args = scan_args::<(String,), (Option<Vec<String>>,), (), (), (), ()>(args)?;
+        let args =
+            scan_args::<(String,), (Option<Vec<String>>, Option<(usize, usize)>), (), (), (), ()>(
+                args,
+            )?;
         let (message,) = args.required;
-        let (path,) = args.optional;
-        Ok(Self::new(message, path))
+        let (path, locations) = args.optional;
+        Ok(Self::new(message, path, locations))
     }
 
     pub fn message(&self) -> &str {
@@ -45,6 +54,9 @@ impl ExecutionError {
         let ruby_h = rhash_with_capacity(2);
         ruby_h.aset("path", self.path())?;
         ruby_h.aset("message", self.message())?;
+        if let Some(_i) = self.locations {
+            ruby_h.aset("locations", self.locations)?;
+        }
         Ok(ruby_h)
     }
 
@@ -52,10 +64,11 @@ impl ExecutionError {
         let rs_self = rb_self.get();
 
         Ok(format!(
-            "#<Bluejay::ExecutionError:0x{:016x} @message={:?} @path={:?}>",
+            "#<Bluejay::ExecutionError:0x{:016x} @message={:?} @path={:?} @locations={:?}>",
             rb_self.as_raw(),
             rs_self.message,
             rs_self.path,
+            rs_self.locations,
         ))
     }
 }

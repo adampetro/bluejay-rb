@@ -301,7 +301,7 @@ module Bluejay
 
       assert_equal(1, result.errors.length)
       assert_equal(
-        ExecutionError.new("Did not return today", ["today"]),
+        ExecutionError.new("Did not return today", ["today"], [2, 7]),
         result.errors.first,
       )
     end
