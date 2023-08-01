@@ -18,7 +18,7 @@ pub enum ExecutionError<'a> {
     FieldError {
         error: FieldError,
         path: Path<'a>,
-        field: &'a bluejay_parser::ast::executable::Field<'a>,
+        fields: Vec<&'a bluejay_parser::ast::executable::Field<'a>>,
     },
 }
 
@@ -31,7 +31,21 @@ impl<'a> From<ExecutionError<'a>> for RubyExecutionError {
             ExecutionError::ApplicationError(error) => Self::new(format!("Internal error: {error}"), None, None),
             ExecutionError::CoercionError(error) =>  error.into(),
             ExecutionError::ParseError(error) => Self::new(error.message().to_owned(), None, None),
-            ExecutionError::FieldError { error, path, field } => Self::new(error.message().to_string(), Some(path.to_vec()), Some((field.span().byte_range().start, field.span().byte_range().end))),
+            ExecutionError::FieldError { error, path, fields } => {
+                let get_location = |field: &&bluejay_parser::ast::executable::Field<'_>| {
+                    // TODO This is starting byte and ending byte, not line and column
+                    let span = field.span();
+                    let range = span.byte_range();
+                    (range.start, range.end)
+                };
+
+                let locations = Some(fields.iter().map(get_location).collect());
+                Self::new(
+                    error.message().to_string(),
+                    Some(path.to_vec()),
+                    locations,
+                )
+            },
         }
     }
 }

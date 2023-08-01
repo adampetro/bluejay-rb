@@ -574,7 +574,7 @@ impl<'a> Engine<'a> {
                 vec![ExecutionError::FieldError {
                     error: FieldError::ReturnedNullForNonNullType,
                     path,
-                    field: fields.first().unwrap(),
+                    fields: fields.to_vec(),
                 }],
             );
         } else if result.is_nil() {
@@ -590,7 +590,7 @@ impl<'a> Engine<'a> {
                         vec![ExecutionError::FieldError {
                             error,
                             path,
-                            field: fields.first().unwrap(),
+                            fields: fields.to_vec(),
                         }],
                     ),
                 },
@@ -601,7 +601,7 @@ impl<'a> Engine<'a> {
                         vec![ExecutionError::FieldError {
                             error,
                             path,
-                            field: fields.first().unwrap(),
+                            fields: fields.to_vec(),
                         }],
                     ),
                 },
@@ -612,7 +612,7 @@ impl<'a> Engine<'a> {
                         vec![ExecutionError::FieldError {
                             error,
                             path,
-                            field: fields.first().unwrap(),
+                            fields: fields.to_vec(),
                         }],
                     ),
                 },
@@ -653,7 +653,7 @@ impl<'a> Engine<'a> {
                         vec![ExecutionError::FieldError {
                             error: FieldError::ReturnedNonListForListType,
                             path,
-                            field: fields.first().unwrap(),
+                            fields: fields.to_vec(),
                         }],
                     )
                 }

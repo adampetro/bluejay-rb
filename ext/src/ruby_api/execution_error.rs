@@ -10,19 +10,20 @@ use magnus::{
 };
 use std::borrow::Cow;
 
+type ErrorLocation = (usize, usize);
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[magnus::wrap(class = "Bluejay::ExecutionError")]
 pub struct ExecutionError {
     message: Cow<'static, str>,
     path: Option<Vec<String>>,
-    locations: Option<(usize, usize)>,
+    locations: Option<Vec<ErrorLocation>>,
 }
 
 impl ExecutionError {
     pub fn new(
         message: impl Into<Cow<'static, str>>,
         path: Option<Vec<String>>,
-        locations: Option<(usize, usize)>,
+        locations: Option<Vec<(usize, usize)>>,
     ) -> Self {
         Self {
             message: message.into(),
@@ -32,10 +33,14 @@ impl ExecutionError {
     }
 
     fn rb_new(args: &[Value]) -> Result<Self, Error> {
-        let args =
-            scan_args::<(String,), (Option<Vec<String>>, Option<(usize, usize)>), (), (), (), ()>(
-                args,
-            )?;
+        let args = scan_args::<
+            (String,),
+            (Option<Vec<String>>, Option<Vec<ErrorLocation>>),
+            (),
+            (),
+            (),
+            (),
+        >(args)?;
         let (message,) = args.required;
         let (path, locations) = args.optional;
         Ok(Self::new(message, path, locations))
@@ -54,8 +59,8 @@ impl ExecutionError {
         let ruby_h = rhash_with_capacity(2);
         ruby_h.aset("path", self.path())?;
         ruby_h.aset("message", self.message())?;
-        if let Some(_i) = self.locations {
-            ruby_h.aset("locations", self.locations)?;
+        if let Some(_i) = &self.locations {
+            ruby_h.aset("locations", self.locations.clone())?;
         }
         Ok(ruby_h)
     }
