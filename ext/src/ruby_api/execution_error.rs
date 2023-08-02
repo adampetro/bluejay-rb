@@ -10,7 +10,22 @@ use magnus::{
 };
 use std::borrow::Cow;
 
-type ErrorLocation = (usize, usize);
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[magnus::wrap(class = "Bluejay::ExecutionError::ErrorLocation")]
+struct ErrorLocation {
+    line: usize,
+    column: usize,
+}
+
+impl ErrorLocation {
+    fn to_h(&self) -> Result<RHash, Error> {
+        let ruby_h = rhash_with_capacity(2);
+        ruby_h.aset("line", self.line)?;
+        ruby_h.aset("column", self.column)?;
+        Ok(ruby_h)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[magnus::wrap(class = "Bluejay::ExecutionError")]
 pub struct ExecutionError {
@@ -23,7 +38,7 @@ impl ExecutionError {
     pub fn new(
         message: impl Into<Cow<'static, str>>,
         path: Option<Vec<String>>,
-        locations: Option<Vec<(usize, usize)>>,
+        locations: Option<Vec<ErrorLocation>>,
     ) -> Self {
         Self {
             message: message.into(),
@@ -60,7 +75,13 @@ impl ExecutionError {
         ruby_h.aset("path", self.path())?;
         ruby_h.aset("message", self.message())?;
         if let Some(_i) = &self.locations {
-            ruby_h.aset("locations", self.locations.clone())?;
+            let location_hashes: Vec<RHash> = self
+                .locations
+                .unwrap()
+                .iter()
+                .map(|loc| loc.to_h().unwrap())
+                .collect();
+            ruby_h.aset("locations", location_hashes)?;
         }
         Ok(ruby_h)
     }
@@ -90,6 +111,8 @@ pub fn init() -> Result<(), Error> {
     )?;
     class.define_method("inspect", method!(ExecutionError::inspect, 0))?;
     class.define_method("to_h", method!(ExecutionError::to_h, 0))?;
+
+    class.define_class("ErrorLocation", Default::default())?;
 
     Ok(())
 }
