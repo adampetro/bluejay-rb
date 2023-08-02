@@ -39,7 +39,7 @@ impl ObjectTypeDefinition {
         )?;
         let (
             name,
-            field_definitions,
+            fields_definition,
             interface_implementations,
             description,
             directives,
@@ -47,15 +47,13 @@ impl ObjectTypeDefinition {
             visibility,
         ): (
             String,
-            RArray,
-            RArray,
+            FieldsDefinition,
+            InterfaceImplementations,
             Option<String>,
             RArray,
             RClass,
             Option<Visibility>,
         ) = args.required;
-        let fields_definition = FieldsDefinition::new(field_definitions)?;
-        let interface_implementations = InterfaceImplementations::new(interface_implementations)?;
         let directives = directives.try_into()?;
         let is_builtin = unsafe { ruby_class.name() }.starts_with("Bluejay::Builtin::ObjectTypes");
         Ok(Self {

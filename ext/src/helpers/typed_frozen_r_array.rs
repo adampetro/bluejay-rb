@@ -1,13 +1,18 @@
 use crate::helpers::RArrayIter;
 use bluejay_core::AsIter;
 use magnus::{typed_data::Obj, Error, IntoValue, RArray, Ruby, TryConvert, TypedData, Value};
-use std::{marker::PhantomData, ops::Deref};
+use std::{fmt::Debug, marker::PhantomData, ops::Deref};
 
-#[derive(Debug)]
 #[repr(transparent)]
 pub struct TypedFrozenRArray<T: TryConvert> {
     data: RArray,
     t: PhantomData<T>,
+}
+
+impl<T: TryConvert> Debug for TypedFrozenRArray<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Debug::fmt(&self.data, f)
+    }
 }
 
 impl<T: TryConvert> Clone for TypedFrozenRArray<T> {
@@ -20,6 +25,14 @@ impl<T: TryConvert> Clone for TypedFrozenRArray<T> {
 }
 
 impl<T: TryConvert> Copy for TypedFrozenRArray<T> {}
+
+impl<T: TryConvert> PartialEq for TypedFrozenRArray<T> {
+    fn eq(&self, other: &Self) -> bool {
+        matches!(self.data.equal(other.data), Ok(true))
+    }
+}
+
+impl<T: TryConvert> Eq for TypedFrozenRArray<T> {}
 
 impl<T: TryConvert> TypedFrozenRArray<T> {
     pub fn new(data: RArray) -> Result<Self, Error> {
@@ -55,6 +68,10 @@ impl<T: TypedData> TypedFrozenRArray<Obj<T>> {
     pub fn iter_objects(&self) -> RArrayIter<Obj<T>> {
         RArrayIter::from(&self.data)
     }
+
+    pub fn iter(&self) -> RArrayIter<&T> {
+        RArrayIter::from(&self.data)
+    }
 }
 
 impl<T: TryConvert> Deref for TypedFrozenRArray<T> {
@@ -68,6 +85,18 @@ impl<T: TryConvert> Deref for TypedFrozenRArray<T> {
 impl<T: TryConvert> From<TypedFrozenRArray<T>> for RArray {
     fn from(val: TypedFrozenRArray<T>) -> Self {
         val.data
+    }
+}
+
+impl<T: TryConvert> TryConvert for TypedFrozenRArray<T> {
+    fn try_convert(val: Value) -> Result<Self, Error> {
+        RArray::try_convert(val).and_then(Self::new)
+    }
+}
+
+impl<T: TryConvert> Default for TypedFrozenRArray<T> {
+    fn default() -> Self {
+        Self::empty()
     }
 }
 

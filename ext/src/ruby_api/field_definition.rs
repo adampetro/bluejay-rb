@@ -3,7 +3,6 @@ use crate::ruby_api::{
     root, ArgumentsDefinition, DirectiveDefinition, Directives, HasVisibility, OutputType,
     Visibility,
 };
-use bluejay_core::AsIter;
 use convert_case::{Case, Casing};
 use magnus::{
     function, gc, memoize, method,
@@ -46,7 +45,7 @@ impl FieldDefinition {
         )?;
         let (name_r_string, r#type): (RString, Obj<OutputType>) = args.required;
         type OptionalArgs = (
-            Option<RArray>,
+            Option<ArgumentsDefinition>,
             Option<Option<String>>,
             Option<RArray>,
             Option<Option<String>>,
@@ -63,8 +62,7 @@ impl FieldDefinition {
         ): OptionalArgs = args.optional;
         name_r_string.freeze();
         let name = name_r_string.to_string()?;
-        let arguments_definition =
-            ArgumentsDefinition::new(argument_definitions.unwrap_or_else(RArray::new))?;
+        let arguments_definition = argument_definitions.unwrap_or_default();
         let description = description.unwrap_or_default();
         let directives = directives.unwrap_or_else(RArray::new);
         let deprecation_reason = deprecation_reason.flatten();

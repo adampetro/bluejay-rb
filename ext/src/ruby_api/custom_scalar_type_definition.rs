@@ -6,7 +6,6 @@ use crate::ruby_api::{
     WrappedValue,
 };
 use crate::visibility_scoped::ScopedScalarTypeDefinition;
-use bluejay_core::AsIter;
 use bluejay_parser::ast::Value as ParserValue;
 use bluejay_validator::Path;
 use magnus::{

@@ -4,7 +4,6 @@ use crate::ruby_api::{
     HasVisibility, InputType, Visibility, WrappedValue,
 };
 use crate::visibility_scoped::{ScopedInputType, VisibilityCache};
-use bluejay_core::AsIter;
 use bluejay_printer::value::ValuePrinter;
 use bluejay_validator::Path;
 use convert_case::{Case, Casing};

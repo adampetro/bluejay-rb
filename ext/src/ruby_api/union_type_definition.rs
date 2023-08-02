@@ -35,17 +35,15 @@ impl UnionTypeDefinition {
             ],
             &[],
         )?;
-        let (name, member_types, description, directives, field_definitions, visibility): (
+        let (name, member_types, description, directives, fields_definition, visibility): (
             String,
-            RArray,
+            UnionMemberTypes,
             Option<String>,
             RArray,
-            RArray,
+            FieldsDefinition,
             Option<Visibility>,
         ) = args.required;
-        let member_types = UnionMemberTypes::new(member_types)?;
         let directives = directives.try_into()?;
-        let fields_definition = FieldsDefinition::new(field_definitions)?;
         Ok(Self {
             name,
             description,

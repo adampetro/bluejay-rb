@@ -1,6 +1,6 @@
 use crate::helpers::NewInstanceKw;
 use crate::ruby_api::{root, DirectiveDefinition, Directives, HasVisibility, Visibility};
-use bluejay_core::{definition::EnumValueDefinition as CoreEnumValueDefinition, AsIter};
+use bluejay_core::definition::EnumValueDefinition as CoreEnumValueDefinition;
 use magnus::{
     function, method, scan_args::get_kwargs, scan_args::KwArgs, DataTypeFunctions, Error, Module,
     Object, RArray, RHash, TypedData,

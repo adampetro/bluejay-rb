@@ -35,21 +35,19 @@ impl InterfaceTypeDefinition {
         )?;
         let (
             name,
-            field_definitions,
+            fields_definition,
             interface_implementations,
             description,
             directives,
             visibility,
         ): (
             String,
-            RArray,
-            RArray,
+            FieldsDefinition,
+            InterfaceImplementations,
             Option<String>,
             RArray,
             Option<Visibility>,
         ) = args.required;
-        let fields_definition = FieldsDefinition::new(field_definitions)?;
-        let interface_implementations = InterfaceImplementations::new(interface_implementations)?;
         let directives = directives.try_into()?;
         Ok(Self {
             name,

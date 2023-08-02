@@ -41,15 +41,14 @@ impl InputObjectTypeDefinition {
             ],
             &[],
         )?;
-        let (name, input_field_definitions, description, directives, ruby_class, visibility): (
+        let (name, input_fields_definition, description, directives, ruby_class, visibility): (
             String,
-            RArray,
+            InputFieldsDefinition,
             Option<String>,
             RArray,
             RClass,
             Option<Visibility>,
         ) = args.required;
-        let input_fields_definition = InputFieldsDefinition::new(input_field_definitions)?;
         let directives = directives.try_into()?;
         Ok(Self {
             name,

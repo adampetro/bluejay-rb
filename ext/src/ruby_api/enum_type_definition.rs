@@ -41,13 +41,12 @@ impl EnumTypeDefinition {
         )?;
         let (name, enum_value_definitions, description, directives, ruby_class, visibility): (
             String,
-            RArray,
+            EnumValueDefinitions,
             Option<String>,
             RArray,
             RClass,
             Option<Visibility>,
         ) = args.required;
-        let enum_value_definitions = EnumValueDefinitions::new(enum_value_definitions)?;
         let directives = directives.try_into()?;
         let is_builtin = unsafe { ruby_class.name() }.starts_with("Bluejay::Builtin::EnumTypes");
         Ok(Self {
