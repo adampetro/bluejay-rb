@@ -1,5 +1,5 @@
 use crate::execution::FieldError;
-use crate::ruby_api::{CoercionError, ExecutionError as RubyExecutionError};
+use crate::ruby_api::{CoercionError, ErrorLocation, ExecutionError as RubyExecutionError};
 use bluejay_parser::{Error as ParseError, HasSpan};
 use bluejay_validator::Path;
 
@@ -36,7 +36,7 @@ impl<'a> From<ExecutionError<'a>> for RubyExecutionError {
                     // TODO This is starting byte and ending byte, not line and column
                     let span = field.span();
                     let range = span.byte_range();
-                    (range.start, range.end)
+                    ErrorLocation { line: range.start, column: range.end }
                 };
 
                 let locations = Some(fields.iter().map(get_location).collect());

@@ -12,7 +12,7 @@ use std::borrow::Cow;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[magnus::wrap(class = "Bluejay::ExecutionError::ErrorLocation")]
-struct ErrorLocation {
+pub struct ErrorLocation {
     line: usize,
     column: usize,
 }
