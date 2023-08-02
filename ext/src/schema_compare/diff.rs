@@ -1,4 +1,4 @@
-use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, ObjectTypeDefinition, FieldDefinition, FieldsDefinition, InputObjectTypeDefinition, InputFieldsDefinition, InputValueDefinition, OutputType, InterfaceImplementation, InterfaceTypeDefinition, InputType, EnumTypeDefinition, EnumValueDefinition, UnionTypeDefinition, UnionMemberTypes, UnionMemberType};
+use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, ObjectTypeDefinition, FieldDefinition, FieldsDefinition, InputObjectTypeDefinition, InputFieldsDefinition, InputValueDefinition, OutputType, InterfaceImplementation, InterfaceTypeDefinition, InputType, EnumTypeDefinition, EnumValueDefinition, UnionTypeDefinition, UnionMemberTypes, UnionMemberType, DirectiveDefinition, DirectiveLocation};
 use bluejay_core::{AsIter, Value};
 use super::changes::*;
 use super::helpers::{type_description, type_kind};
@@ -53,18 +53,15 @@ pub struct Interface<'a, S: SchemaDefinition> {
     new_interface: &'a S::InterfaceTypeDefinition,
 }
 
-pub enum TypeWithFields<'a, S: SchemaDefinition> {
-    Object(&'a S::ObjectTypeDefinition),
-    Interface(&'a S::InterfaceTypeDefinition),
+pub struct Directive<'a, S: SchemaDefinition> {
+    old_directive: &'a S::DirectiveDefinition,
+    new_directive: &'a S::DirectiveDefinition,
 }
 
-impl<'a, S: SchemaDefinition> TypeWithFields<'a, S> {
-    pub fn name(&self) -> &'a str {
-        match self {
-            Self::Object(object_type) => object_type.name(),
-            Self::Interface(interface_type) => interface_type.name(),
-        }
-    }
+pub struct DirectiveArgument<'a, S: SchemaDefinition> {
+    directive: &'a S::DirectiveDefinition,
+    old_argument: &'a S::InputValueDefinition,
+    new_argument: &'a S::InputValueDefinition,
 }
 
 impl<'a, S: SchemaDefinition> Schema<'a, S> {
@@ -92,6 +89,23 @@ impl<'a, S: SchemaDefinition> Schema<'a, S> {
 
             if new_type.is_some() {
                 changes.extend(self.changes_in_type(old_type, new_type.unwrap()).into_iter());
+            }
+        });
+
+        changes.extend(self.removed_directive_definitions().into_iter()
+            .map(|directive| Change::DirectiveRemoved {
+                directive: directive,
+            }));
+        changes.extend(self.added_directive_definitions().into_iter()
+            .map(|directive| Change::DirectiveAdded {
+                directive: directive,
+            }));
+
+        self.old_schema.directive_definitions().for_each(|old_directive| {
+            let new_directive = self.new_schema.get_directive_definition(old_directive.name());
+
+            if new_directive.is_some() {
+                changes.extend(Directive::new(old_directive, new_directive.unwrap()).diff());
             }
         });
 
@@ -137,6 +151,11 @@ impl<'a, S: SchemaDefinition> Schema<'a, S> {
         changes
     }
 
+    fn chages_in_directive(&self, old_directive: &'a S::DirectiveDefinition, new_directive: &'a S::DirectiveDefinition) -> Vec<Change<S>> {
+        let mut changes: Vec<Change<S>> = Vec::new();
+        changes
+    }
+
     fn removed_types(&self) -> Vec<TypeDefinitionReference<'_, S::TypeDefinition>> {
         let mut removed_types: Vec<TypeDefinitionReference<'_, S::TypeDefinition>> = Vec::new();
 
@@ -159,6 +178,30 @@ impl<'a, S: SchemaDefinition> Schema<'a, S> {
         });
 
         added_types
+    }
+
+    fn removed_directive_definitions(&self) -> Vec<&'a S::DirectiveDefinition> {
+        let mut removed_directive_definitions = Vec::new();
+
+        self.old_schema.directive_definitions().for_each(|old_directive| {
+            if self.new_schema.get_directive_definition(old_directive.name()).is_none() {
+                removed_directive_definitions.push(old_directive);
+            }
+        });
+
+        removed_directive_definitions
+    }
+
+    fn added_directive_definitions(&self) -> Vec<&'a S::DirectiveDefinition> {
+        let mut added_directive_definitions = Vec::new();
+
+        self.new_schema.directive_definitions().for_each(|new_directive| {
+            if self.old_schema.get_directive_definition(new_directive.name()).is_none() {
+                added_directive_definitions.push(new_directive);
+            }
+        });
+
+        added_directive_definitions
     }
 }
 
@@ -666,5 +709,176 @@ impl<'a, S: SchemaDefinition+'a> Interface<'a, S> {
         });
 
         removed_fields
+    }
+}
+
+impl<'a, S: SchemaDefinition+'a> Directive<'a, S> {
+    pub fn new(old_directive: &'a S::DirectiveDefinition, new_directive: &'a S::DirectiveDefinition) -> Self {
+        Self {
+            old_directive,
+            new_directive,
+        }
+    }
+
+    pub fn diff(&self) -> Vec<Change<'a, S>> {
+        let mut changes: Vec<Change<'a, S>> = Vec::new();
+
+        if self.old_directive.description() != self.new_directive.description() {
+            changes.push(Change::DirectiveDescriptionChanged {
+                old_directive: self.old_directive,
+                new_directive: self.new_directive,
+            });
+        }
+
+        changes.extend(self.added_locations().into_iter()
+            .map(|location| Change::DirectiveLocationAdded {
+                directive: self.new_directive,
+                location: location,
+            }));
+
+        changes.extend(self.removed_locations().into_iter()
+            .map(|location| Change::DirectiveLocationRemoved {
+                directive: self.new_directive,
+                location: location,
+            }));
+
+        changes.extend(self.added_arguments().into_iter()
+            .map(|argument| Change::DirectiveArgumentAdded {
+                directive: self.new_directive,
+                argument: argument,
+            }));
+
+        changes.extend(self.removed_arguments().into_iter()
+            .map(|argument| Change::DirectiveArgumentRemoved {
+                directive: self.new_directive,
+                argument: argument,
+            }));
+
+        self.old_directive.arguments_definition().map(|ii| ii.iter()).into_iter().flatten().for_each(|old_argument: &'a<S as SchemaDefinition>::InputValueDefinition| {
+            let new_argument: Option<&'a<S as SchemaDefinition>::InputValueDefinition> = self.new_directive.arguments_definition().map(|ii| ii.iter()).into_iter().flatten().find(|new_argument| {
+                old_argument.name() == new_argument.name()
+            });
+
+            if new_argument.is_some() {
+                changes.extend(DirectiveArgument::new(self.new_directive, old_argument, new_argument.unwrap()).diff());
+            }
+        });
+
+        changes
+    }
+
+    fn removed_locations(&self) -> Vec<&'a DirectiveLocation> {
+        let mut removed_locations = Vec::new();
+
+        self.old_directive.locations().iter().for_each(|old_location| {
+            if self.new_directive.locations().iter().find(|new_location| {
+                *new_location == old_location
+            }).is_none() {
+                removed_locations.push(old_location);
+            }
+        });
+
+        removed_locations
+    }
+
+    fn added_locations(&self) -> Vec<&'a DirectiveLocation> {
+        let mut added_locations = Vec::new();
+
+        self.new_directive.locations().iter().for_each(|new_location: &DirectiveLocation| {
+            if self.old_directive.locations().iter().find(|old_location| {
+                *old_location == new_location
+            }).is_none() {
+                added_locations.push(new_location);
+            }
+        });
+
+        added_locations
+    }
+
+    fn removed_arguments(&self) -> Vec<&'a S::InputValueDefinition> {
+        let mut removed_arguments = Vec::new();
+
+        self.old_directive.arguments_definition().map(|ii| ii.iter()).into_iter().flatten().for_each(|old_argument: &'a<S as SchemaDefinition>::InputValueDefinition| {
+            if self.new_directive.arguments_definition().map(|ii| ii.iter()).into_iter().flatten().find(|new_argument| {
+                old_argument.name() == new_argument.name()
+            }).is_none() {
+                removed_arguments.push(old_argument);
+            }
+        });
+
+        removed_arguments
+    }
+
+    fn added_arguments(&self) -> Vec<&'a S::InputValueDefinition> {
+        let mut added_arguments = Vec::new();
+
+        self.new_directive.arguments_definition().map(|ii| ii.iter()).into_iter().flatten().for_each(|new_argument: &'a<S as SchemaDefinition>::InputValueDefinition| {
+            if self.old_directive.arguments_definition().map(|ii| ii.iter()).into_iter().flatten().find(|old_argument| {
+                old_argument.name() == new_argument.name()
+            }).is_none() {
+                added_arguments.push(new_argument);
+            }
+        });
+
+        added_arguments
+    }
+}
+
+impl<'a, S: SchemaDefinition+'a> DirectiveArgument<'a, S> {
+    pub fn new(directive: &'a S::DirectiveDefinition, old_argument: &'a S::InputValueDefinition, new_argument: &'a S::InputValueDefinition) -> Self {
+        Self {
+            directive,
+            old_argument,
+            new_argument
+        }
+    }
+
+    pub fn diff(&self) -> Vec<Change<'a, S>> {
+        let mut changes = Vec::new();
+
+        if self.old_argument.description() != self.new_argument.description() {
+            changes.push(Change::DirectiveArgumentDescriptionChanged {
+                directive: self.directive,
+                old_argument: self.old_argument,
+                new_argument: self.new_argument,
+            });
+        }
+
+        if self.old_argument.r#type().as_ref().display_name() != self.new_argument.r#type().as_ref().display_name() {
+            changes.push(Change::DirectiveArgumentTypeChanged {
+                directive: self.directive,
+                old_argument: self.old_argument,
+                new_argument: self.new_argument,
+            });
+        }
+
+        match (self.old_argument.default_value(), self.new_argument.default_value()) {
+            (Some(old_default), Some(new_default)) => {
+                if old_default.as_ref() != new_default.as_ref() {
+                    changes.push(Change::DirectiveArgumentDefaultValueChanged {
+                        directive: self.directive,
+                        old_argument: self.old_argument,
+                        new_argument: self.new_argument,
+                    });
+                }
+            },
+            (Some(_), None) => {
+                changes.push(Change::DirectiveArgumentDefaultValueChanged {
+                    directive: self.directive,
+                    old_argument: self.old_argument,
+                    new_argument: self.new_argument,
+                });
+            },
+            (None, Some(_)) => {
+                changes.push(Change::DirectiveArgumentDefaultValueChanged {
+                    directive: self.directive,
+                    old_argument: self.old_argument,
+                    new_argument: self.new_argument,
+                });
+            },
+            (None, None) => { }
+        }
+
+        changes
     }
 }

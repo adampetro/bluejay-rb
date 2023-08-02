@@ -1,4 +1,4 @@
-use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, ObjectTypeDefinition, FieldDefinition, InputValueDefinition, InputObjectTypeDefinition, InterfaceTypeDefinition, InputType, EnumTypeDefinition, EnumValueDefinition, UnionTypeDefinition, OutputType};
+use bluejay_core::definition::{SchemaDefinition, TypeDefinitionReference, ObjectTypeDefinition, FieldDefinition, InputValueDefinition, InputObjectTypeDefinition, InterfaceTypeDefinition, InputType, EnumTypeDefinition, EnumValueDefinition, UnionTypeDefinition, OutputType, DirectiveDefinition, DirectiveLocation};
 use bluejay_core::Value;
 use super::helpers::{type_description, type_kind};
 
@@ -136,6 +136,47 @@ pub enum Change<'a, S: SchemaDefinition> {
         old_field: &'a S::InputValueDefinition,
         new_field: &'a S::InputValueDefinition,
     },
+    DirectiveAdded{
+        directive: &'a S::DirectiveDefinition,
+    },
+    DirectiveRemoved{
+        directive: &'a S::DirectiveDefinition,
+    },
+    DirectiveLocationAdded{
+        directive: &'a S::DirectiveDefinition,
+        location: &'a DirectiveLocation,
+    },
+    DirectiveLocationRemoved{
+        directive: &'a S::DirectiveDefinition,
+        location: &'a DirectiveLocation,
+    },
+    DirectiveDescriptionChanged{
+        old_directive: &'a S::DirectiveDefinition,
+        new_directive: &'a S::DirectiveDefinition,
+    },
+    DirectiveArgumentAdded{
+        directive: &'a S::DirectiveDefinition,
+        argument: &'a S::InputValueDefinition,
+    },
+    DirectiveArgumentRemoved{
+        directive: &'a S::DirectiveDefinition,
+        argument: &'a S::InputValueDefinition,
+    },
+    DirectiveArgumentDescriptionChanged{
+        directive: &'a S::DirectiveDefinition,
+        old_argument: &'a S::InputValueDefinition,
+        new_argument: &'a S::InputValueDefinition,
+    },
+    DirectiveArgumentDefaultValueChanged{
+        directive: &'a S::DirectiveDefinition,
+        old_argument: &'a S::InputValueDefinition,
+        new_argument: &'a S::InputValueDefinition,
+    },
+    DirectiveArgumentTypeChanged{
+        directive: &'a S::DirectiveDefinition,
+        old_argument: &'a S::InputValueDefinition,
+        new_argument: &'a S::InputValueDefinition,
+    },
 }
 
 impl<'a, S: SchemaDefinition>  Change<'a, S> {
@@ -227,6 +268,43 @@ impl<'a, S: SchemaDefinition>  Change<'a, S> {
             Self::InputFieldDefaultValueChanged { input_object_type, old_field, new_field } => {
                 Criticality::dangerous(Some("Changing the default value for an argument may change the runtime behaviour of a field if it was never provided.".to_string()))
             },
+            Self::DirectiveAdded{ directive } => {
+                Criticality::non_breaking(None)
+            },
+            Self::DirectiveRemoved{ directive } => {
+                Criticality::breaking(None)
+            },
+            Self::DirectiveLocationAdded{ directive, location } => {
+                Criticality::non_breaking(None)
+            },
+            Self::DirectiveLocationRemoved{ directive, location } => {
+                Criticality::breaking(None)
+            },
+            Self::DirectiveDescriptionChanged{ old_directive, new_directive } => {
+                Criticality::non_breaking(None)
+            },
+            Self::DirectiveArgumentAdded{ directive, argument } => {
+                // TODO: conditional criticality
+
+                if argument.is_required() {
+                    Criticality::breaking(None)
+                } else {
+                    Criticality::non_breaking(None)
+                }
+            },
+            Self::DirectiveArgumentRemoved{ directive, argument } => {
+                Criticality::breaking(None)
+            },
+            Self::DirectiveArgumentDescriptionChanged { directive, old_argument, new_argument } => {
+                Criticality::non_breaking(None)
+            },
+            Self::DirectiveArgumentTypeChanged { directive, old_argument, new_argument } => {
+                // TODO: conditional criticality
+                Criticality::breaking(None)
+            },
+            Self::DirectiveArgumentDefaultValueChanged { directive, old_argument, new_argument } => {
+                Criticality::dangerous(Some("Changing the default value for an argument may change the runtime behaviour of a field if it was never provided.".to_string()))
+            }
         }
     }
 
@@ -349,6 +427,52 @@ impl<'a, S: SchemaDefinition>  Change<'a, S> {
                     (None, None) => { "".to_string() }
                 }
             },
+            Self::DirectiveAdded{ directive } => {
+                format!("Directive `{}` was added", directive.name())
+            },
+            Self::DirectiveRemoved{ directive } => {
+                format!("Directive `{}` was removed", directive.name())
+            },
+            Self::DirectiveLocationAdded{ directive, location } => {
+                format!("Location `{}` was added to directive `{}`", location, directive.name())
+            },
+            Self::DirectiveLocationRemoved{ directive, location } => {
+                format!("Location `{}` was removed from directive `{}`", location, directive.name())
+            },
+            Self::DirectiveDescriptionChanged { old_directive, new_directive } => {
+                format!("Directive `{}` description changed from `{}` to `{}`", new_directive.name(), old_directive.description().unwrap_or(""), new_directive.description().unwrap_or(""))
+            },
+            Self::DirectiveArgumentAdded{ directive, argument } => {
+                format!("Argument `{}` was added to directive `{}`", argument.name(), directive.name())
+            },
+            Self::DirectiveArgumentRemoved{ directive, argument } => {
+                format!("Argument `{}` was removed from directive `{}`", argument.name(), directive.name())
+            },
+            Self::DirectiveArgumentDescriptionChanged { directive, old_argument, new_argument } => {
+                format!("Description for argument `{}` on directive `{}.{}` changed from `{}` to `{}`", new_argument.name(), directive.name(), old_argument.name(), old_argument.description().unwrap_or(""), new_argument.description().unwrap_or(""))
+            },
+            Self::DirectiveArgumentTypeChanged { directive, old_argument, new_argument } => {
+                format!("Type for argument `{}` on directive `{}.{}` changed from `{}` to `{}`", new_argument.name(), directive.name(), old_argument.name(), old_argument.r#type().as_ref().display_name(), new_argument.r#type().as_ref().display_name())
+            },
+            Self::DirectiveArgumentDefaultValueChanged { directive, old_argument, new_argument } => {
+                // TODO: exhaustive cases here are weird
+                match (old_argument.default_value(), new_argument.default_value()) {
+                    (Some(old_default_value), Some(new_default_value)) => {
+                        if old_default_value.as_ref() != new_default_value.as_ref() {
+                            format!("Directive argument `{}.{}` default valut changed from `{}` to `{}`", directive.name(), new_argument.name(), old_default_value.as_ref(), new_default_value.as_ref())
+                        } else {
+                            "".to_string()
+                        }
+                    },
+                    (Some(old_default_value), None) => {
+                        format!("Default value `{}` was removed from directive argument `{}.{}`", old_default_value.as_ref(), directive.name(), old_argument.name())
+                    },
+                    (None, Some(new_default_value)) => {
+                        format!("Default value `{}` was added to directive argument `{}.{}`", new_default_value.as_ref(), directive.name(), old_argument.name())
+                    },
+                    (None, None) => { "".to_string() }
+                }
+            },
         }
     }
 
@@ -428,6 +552,36 @@ impl<'a, S: SchemaDefinition>  Change<'a, S> {
             },
             Self::InputFieldDefaultValueChanged { input_object_type, old_field, new_field } => {
                 vec![input_object_type.name(), old_field.name()].join(".")
+            },
+            Self::DirectiveAdded{ directive } => {
+                directive.name().to_string()
+            },
+            Self::DirectiveRemoved{ directive } => {
+                format!("@{}", directive.name())
+            },
+            Self::DirectiveLocationAdded{ directive, location } => {
+                format!("@{}", directive.name())
+            },
+            Self::DirectiveLocationRemoved{ directive, location } => {
+                format!("@{}", directive.name())
+            },
+            Self::DirectiveDescriptionChanged { old_directive, new_directive } => {
+                format!("@{}", new_directive.name())
+            },
+            Self::DirectiveArgumentAdded{ directive, argument } => {
+                format!("@{}.{}", directive.name(), argument.name())
+            },
+            Self::DirectiveArgumentRemoved{ directive, argument } => {
+                format!("@{}.{}", directive.name(), argument.name())
+            },
+            Self::DirectiveArgumentDescriptionChanged { directive, old_argument, new_argument } => {
+                format!("@{}.{}", directive.name(), old_argument.name())
+            },
+            Self::DirectiveArgumentTypeChanged { directive, old_argument, new_argument } => {
+                format!("@{}.{}", directive.name(), old_argument.name())
+            },
+            Self::DirectiveArgumentDefaultValueChanged { directive, old_argument, new_argument } => {
+                format!("@{}.{}", directive.name(), old_argument.name())
             },
         }
     }
