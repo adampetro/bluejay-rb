@@ -6,7 +6,7 @@ use magnus::{
     rb_sys::AsRawValue,
     scan_args::scan_args,
     typed_data::{self, Obj},
-    DataTypeFunctions, Error, Module, Object, RArray, RHash, TryConvert, TypedData, Value,
+    DataTypeFunctions, Error, Module, Object, RArray, RHash, TypedData, Value,
 };
 use std::borrow::Cow;
 
@@ -22,6 +22,12 @@ impl ErrorLocation {
         Self { line, column }
     }
 
+    fn rb_new(hash: RHash) -> Result<Self, Error> {
+        let line = hash.get("line").unwrap().try_convert::<usize>().unwrap();
+        let column = hash.get("column").unwrap().try_convert::<usize>().unwrap();
+        Ok(Self::new(line, column))
+    }
+
     fn to_h(&self) -> Result<RHash, Error> {
         let ruby_h = rhash_with_capacity(2);
         ruby_h.aset("line", self.line)?;
@@ -29,12 +35,6 @@ impl ErrorLocation {
         Ok(ruby_h)
     }
 }
-
-// impl TryConvert for ErrorLocation {
-//     fn try_convert(val: Value) -> Result<Self, Error> {
-//         Ok(Self::new(5, 5))
-//     }
-// }
 
 #[derive(Clone, Debug, PartialEq, Eq, TypedData)]
 #[magnus(class = "Bluejay::ExecutionError", mark)]
@@ -131,7 +131,8 @@ pub fn init() -> Result<(), Error> {
     class.define_method("inspect", method!(ExecutionError::inspect, 0))?;
     class.define_method("to_h", method!(ExecutionError::to_h, 0))?;
 
-    class.define_class("ErrorLocation", Default::default())?;
+    let loc_class = class.define_class("ErrorLocation", Default::default())?;
+    loc_class.define_singleton_method("new", function!(ErrorLocation::rb_new, 1))?;
 
     Ok(())
 }

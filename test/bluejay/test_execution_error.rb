@@ -23,5 +23,9 @@ module Bluejay
 
       assert_equal(expected_h2, err2.to_h)
     end
+
+    def test_it_can_make_error_locations
+      assert(Bluejay::ExecutionError::ErrorLocation.new({ "line" => 5, "column" => 10 }))
+    end
   end
 end
