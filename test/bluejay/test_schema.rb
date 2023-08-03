@@ -301,7 +301,11 @@ module Bluejay
 
       assert_equal(1, result.errors.length)
       assert_equal(
-        ExecutionError.new("Did not return today", ["today"], [[2, 7], [8, 13]]),
+        ExecutionError.new(
+          "Did not return today",
+          ["today"],
+          [{ "line" => 2, "column" => 7 }, { "line" => 8, "column" => 13 }],
+        ),
         result.errors.first,
       )
     end

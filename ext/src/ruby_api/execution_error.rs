@@ -1,12 +1,12 @@
-use crate::helpers::rhash_with_capacity;
+use crate::helpers::{rhash_with_capacity, TypedFrozenRArray};
 
 use super::root;
 use magnus::{
-    function, method,
+    function, gc, method,
     rb_sys::AsRawValue,
     scan_args::scan_args,
     typed_data::{self, Obj},
-    Error, Module, Object, RHash, Value,
+    DataTypeFunctions, Error, Module, Object, RArray, RHash, TryConvert, TypedData, Value,
 };
 use std::borrow::Cow;
 
@@ -18,6 +18,10 @@ pub struct ErrorLocation {
 }
 
 impl ErrorLocation {
+    pub fn new(line: usize, column: usize) -> Self {
+        Self { line, column }
+    }
+
     fn to_h(&self) -> Result<RHash, Error> {
         let ruby_h = rhash_with_capacity(2);
         ruby_h.aset("line", self.line)?;
@@ -26,19 +30,33 @@ impl ErrorLocation {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[magnus::wrap(class = "Bluejay::ExecutionError")]
+// impl TryConvert for ErrorLocation {
+//     fn try_convert(val: Value) -> Result<Self, Error> {
+//         Ok(Self::new(5, 5))
+//     }
+// }
+
+#[derive(Clone, Debug, PartialEq, Eq, TypedData)]
+#[magnus(class = "Bluejay::ExecutionError", mark)]
 pub struct ExecutionError {
     message: Cow<'static, str>,
     path: Option<Vec<String>>,
-    locations: Option<Vec<ErrorLocation>>,
+    locations: Option<TypedFrozenRArray<Obj<ErrorLocation>>>,
+}
+
+impl DataTypeFunctions for ExecutionError {
+    fn mark(&self) {
+        if let Some(locations) = self.locations {
+            gc::mark(locations);
+        }
+    }
 }
 
 impl ExecutionError {
     pub fn new(
         message: impl Into<Cow<'static, str>>,
         path: Option<Vec<String>>,
-        locations: Option<Vec<ErrorLocation>>,
+        locations: Option<TypedFrozenRArray<Obj<ErrorLocation>>>,
     ) -> Self {
         Self {
             message: message.into(),
@@ -50,7 +68,10 @@ impl ExecutionError {
     fn rb_new(args: &[Value]) -> Result<Self, Error> {
         let args = scan_args::<
             (String,),
-            (Option<Vec<String>>, Option<Vec<ErrorLocation>>),
+            (
+                Option<Vec<String>>,
+                Option<TypedFrozenRArray<Obj<ErrorLocation>>>,
+            ),
             (),
             (),
             (),
@@ -74,13 +95,11 @@ impl ExecutionError {
         let ruby_h = rhash_with_capacity(2);
         ruby_h.aset("path", self.path())?;
         ruby_h.aset("message", self.message())?;
-        if let Some(_i) = &self.locations {
-            let location_hashes: Vec<RHash> = self
-                .locations
-                .unwrap()
+        if let Some(locations) = &self.locations {
+            let location_hashes = locations
                 .iter()
-                .map(|loc| loc.to_h().unwrap())
-                .collect();
+                .map(|loc| loc.to_h())
+                .collect::<Result<RArray, Error>>()?;
             ruby_h.aset("locations", location_hashes)?;
         }
         Ok(ruby_h)

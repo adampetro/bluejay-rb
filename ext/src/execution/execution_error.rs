@@ -36,7 +36,7 @@ impl<'a> From<ExecutionError<'a>> for RubyExecutionError {
                     // TODO This is starting byte and ending byte, not line and column
                     let span = field.span();
                     let range = span.byte_range();
-                    ErrorLocation { line: range.start, column: range.end }
+                    ErrorLocation::new(range.start, range.end)
                 };
 
                 let locations = Some(fields.iter().map(get_location).collect());
