@@ -38,6 +38,7 @@ pub struct Engine<'a> {
     variables: &'a RHash,
     key_store: KeyStore<'a>,
     collect_fields_cache: CollectFieldsCache<'a>,
+    query: &'a str,
 }
 
 impl<'a> Engine<'a> {
@@ -92,6 +93,7 @@ impl<'a> Engine<'a> {
             variables: &variables,
             key_store: KeyStore::new(),
             collect_fields_cache: Default::default(),
+            query,
         };
 
         instance
@@ -575,6 +577,7 @@ impl<'a> Engine<'a> {
                     error: FieldError::ReturnedNullForNonNullType,
                     path,
                     fields: fields.to_vec(),
+                    query: self.query,
                 }],
             );
         } else if result.is_nil() {
@@ -591,6 +594,7 @@ impl<'a> Engine<'a> {
                             error,
                             path,
                             fields: fields.to_vec(),
+                            query: self.query,
                         }],
                     ),
                 },
@@ -602,6 +606,7 @@ impl<'a> Engine<'a> {
                             error,
                             path,
                             fields: fields.to_vec(),
+                            query: self.query,
                         }],
                     ),
                 },
@@ -613,6 +618,7 @@ impl<'a> Engine<'a> {
                             error,
                             path,
                             fields: fields.to_vec(),
+                            query: self.query,
                         }],
                     ),
                 },
@@ -654,6 +660,7 @@ impl<'a> Engine<'a> {
                             error: FieldError::ReturnedNonListForListType,
                             path,
                             fields: fields.to_vec(),
+                            query: self.query,
                         }],
                     )
                 }

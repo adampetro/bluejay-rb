@@ -1,5 +1,6 @@
 use crate::execution::FieldError;
 use crate::ruby_api::{CoercionError, ErrorLocation, ExecutionError as RubyExecutionError};
+use bluejay_parser::error::SpanToLocation;
 use bluejay_parser::{Error as ParseError, HasSpan};
 use bluejay_validator::Path;
 
@@ -18,6 +19,7 @@ pub enum ExecutionError<'a> {
     FieldError {
         error: FieldError,
         path: Path<'a>,
+        query: &'a str,
         fields: Vec<&'a bluejay_parser::ast::executable::Field<'a>>,
     },
 }
@@ -31,12 +33,11 @@ impl<'a> From<ExecutionError<'a>> for RubyExecutionError {
             ExecutionError::ApplicationError(error) => Self::new(format!("Internal error: {error}"), None, None),
             ExecutionError::CoercionError(error) =>  error.into(),
             ExecutionError::ParseError(error) => Self::new(error.message().to_owned(), None, None),
-            ExecutionError::FieldError { error, path, fields } => {
+            ExecutionError::FieldError { error, path, fields, query } => {
                 let get_location = |field: &&bluejay_parser::ast::executable::Field<'_>| {
-                    // TODO This is starting byte and ending byte, not line and column
                     let span = field.span();
-                    let range = span.byte_range();
-                    ErrorLocation::new(range.start, range.end)
+                    let (line, column) = SpanToLocation::new(query).convert(span).unwrap();
+                    ErrorLocation::new(line, column)
                 };
 
                 let locations = Some(fields.iter().map(get_location).collect());

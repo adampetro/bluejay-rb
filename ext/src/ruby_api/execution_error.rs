@@ -34,6 +34,17 @@ impl ErrorLocation {
         ruby_h.aset("column", self.column)?;
         Ok(ruby_h)
     }
+
+    fn inspect(rb_self: Obj<Self>) -> Result<String, Error> {
+        let rs_self = rb_self.get();
+
+        Ok(format!(
+            "#<Bluejay::ExecutionError::ErrorLocation:0x{:016x} @line={:?} @column={:?}>",
+            rb_self.as_raw(),
+            rs_self.line,
+            rs_self.column,
+        ))
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, TypedData)]
@@ -133,6 +144,7 @@ pub fn init() -> Result<(), Error> {
 
     let loc_class = class.define_class("ErrorLocation", Default::default())?;
     loc_class.define_singleton_method("new", function!(ErrorLocation::rb_new, 2))?;
+    loc_class.define_method("inspect", method!(ErrorLocation::inspect, 0))?;
     loc_class.define_method(
         "==",
         method!(<ErrorLocation as typed_data::IsEql>::is_eql, 1),
