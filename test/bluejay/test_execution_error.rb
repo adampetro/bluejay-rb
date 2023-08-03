@@ -17,7 +17,7 @@ module Bluejay
       err2 = Bluejay::ExecutionError.new(
         "Something else went wrong",
         ["root"],
-        [Bluejay::ExecutionError::ErrorLocation.new(10, 12)],
+        [Bluejay::ExecutionError::ErrorLocation.new(line: 10, column: 12)],
       )
       expected_h2 = {
         "message" => "Something else went wrong",
@@ -29,7 +29,7 @@ module Bluejay
     end
 
     def test_it_can_make_error_locations
-      assert(Bluejay::ExecutionError::ErrorLocation.new(5, 10))
+      assert(Bluejay::ExecutionError::ErrorLocation.new(line: 5, column: 10))
     end
   end
 end

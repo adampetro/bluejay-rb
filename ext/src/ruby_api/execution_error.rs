@@ -4,9 +4,9 @@ use super::root;
 use magnus::{
     function, gc, method,
     rb_sys::AsRawValue,
-    scan_args::scan_args,
+    scan_args::{get_kwargs, scan_args},
     typed_data::{self, Obj},
-    DataTypeFunctions, Error, Integer, Module, Object, RArray, RHash, TypedData, Value,
+    DataTypeFunctions, Error, Module, Object, RArray, RHash, TypedData, Value,
 };
 use std::borrow::Cow;
 
@@ -22,10 +22,10 @@ impl ErrorLocation {
         Self { line, column }
     }
 
-    fn rb_new(line_v: Integer, col_v: Integer) -> Result<Self, Error> {
-        let line = line_v.try_convert::<usize>().unwrap();
-        let column = col_v.try_convert::<usize>().unwrap();
-        Ok(Self::new(line, column))
+    fn rb_new(kw: RHash) -> Result<Self, Error> {
+        let (line, column) =
+            get_kwargs::<_, (usize, usize), (), ()>(kw, &["line", "column"], &[])?.required;
+        Ok(Self { line, column })
     }
 
     fn to_h(&self) -> Result<RHash, Error> {
@@ -143,7 +143,7 @@ pub fn init() -> Result<(), Error> {
     class.define_method("to_h", method!(ExecutionError::to_h, 0))?;
 
     let loc_class = class.define_class("ErrorLocation", Default::default())?;
-    loc_class.define_singleton_method("new", function!(ErrorLocation::rb_new, 2))?;
+    loc_class.define_singleton_method("new", function!(ErrorLocation::rb_new, 1))?;
     loc_class.define_method("inspect", method!(ErrorLocation::inspect, 0))?;
     loc_class.define_method(
         "==",
