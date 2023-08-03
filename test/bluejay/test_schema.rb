@@ -304,7 +304,7 @@ module Bluejay
         ExecutionError.new(
           "Did not return today",
           ["today"],
-          [{ "line" => 2, "column" => 7 }, { "line" => 8, "column" => 13 }],
+          [Bluejay::ExecutionError::ErrorLocation.new(2, 7), Bluejay::ExecutionError::ErrorLocation.new(8, 13)],
         ),
         result.errors.first,
       )

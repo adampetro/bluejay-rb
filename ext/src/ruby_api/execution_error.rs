@@ -6,7 +6,7 @@ use magnus::{
     rb_sys::AsRawValue,
     scan_args::scan_args,
     typed_data::{self, Obj},
-    DataTypeFunctions, Error, Module, Object, RArray, RHash, TypedData, Value,
+    DataTypeFunctions, Error, Integer, Module, Object, RArray, RHash, TypedData, Value,
 };
 use std::borrow::Cow;
 
@@ -22,9 +22,9 @@ impl ErrorLocation {
         Self { line, column }
     }
 
-    fn rb_new(hash: RHash) -> Result<Self, Error> {
-        let line = hash.get("line").unwrap().try_convert::<usize>().unwrap();
-        let column = hash.get("column").unwrap().try_convert::<usize>().unwrap();
+    fn rb_new(line_v: Integer, col_v: Integer) -> Result<Self, Error> {
+        let line = line_v.try_convert::<usize>().unwrap();
+        let column = col_v.try_convert::<usize>().unwrap();
         Ok(Self::new(line, column))
     }
 
@@ -132,7 +132,11 @@ pub fn init() -> Result<(), Error> {
     class.define_method("to_h", method!(ExecutionError::to_h, 0))?;
 
     let loc_class = class.define_class("ErrorLocation", Default::default())?;
-    loc_class.define_singleton_method("new", function!(ErrorLocation::rb_new, 1))?;
+    loc_class.define_singleton_method("new", function!(ErrorLocation::rb_new, 2))?;
+    loc_class.define_method(
+        "==",
+        method!(<ErrorLocation as typed_data::IsEql>::is_eql, 1),
+    )?;
 
     Ok(())
 }
