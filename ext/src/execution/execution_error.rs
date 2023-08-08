@@ -23,9 +23,10 @@ pub enum ExecutionError<'a> {
     },
 }
 
-impl<'a> From<ExecutionError<'a>> for RubyExecutionError {
-    fn from(val: ExecutionError<'a>) -> Self {
-        match val {
+impl<'a> From<(ExecutionError<'a>, SpanToLocation<'a>)> for RubyExecutionError {
+    fn from(val: (ExecutionError<'a>, SpanToLocation<'a>)) -> Self {
+        let (execution_error, span_to_location) = val;
+        match execution_error {
             ExecutionError::NoOperationWithName { name } => Self::new(format!("No operation definition named `{name}`"), None, None),
             ExecutionError::CannotUseAnonymousOperation => Self::new("Operation name is required when document does not contain exactly 1 operation definition", None, None),
             ExecutionError::RequiredVariableMissingValue { name } => Self::new(format!("No value was provided for required variable `${name}`"), None, None),
@@ -35,7 +36,7 @@ impl<'a> From<ExecutionError<'a>> for RubyExecutionError {
             ExecutionError::FieldError { error, path, fields } => {
                 let get_location = |field: &&bluejay_parser::ast::executable::Field<'_>| {
                     let span = field.span();
-                    let (line, column) = SpanToLocation::new(query).convert(span).unwrap();
+                    let (line, column) = span_to_location.convert(span).unwrap();
                     ErrorLocation::new(line, column)
                 };
 

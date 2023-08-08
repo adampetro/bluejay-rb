@@ -22,6 +22,7 @@ use bluejay_core::{
 };
 use bluejay_parser::ast::executable::{ExecutableDocument, Field, OperationDefinition, Selection};
 use bluejay_parser::ast::{Directive, VariableArguments, VariableValue};
+use bluejay_parser::error::SpanToLocation;
 use bluejay_validator::Path;
 use indexmap::IndexMap;
 use magnus::{Error, RArray, RHash, Value, QNIL};
@@ -200,7 +201,12 @@ impl<'a> Engine<'a> {
     }
 
     fn execution_result(value: Value, errors: Vec<ExecutionError>, query: &str) -> ExecutionResult {
-        ExecutionResult::new(value, errors)
+        let span_to_location = SpanToLocation::new(query);
+        let errors_with_span_to_location: Vec<(ExecutionError, SpanToLocation)> = errors
+            .iter()
+            .map(|err| (err.clone(), span_to_location))
+            .collect();
+        ExecutionResult::new(value, errors_with_span_to_location)
     }
 
     fn execute_operation(
