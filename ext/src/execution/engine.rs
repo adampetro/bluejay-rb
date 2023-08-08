@@ -38,7 +38,6 @@ pub struct Engine<'a> {
     variables: &'a RHash,
     key_store: KeyStore<'a>,
     collect_fields_cache: CollectFieldsCache<'a>,
-    query: &'a str,
 }
 
 impl<'a> Engine<'a> {
@@ -59,6 +58,7 @@ impl<'a> Engine<'a> {
                         .into_iter()
                         .map(ExecutionError::ParseError)
                         .collect(),
+                    query,
                 ));
             }
         };
@@ -66,7 +66,11 @@ impl<'a> Engine<'a> {
         let operation_definition = match Self::get_operation(&document, operation_name) {
             Ok(od) => od,
             Err(error) => {
-                return Ok(Self::execution_result(Default::default(), vec![error]));
+                return Ok(Self::execution_result(
+                    Default::default(),
+                    vec![error],
+                    query,
+                ));
             }
         };
 
@@ -83,7 +87,7 @@ impl<'a> Engine<'a> {
         ) {
             Ok(cvv) => cvv,
             Err(errors) => {
-                return Ok(Self::execution_result(Default::default(), errors));
+                return Ok(Self::execution_result(Default::default(), errors, query));
             }
         };
 
@@ -93,11 +97,10 @@ impl<'a> Engine<'a> {
             variables: &variables,
             key_store: KeyStore::new(),
             collect_fields_cache: Default::default(),
-            query,
         };
 
         instance
-            .execute_operation(operation_definition, initial_value)
+            .execute_operation(operation_definition, initial_value, query)
             .and_then(|exc_result| visibility_cache.warden().to_result().map(|_| exc_result))
     }
 
@@ -196,7 +199,7 @@ impl<'a> Engine<'a> {
         }
     }
 
-    fn execution_result(value: Value, errors: Vec<ExecutionError>) -> ExecutionResult {
+    fn execution_result(value: Value, errors: Vec<ExecutionError>, query: &str) -> ExecutionResult {
         ExecutionResult::new(value, errors)
     }
 
@@ -204,6 +207,7 @@ impl<'a> Engine<'a> {
         &'a self,
         operation: &'a OperationDefinition,
         initial_value: Value,
+        query: &str,
     ) -> Result<ExecutionResult, Error> {
         let (root_type, root_value) = match operation.as_ref().operation_type() {
             OperationType::Query => (
@@ -226,7 +230,7 @@ impl<'a> Engine<'a> {
             Path::default(),
         );
 
-        Ok(Self::execution_result(value, errors))
+        Ok(Self::execution_result(value, errors, query))
     }
 
     fn execute_selection_set(
@@ -577,7 +581,6 @@ impl<'a> Engine<'a> {
                     error: FieldError::ReturnedNullForNonNullType,
                     path,
                     fields: fields.to_vec(),
-                    query: self.query,
                 }],
             );
         } else if result.is_nil() {
@@ -594,7 +597,6 @@ impl<'a> Engine<'a> {
                             error,
                             path,
                             fields: fields.to_vec(),
-                            query: self.query,
                         }],
                     ),
                 },
@@ -606,7 +608,6 @@ impl<'a> Engine<'a> {
                             error,
                             path,
                             fields: fields.to_vec(),
-                            query: self.query,
                         }],
                     ),
                 },
@@ -618,7 +619,6 @@ impl<'a> Engine<'a> {
                             error,
                             path,
                             fields: fields.to_vec(),
-                            query: self.query,
                         }],
                     ),
                 },
@@ -660,7 +660,6 @@ impl<'a> Engine<'a> {
                             error: FieldError::ReturnedNonListForListType,
                             path,
                             fields: fields.to_vec(),
-                            query: self.query,
                         }],
                     )
                 }
