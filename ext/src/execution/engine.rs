@@ -201,11 +201,16 @@ impl<'a> Engine<'a> {
     }
 
     fn execution_result(value: Value, errors: Vec<ExecutionError>, query: &str) -> ExecutionResult {
-        let span_to_location = SpanToLocation::new(query);
-        let errors_with_span_to_location: Vec<(ExecutionError, SpanToLocation)> = errors
-            .iter()
-            .map(|err| (err.clone(), span_to_location))
-            .collect();
+        let errors_with_span_to_location: Vec<(ExecutionError, SpanToLocation)> =
+            if errors.is_empty() {
+                vec![]
+            } else {
+                let span_to_location = SpanToLocation::new(query);
+                errors
+                    .iter()
+                    .map(|err| (err.clone(), span_to_location))
+                    .collect()
+            };
         ExecutionResult::new(value, errors_with_span_to_location)
     }
 
