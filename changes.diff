@@ -1,0 +1,73 @@
+diff --git a/ext/src/execution/engine.rs b/ext/src/execution/engine.rs
+index 95af170..7339d7a 100644
+--- a/ext/src/execution/engine.rs
++++ b/ext/src/execution/engine.rs
+@@ -4,8 +4,8 @@ use crate::execution::{
+ };
+ use crate::helpers::{rhash_with_capacity, FuncallKw, NewInstanceKw, RArrayIter, Warden};
+ use crate::ruby_api::{
+-    CoerceInput, ExecutionResult, ExtraResolverArg, ObjectTypeDefinition, SchemaDefinition,
+-    UnionTypeDefinition,
++    CoerceInput, ExecutionError as RubyExecutionError, ExecutionResult, ExtraResolverArg,
++    ObjectTypeDefinition, SchemaDefinition, UnionTypeDefinition,
+ };
+ use crate::visibility_scoped::{
+     ScopedBaseOutputType, ScopedFieldDefinition, ScopedInputType, ScopedInputValueDefinition,
+@@ -201,17 +201,17 @@ impl<'a> Engine<'a> {
+     }
+ 
+     fn execution_result(value: Value, errors: Vec<ExecutionError>, query: &str) -> ExecutionResult {
+-        let errors_with_span_to_location: Vec<(ExecutionError, SpanToLocation)> =
+-            if errors.is_empty() {
+-                vec![]
+-            } else {
+-                let span_to_location = SpanToLocation::new(query);
++        if errors.is_empty() {
++            ExecutionResult::new(value, std::iter::empty())
++        } else {
++            let mut span_to_location = SpanToLocation::new(query);
++            ExecutionResult::new(
++                value,
+                 errors
+-                    .iter()
+-                    .map(|err| (err.clone(), span_to_location))
+-                    .collect()
+-            };
+-        ExecutionResult::new(value, errors_with_span_to_location)
++                    .into_iter()
++                    .map(|err| RubyExecutionError::from((err, &mut span_to_location))),
++            )
++        }
+     }
+ 
+     fn execute_operation(
+diff --git a/ext/src/execution/execution_error.rs b/ext/src/execution/execution_error.rs
+index ab73a4f..d76e148 100644
+--- a/ext/src/execution/execution_error.rs
++++ b/ext/src/execution/execution_error.rs
+@@ -23,8 +23,8 @@ pub enum ExecutionError<'a> {
+     },
+ }
+ 
+-impl<'a> From<(ExecutionError<'a>, SpanToLocation<'a>)> for RubyExecutionError {
+-    fn from(val: (ExecutionError<'a>, SpanToLocation<'a>)) -> Self {
++impl<'a> From<(ExecutionError<'a>, &mut SpanToLocation<'a>)> for RubyExecutionError {
++    fn from(val: (ExecutionError<'a>, &mut SpanToLocation<'a>)) -> Self {
+         let (execution_error, span_to_location) = val;
+         match execution_error {
+             ExecutionError::NoOperationWithName { name } => Self::new(format!("No operation definition named `{name}`"), None, None),
+diff --git a/ext/src/ruby_api/execution_result.rs b/ext/src/ruby_api/execution_result.rs
+index 7b2bb09..4287a23 100644
+--- a/ext/src/ruby_api/execution_result.rs
++++ b/ext/src/ruby_api/execution_result.rs
+@@ -13,8 +13,8 @@ pub struct ExecutionResult {
+ }
+ 
+ impl ExecutionResult {
+-    pub fn new(value: Value, errors: impl IntoIterator<Item = impl Into<ExecutionError>>) -> Self {
+-        let errors = TypedFrozenRArray::from_iter(errors.into_iter().map(Into::into));
++    pub fn new(value: Value, errors: impl Iterator<Item = ExecutionError>) -> Self {
++        let errors = TypedFrozenRArray::from_iter(errors);
+         Self { value, errors }
+     }
+ 
