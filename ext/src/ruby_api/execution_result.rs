@@ -13,7 +13,7 @@ pub struct ExecutionResult {
 }
 
 impl ExecutionResult {
-    pub fn new(value: Value, errors: impl IntoIterator<Item = impl Into<ExecutionError>>) -> Self {
+    pub fn new(value: Value, errors: impl Iterator<Item = ExecutionError>) -> Self {
         let errors = TypedFrozenRArray::from_iter(errors.into_iter().map(Into::into));
         Self { value, errors }
     }

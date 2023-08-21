@@ -23,8 +23,8 @@ pub enum ExecutionError<'a> {
     },
 }
 
-impl<'a> From<(ExecutionError<'a>, SpanToLocation<'a>)> for RubyExecutionError {
-    fn from(val: (ExecutionError<'a>, SpanToLocation<'a>)) -> Self {
+impl<'a> From<(ExecutionError<'a>, &mut SpanToLocation<'a>)> for RubyExecutionError {
+    fn from(val: (ExecutionError<'a>, &mut SpanToLocation<'a>)) -> Self {
         let (execution_error, span_to_location) = val;
         match execution_error {
             ExecutionError::NoOperationWithName { name } => Self::new(format!("No operation definition named `{name}`"), None, None),

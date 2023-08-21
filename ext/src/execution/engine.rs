@@ -4,8 +4,8 @@ use crate::execution::{
 };
 use crate::helpers::{rhash_with_capacity, FuncallKw, NewInstanceKw, RArrayIter, Warden};
 use crate::ruby_api::{
-    CoerceInput, ExecutionResult, ExtraResolverArg, ObjectTypeDefinition, SchemaDefinition,
-    UnionTypeDefinition,
+    CoerceInput, ExecutionError as RubyExecutionError, ExecutionResult, ExtraResolverArg,
+    ObjectTypeDefinition, SchemaDefinition, UnionTypeDefinition,
 };
 use crate::visibility_scoped::{
     ScopedBaseOutputType, ScopedFieldDefinition, ScopedInputType, ScopedInputValueDefinition,
@@ -201,17 +201,17 @@ impl<'a> Engine<'a> {
     }
 
     fn execution_result(value: Value, errors: Vec<ExecutionError>, query: &str) -> ExecutionResult {
-        let errors_with_span_to_location: Vec<(ExecutionError, SpanToLocation)> =
-            if errors.is_empty() {
-                vec![]
-            } else {
-                let span_to_location = SpanToLocation::new(query);
+        if errors.is_empty() {
+            ExecutionResult::new(value, std::iter::empty())
+        } else {
+            let mut span_to_location = SpanToLocation::new(query);
+            ExecutionResult::new(
+                value,
                 errors
-                    .iter()
-                    .map(|err| (err.clone(), span_to_location))
-                    .collect()
-            };
-        ExecutionResult::new(value, errors_with_span_to_location)
+                    .into_iter()
+                    .map(|err| RubyExecutionError::from((err, &mut span_to_location))),
+            )
+        }
     }
 
     fn execute_operation(
