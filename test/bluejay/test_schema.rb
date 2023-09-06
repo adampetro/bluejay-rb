@@ -290,7 +290,10 @@ module Bluejay
     end
 
     def test_execute_custom_scalar_coerce_result_error
-      query = "{ today }"
+      query = "{
+        today
+        today
+      }"
       root = Domain::SchemaRoot.new(query: Domain::QueryRoot.new(today: Date.today.next_day))
 
       result = MySchema.execute(
@@ -301,7 +304,14 @@ module Bluejay
 
       assert_equal(1, result.errors.length)
       assert_equal(
-        ExecutionError.new("Did not return today", ["today"]),
+        ExecutionError.new(
+          "Did not return today",
+          ["today"],
+          [
+            Bluejay::ExecutionError::ErrorLocation.new(line: 2, column: 9),
+            Bluejay::ExecutionError::ErrorLocation.new(line: 3, column: 9),
+          ],
+        ),
         result.errors.first,
       )
     end

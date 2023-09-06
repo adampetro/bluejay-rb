@@ -13,6 +13,23 @@ module Bluejay
       }
 
       assert_equal(expected_h, err.to_h)
+
+      err2 = Bluejay::ExecutionError.new(
+        "Something else went wrong",
+        ["root"],
+        [Bluejay::ExecutionError::ErrorLocation.new(line: 10, column: 12)],
+      )
+      expected_h2 = {
+        "message" => "Something else went wrong",
+        "path" => ["root"],
+        "locations" => [{ "line" => 10, "column" => 12 }],
+      }
+
+      assert_equal(expected_h2, err2.to_h)
+    end
+
+    def test_it_can_make_error_locations
+      assert(Bluejay::ExecutionError::ErrorLocation.new(line: 5, column: 10))
     end
   end
 end

@@ -49,6 +49,7 @@ pub use enum_type_definition::EnumTypeDefinition;
 pub use enum_value_definition::EnumValueDefinition;
 pub use enum_value_definitions::EnumValueDefinitions;
 pub use errors::{base_error, non_unique_definition_name_error};
+pub use execution_error::ErrorLocation;
 pub use execution_error::ExecutionError;
 pub use execution_result::ExecutionResult;
 pub use field_definition::{ExtraResolverArg, FieldDefinition};

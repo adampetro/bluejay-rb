@@ -1,35 +1,96 @@
-use crate::helpers::rhash_with_capacity;
+use crate::helpers::{rhash_with_capacity, TypedFrozenRArray};
 
 use super::root;
 use magnus::{
-    function, method,
+    function, gc, method,
     rb_sys::AsRawValue,
-    scan_args::scan_args,
+    scan_args::{get_kwargs, scan_args},
     typed_data::{self, Obj},
-    Error, Module, Object, RHash, Value,
+    DataTypeFunctions, Error, Module, Object, RArray, RHash, TypedData, Value,
 };
 use std::borrow::Cow;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[magnus::wrap(class = "Bluejay::ExecutionError")]
+#[magnus::wrap(class = "Bluejay::ExecutionError::ErrorLocation")]
+pub struct ErrorLocation {
+    line: usize,
+    column: usize,
+}
+
+impl ErrorLocation {
+    pub fn new(line: usize, column: usize) -> Self {
+        Self { line, column }
+    }
+
+    fn rb_new(kw: RHash) -> Result<Self, Error> {
+        let (line, column) =
+            get_kwargs::<_, (usize, usize), (), ()>(kw, &["line", "column"], &[])?.required;
+        Ok(Self { line, column })
+    }
+
+    fn to_h(&self) -> Result<RHash, Error> {
+        let ruby_h = rhash_with_capacity(2);
+        ruby_h.aset("line", self.line)?;
+        ruby_h.aset("column", self.column)?;
+        Ok(ruby_h)
+    }
+
+    fn inspect(rb_self: Obj<Self>) -> Result<String, Error> {
+        let rs_self = rb_self.get();
+
+        Ok(format!(
+            "#<Bluejay::ExecutionError::ErrorLocation:0x{:016x} @line={:?} @column={:?}>",
+            rb_self.as_raw(),
+            rs_self.line,
+            rs_self.column,
+        ))
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, TypedData)]
+#[magnus(class = "Bluejay::ExecutionError", mark)]
 pub struct ExecutionError {
     message: Cow<'static, str>,
     path: Option<Vec<String>>,
+    locations: Option<TypedFrozenRArray<Obj<ErrorLocation>>>,
+}
+
+impl DataTypeFunctions for ExecutionError {
+    fn mark(&self) {
+        if let Some(locations) = self.locations {
+            gc::mark(locations);
+        }
+    }
 }
 
 impl ExecutionError {
-    pub fn new(message: impl Into<Cow<'static, str>>, path: Option<Vec<String>>) -> Self {
+    pub fn new(
+        message: impl Into<Cow<'static, str>>,
+        path: Option<Vec<String>>,
+        locations: Option<TypedFrozenRArray<Obj<ErrorLocation>>>,
+    ) -> Self {
         Self {
             message: message.into(),
             path,
+            locations,
         }
     }
 
     fn rb_new(args: &[Value]) -> Result<Self, Error> {
-        let args = scan_args::<(String,), (Option<Vec<String>>,), (), (), (), ()>(args)?;
+        let args = scan_args::<
+            (String,),
+            (
+                Option<Vec<String>>,
+                Option<TypedFrozenRArray<Obj<ErrorLocation>>>,
+            ),
+            (),
+            (),
+            (),
+            (),
+        >(args)?;
         let (message,) = args.required;
-        let (path,) = args.optional;
-        Ok(Self::new(message, path))
+        let (path, locations) = args.optional;
+        Ok(Self::new(message, path, locations))
     }
 
     pub fn message(&self) -> &str {
@@ -45,6 +106,13 @@ impl ExecutionError {
         let ruby_h = rhash_with_capacity(2);
         ruby_h.aset("path", self.path())?;
         ruby_h.aset("message", self.message())?;
+        if let Some(locations) = &self.locations {
+            let location_hashes = locations
+                .iter()
+                .map(|loc| loc.to_h())
+                .collect::<Result<RArray, Error>>()?;
+            ruby_h.aset("locations", location_hashes)?;
+        }
         Ok(ruby_h)
     }
 
@@ -52,10 +120,11 @@ impl ExecutionError {
         let rs_self = rb_self.get();
 
         Ok(format!(
-            "#<Bluejay::ExecutionError:0x{:016x} @message={:?} @path={:?}>",
+            "#<Bluejay::ExecutionError:0x{:016x} @message={:?} @path={:?} @locations={:?}>",
             rb_self.as_raw(),
             rs_self.message,
             rs_self.path,
+            rs_self.locations,
         ))
     }
 }
@@ -72,6 +141,14 @@ pub fn init() -> Result<(), Error> {
     )?;
     class.define_method("inspect", method!(ExecutionError::inspect, 0))?;
     class.define_method("to_h", method!(ExecutionError::to_h, 0))?;
+
+    let loc_class = class.define_class("ErrorLocation", Default::default())?;
+    loc_class.define_singleton_method("new", function!(ErrorLocation::rb_new, 1))?;
+    loc_class.define_method("inspect", method!(ErrorLocation::inspect, 0))?;
+    loc_class.define_method(
+        "==",
+        method!(<ErrorLocation as typed_data::IsEql>::is_eql, 1),
+    )?;
 
     Ok(())
 }

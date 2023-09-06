@@ -40,7 +40,7 @@ impl CoercionError {
 
 impl From<CoercionError> for ExecutionError {
     fn from(val: CoercionError) -> Self {
-        ExecutionError::new(val.message, None)
+        ExecutionError::new(val.message, None, None)
     }
 }
 

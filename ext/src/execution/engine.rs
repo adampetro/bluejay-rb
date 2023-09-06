@@ -4,8 +4,8 @@ use crate::execution::{
 };
 use crate::helpers::{rhash_with_capacity, FuncallKw, NewInstanceKw, RArrayIter, Warden};
 use crate::ruby_api::{
-    CoerceInput, ExecutionResult, ExtraResolverArg, ObjectTypeDefinition, SchemaDefinition,
-    UnionTypeDefinition,
+    CoerceInput, ExecutionError as RubyExecutionError, ExecutionResult, ExtraResolverArg,
+    ObjectTypeDefinition, SchemaDefinition, UnionTypeDefinition,
 };
 use crate::visibility_scoped::{
     ScopedBaseOutputType, ScopedFieldDefinition, ScopedInputType, ScopedInputValueDefinition,
@@ -22,6 +22,7 @@ use bluejay_core::{
 };
 use bluejay_parser::ast::executable::{ExecutableDocument, Field, OperationDefinition, Selection};
 use bluejay_parser::ast::{Directive, VariableArguments, VariableValue};
+use bluejay_parser::error::SpanToLocation;
 use bluejay_validator::Path;
 use indexmap::IndexMap;
 use magnus::{Error, RArray, RHash, Value, QNIL};
@@ -58,6 +59,7 @@ impl<'a> Engine<'a> {
                         .into_iter()
                         .map(ExecutionError::ParseError)
                         .collect(),
+                    query,
                 ));
             }
         };
@@ -65,7 +67,11 @@ impl<'a> Engine<'a> {
         let operation_definition = match Self::get_operation(&document, operation_name) {
             Ok(od) => od,
             Err(error) => {
-                return Ok(Self::execution_result(Default::default(), vec![error]));
+                return Ok(Self::execution_result(
+                    Default::default(),
+                    vec![error],
+                    query,
+                ));
             }
         };
 
@@ -82,7 +88,7 @@ impl<'a> Engine<'a> {
         ) {
             Ok(cvv) => cvv,
             Err(errors) => {
-                return Ok(Self::execution_result(Default::default(), errors));
+                return Ok(Self::execution_result(Default::default(), errors, query));
             }
         };
 
@@ -95,7 +101,7 @@ impl<'a> Engine<'a> {
         };
 
         instance
-            .execute_operation(operation_definition, initial_value)
+            .execute_operation(operation_definition, initial_value, query)
             .and_then(|exc_result| visibility_cache.warden().to_result().map(|_| exc_result))
     }
 
@@ -194,14 +200,25 @@ impl<'a> Engine<'a> {
         }
     }
 
-    fn execution_result(value: Value, errors: Vec<ExecutionError>) -> ExecutionResult {
-        ExecutionResult::new(value, errors)
+    fn execution_result(value: Value, errors: Vec<ExecutionError>, query: &str) -> ExecutionResult {
+        if errors.is_empty() {
+            ExecutionResult::new(value, std::iter::empty())
+        } else {
+            let mut span_to_location = SpanToLocation::new(query);
+            ExecutionResult::new(
+                value,
+                errors
+                    .into_iter()
+                    .map(|err| RubyExecutionError::from((err, &mut span_to_location))),
+            )
+        }
     }
 
     fn execute_operation(
         &'a self,
         operation: &'a OperationDefinition,
         initial_value: Value,
+        query: &str,
     ) -> Result<ExecutionResult, Error> {
         let (root_type, root_value) = match operation.as_ref().operation_type() {
             OperationType::Query => (
@@ -224,7 +241,7 @@ impl<'a> Engine<'a> {
             Path::default(),
         );
 
-        Ok(Self::execution_result(value, errors))
+        Ok(Self::execution_result(value, errors, query))
     }
 
     fn execute_selection_set(
@@ -574,6 +591,7 @@ impl<'a> Engine<'a> {
                 vec![ExecutionError::FieldError {
                     error: FieldError::ReturnedNullForNonNullType,
                     path,
+                    fields: fields.to_vec(),
                 }],
             );
         } else if result.is_nil() {
@@ -584,15 +602,36 @@ impl<'a> Engine<'a> {
             OutputTypeReference::Base(inner, _) => match inner {
                 ScopedBaseOutputType::BuiltinScalar(bstd) => match bstd.coerce_result(result) {
                     Ok(value) => (value, vec![]),
-                    Err(error) => (*QNIL, vec![ExecutionError::FieldError { error, path }]),
+                    Err(error) => (
+                        *QNIL,
+                        vec![ExecutionError::FieldError {
+                            error,
+                            path,
+                            fields: fields.to_vec(),
+                        }],
+                    ),
                 },
                 ScopedBaseOutputType::CustomScalar(cstd) => match cstd.coerce_result(result) {
                     Ok(value) => (value, vec![]),
-                    Err(error) => (*QNIL, vec![ExecutionError::FieldError { error, path }]),
+                    Err(error) => (
+                        *QNIL,
+                        vec![ExecutionError::FieldError {
+                            error,
+                            path,
+                            fields: fields.to_vec(),
+                        }],
+                    ),
                 },
                 ScopedBaseOutputType::Enum(etd) => match etd.coerce_result(result) {
                     Ok(value) => (value, vec![]),
-                    Err(error) => (*QNIL, vec![ExecutionError::FieldError { error, path }]),
+                    Err(error) => (
+                        *QNIL,
+                        vec![ExecutionError::FieldError {
+                            error,
+                            path,
+                            fields: fields.to_vec(),
+                        }],
+                    ),
                 },
                 ScopedBaseOutputType::Object(otd) => {
                     self.execute_selection_set(fields.into(), otd, result, path)
@@ -631,6 +670,7 @@ impl<'a> Engine<'a> {
                         vec![ExecutionError::FieldError {
                             error: FieldError::ReturnedNonListForListType,
                             path,
+                            fields: fields.to_vec(),
                         }],
                     )
                 }
